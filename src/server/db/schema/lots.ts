@@ -58,7 +58,7 @@ export const lotCodeSequence = pgTable(
     variantCode: text("variant_code").notNull().default("_"),
     nextNumber: integer("next_number").notNull().default(1),
   },
-  (t) => [],
+  (t) => [uniqueIndex().on(t.itemTypeId, t.prefix, t.variantCode)],
 );
 
 export const lotIdentifier = pgTable(
@@ -68,13 +68,12 @@ export const lotIdentifier = pgTable(
     // orgId: uuid("org_id")
     //   .notNull()
     //   .references(() => organizations.id),
-    lotId: uuid("lot_id").references(() => lot.id, { onDelete: "cascade" }),
+    lotId: uuid("lot_id")
+      .references(() => lot.id, { onDelete: "cascade" })
+      .notNull(),
     identifierType: text("identifier_type").notNull(),
     identifierValue: text("identifier_value").notNull(),
     label: text(),
-
-    assignedTo: uuid("assigned_to").references(() => user.id),
-    batchDate: timestamp("batch_date", { withTimezone: true }),
 
     isActive: boolean("is_active").notNull().default(true),
     printedAt: timestamp("printed_at", { withTimezone: true }),
@@ -82,11 +81,6 @@ export const lotIdentifier = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
-
-    // When lot_id is NULL (unlinked), these fields tell the system
-    // what to create on first scan:
-    createItemTypeId: uuid("create_item_type_id").references(() => itemType.id),
-    createStatus: text("create_status"),
   },
   (t) => [
     uniqueIndex().on(t.identifierType, t.identifierValue),
@@ -105,7 +99,7 @@ export const lotLineage = pgTable(
     childLotId: uuid("child_lot_id")
       .notNull()
       .references(() => lot.id),
-    relationship: text().notNull().default("derived_from"),
+    relationship: text().notNull(),
     operationId: uuid("operation_id").references(() => operation.id),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -143,39 +137,4 @@ export const lotEvent = pgTable(
     // index("idx_events_org").on(t.orgId, t.recordedAt),
     // index("idx_events_type").on(t.orgId, t.eventType),
   ],
-);
-
-export const lotGroups = pgTable(
-  "lot_groups",
-  {
-    id: uuid().primaryKey().defaultRandom(),
-    // orgId: uuid("org_id")
-    //   .notNull()
-    //   .references(() => organizations.id),
-    groupCode: text("group_code").notNull(),
-    groupType: text("group_type").notNull(),
-    name: text(),
-    locationId: uuid("location_id").references(() => location.id),
-    isActive: boolean("is_active").notNull().default(true),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (t) => [],
-);
-
-export const lotGroupMembers = pgTable(
-  "lot_group_member",
-  {
-    lotGroupId: uuid("lot_group_id")
-      .notNull()
-      .references(() => lotGroups.id, { onDelete: "cascade" }),
-    lotId: uuid("lot_id")
-      .notNull()
-      .references(() => lot.id),
-    addedAt: timestamp("added_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (t) => [uniqueIndex().on(t.lotGroupId, t.lotId)],
 );

@@ -1,4 +1,12 @@
-import { jsonb, pgTable, text, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 export const itemType = pgTable("item_type", {
   id: uuid().primaryKey().defaultRandom(),
@@ -13,3 +21,21 @@ export const itemType = pgTable("item_type", {
 });
 
 export type ItemType = typeof itemType.$inferSelect;
+
+export const itemTypeAttributeDefinition = pgTable(
+  "item_type_attribute_definition",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    itemTypeId: uuid("item_type_id")
+      .notNull()
+      .references(() => itemType.id, { onDelete: "cascade" }),
+    attrKey: text("attr_key").notNull(),
+    dataType: text("data_type").notNull(),
+    isRequired: boolean("is_required").notNull().default(false),
+    unit: text(),
+    options: jsonb(),
+    defaultValue: text("default_value"),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [uniqueIndex().on(t.itemTypeId, t.attrKey)],
+);

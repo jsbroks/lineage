@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, Cog, Factory, Home, MapPin } from "lucide-react";
+import {
+  Boxes,
+  Cog,
+  Factory,
+  Home,
+  MapPin,
+  Package2,
+  Settings2,
+} from "lucide-react";
 
 import {
   Sidebar,
@@ -23,8 +31,14 @@ type OrgSidebarProps = {
 const getNavItems = (org: string) => [
   { label: "Home", href: `/${org}`, icon: Home },
   { label: "Item Types", href: `/${org}/settings/item-types`, icon: Boxes },
+  {
+    label: "Operation Types",
+    href: `/${org}/settings/operations`,
+    icon: Settings2,
+  },
   { label: "Locations", href: `/${org}/settings/locations`, icon: MapPin },
-  { label: "Operations", href: `/${org}/settings/operations`, icon: Factory },
+  { label: "Operations", href: `/${org}/operations`, icon: Factory },
+  { label: "Lots", href: `/${org}/lots/new`, icon: Package2 },
 ];
 
 export function OrgSidebar({ org }: OrgSidebarProps) {
@@ -34,7 +48,7 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
   return (
     <Sidebar variant="inset" collapsible="icon">
       <SidebarHeader>
-        <div className="px-2 py-1 text-sm font-semibold">Lineage</div>
+        <div className="px-2 py-1 text-sm font-semibold">LA</div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

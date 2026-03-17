@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import {
@@ -23,6 +23,13 @@ type FormState = {
   configText: string;
 };
 
+type SequenceFormState = {
+  enabled: boolean;
+  prefix: string;
+  variantCode: string;
+  nextNumber: string;
+};
+
 const EMPTY_FORM: FormState = {
   name: "",
   slug: "",
@@ -34,6 +41,13 @@ const EMPTY_FORM: FormState = {
   configText: "{}",
 };
 
+const EMPTY_SEQUENCE_FORM: SequenceFormState = {
+  enabled: false,
+  prefix: "",
+  variantCode: "_",
+  nextNumber: "1",
+};
+
 const slugify = (value: string) =>
   value
     .trim()
@@ -43,11 +57,18 @@ const slugify = (value: string) =>
 
 export default function ItemTypesSettingsPage() {
   const utils = api.useUtils();
-  const { data: itemTypes = [], isLoading } = api.itemType.list.useQuery();
-
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const { data: itemTypes = [], isLoading } = api.itemType.list.useQuery();
+  const { data: existingSequence } = api.lot.getCodeSequence.useQuery(
+    { itemTypeId: selectedId ?? "00000000-0000-0000-0000-000000000000" },
+    { enabled: !!selectedId },
+  );
+
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [sequenceForm, setSequenceForm] =
+    useState<SequenceFormState>(EMPTY_SEQUENCE_FORM);
   const [configError, setConfigError] = useState<string | null>(null);
+  const [sequenceError, setSequenceError] = useState<string | null>(null);
 
   const selectedItemType = useMemo(
     () => itemTypes.find((item) => item.id === selectedId) ?? null,
@@ -57,7 +78,9 @@ export default function ItemTypesSettingsPage() {
   const resetForCreate = () => {
     setSelectedId(null);
     setForm(EMPTY_FORM);
+    setSequenceForm(EMPTY_SEQUENCE_FORM);
     setConfigError(null);
+    setSequenceError(null);
   };
 
   const loadForEdit = (id: string) => {
@@ -76,20 +99,14 @@ export default function ItemTypesSettingsPage() {
       configText: JSON.stringify(existing.config ?? {}, null, 2),
     });
     setConfigError(null);
+    setSequenceError(null);
   };
 
-  const createMutation = api.itemType.create.useMutation({
-    onSuccess: async () => {
-      await utils.itemType.list.invalidate();
-      resetForCreate();
-    },
-  });
+  const createMutation = api.itemType.create.useMutation();
 
-  const editMutation = api.itemType.edit.useMutation({
-    onSuccess: async () => {
-      await utils.itemType.list.invalidate();
-    },
-  });
+  const editMutation = api.itemType.edit.useMutation();
+
+  const upsertSequenceMutation = api.lot.upsertCodeSequence.useMutation();
 
   const deleteMutation = api.itemType.delete.useMutation({
     onSuccess: async () => {
@@ -100,6 +117,22 @@ export default function ItemTypesSettingsPage() {
 
   const isSaving = createMutation.isPending || editMutation.isPending;
   const isDeleting = deleteMutation.isPending;
+
+  useEffect(() => {
+    if (!selectedId) return;
+
+    if (!existingSequence) {
+      setSequenceForm(EMPTY_SEQUENCE_FORM);
+      return;
+    }
+
+    setSequenceForm({
+      enabled: true,
+      prefix: existingSequence.prefix,
+      variantCode: existingSequence.variantCode,
+      nextNumber: String(existingSequence.nextNumber),
+    });
+  }, [selectedId, existingSequence]);
 
   const handleNameChange = (value: string) => {
     setForm((prev) => {
@@ -145,15 +178,69 @@ export default function ItemTypesSettingsPage() {
       config,
     };
 
+    let sequencePayload: {
+      prefix: string;
+      variantCode: string;
+      nextNumber: number;
+    } | null = null;
+
+    if (sequenceForm.enabled) {
+      const nextNumber = Number(sequenceForm.nextNumber);
+      if (!Number.isInteger(nextNumber) || nextNumber <= 0) {
+        setSequenceError("Next number must be a positive integer.");
+        return;
+      }
+      if (!sequenceForm.prefix.trim()) {
+        setSequenceError("Sequence prefix is required.");
+        return;
+      }
+      if (!sequenceForm.variantCode.trim()) {
+        setSequenceError("Variant code is required.");
+        return;
+      }
+
+      sequencePayload = {
+        prefix: sequenceForm.prefix.trim(),
+        variantCode: sequenceForm.variantCode.trim(),
+        nextNumber,
+      };
+    }
+    setSequenceError(null);
+
     if (selectedId) {
       await editMutation.mutateAsync({
         id: selectedId,
         ...payload,
       });
+      if (sequencePayload) {
+        await upsertSequenceMutation.mutateAsync({
+          itemTypeId: selectedId,
+          ...sequencePayload,
+        });
+      }
+      await utils.itemType.list.invalidate();
+      if (selectedId) {
+        await utils.lot.getCodeSequence.invalidate({ itemTypeId: selectedId });
+      }
       return;
     }
 
-    await createMutation.mutateAsync(payload);
+    const createdItemType = await createMutation.mutateAsync(payload);
+    if (!createdItemType) {
+      setSequenceError("Failed to create item type.");
+      return;
+    }
+    if (sequencePayload) {
+      await upsertSequenceMutation.mutateAsync({
+        itemTypeId: createdItemType.id,
+        ...sequencePayload,
+      });
+      await utils.lot.getCodeSequence.invalidate({
+        itemTypeId: createdItemType.id,
+      });
+    }
+    await utils.itemType.list.invalidate();
+    resetForCreate();
   };
 
   return (
@@ -333,14 +420,88 @@ export default function ItemTypesSettingsPage() {
                   className="border-input bg-background min-h-28 w-full rounded-md border px-3 py-2 font-mono text-xs"
                 />
               </label>
+              <div className="grid gap-4 rounded-md border p-4 md:grid-cols-2">
+                <label className="flex items-center gap-2 text-sm md:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={sequenceForm.enabled}
+                    onChange={(e) =>
+                      setSequenceForm((prev) => ({
+                        ...prev,
+                        enabled: e.target.checked,
+                      }))
+                    }
+                    className="size-4"
+                  />
+                  <span>Configure lot code sequence for this item type</span>
+                </label>
+
+                <label className="space-y-1 text-sm">
+                  <span>Sequence Name</span>
+                  <input
+                    value={sequenceForm.prefix}
+                    onChange={(e) =>
+                      setSequenceForm((prev) => ({
+                        ...prev,
+                        prefix: e.target.value,
+                      }))
+                    }
+                    disabled={!sequenceForm.enabled}
+                    className="border-input bg-background w-full rounded-md border px-3 py-2 disabled:opacity-50"
+                    placeholder="mushroom"
+                  />
+                </label>
+
+                <label className="space-y-1 text-sm">
+                  <span>Variant Code</span>
+                  <input
+                    value={sequenceForm.variantCode}
+                    onChange={(e) =>
+                      setSequenceForm((prev) => ({
+                        ...prev,
+                        variantCode: e.target.value,
+                      }))
+                    }
+                    disabled={!sequenceForm.enabled}
+                    className="border-input bg-background w-full rounded-md border px-3 py-2 disabled:opacity-50"
+                    placeholder="_"
+                  />
+                </label>
+
+                <label className="space-y-1 text-sm md:col-span-2">
+                  <span>Next Number</span>
+                  <input
+                    value={sequenceForm.nextNumber}
+                    onChange={(e) =>
+                      setSequenceForm((prev) => ({
+                        ...prev,
+                        nextNumber: e.target.value,
+                      }))
+                    }
+                    disabled={!sequenceForm.enabled}
+                    className="border-input bg-background w-full rounded-md border px-3 py-2 disabled:opacity-50"
+                    placeholder="1"
+                  />
+                </label>
+              </div>
               {configError && (
                 <p className="text-destructive text-sm" role="alert">
                   {configError}
                 </p>
               )}
+              {sequenceError && (
+                <p className="text-destructive text-sm" role="alert">
+                  {sequenceError}
+                </p>
+              )}
 
               <div className="flex items-center gap-2">
-                <Button type="submit" disabled={isSaving || isDeleting}>
+                <Button
+                  type="submit"
+                  disabled={
+                    isSaving || isDeleting || upsertSequenceMutation.isPending
+                  }
+                >
                   {selectedId ? "Save changes" : "Create item type"}
                 </Button>
                 {selectedId && selectedItemType && (

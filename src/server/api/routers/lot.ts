@@ -1,39 +1,68 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { itemType, lot, lotEvent, lotIdentifier } from "~/server/db/schema";
+import {
+  itemType,
+  lot,
+  lotCodeSequence,
+  lotEvent,
+  lotIdentifier,
+  lotLineage,
+} from "~/server/db/schema";
 
-const resolveIdentifierInput = z.object({
-  identifierValue: z.string().min(1),
-  identifierType: z.string().min(1).default("qr"),
-  resolve: z.boolean().default(false),
+const createLotInput = z
+  .object({
+    hostname: z.string().min(1),
+    itemTypeId: z.uuid(),
+    lotCode: z.string().min(1).optional(),
+    useSequence: z.boolean().default(false),
+    status: z.string().min(1).default("created"),
+    uom: z.string().min(1).default("each"),
+    locationId: z.uuid().nullable().optional(),
+    notes: z.string().nullable().optional(),
+    attributes: z.record(z.string(), z.unknown()).optional(),
+  })
+  .superRefine((input, ctx) => {
+    if (!input.useSequence && !input.lotCode) {
+      ctx.addIssue({
+        code: "custom",
+        message: "lotCode is required when useSequence is false",
+        path: ["lotCode"],
+      });
+    }
+  });
+
+const upsertLotCodeSequenceInput = z.object({
+  itemTypeId: z.uuid(),
+  prefix: z.string().min(1),
+  variantCode: z.string().min(1).default("_"),
+  nextNumber: z.number().int().positive(),
 });
 
-const batchCreateUnassignedIdentifiersInput = z
+const batchCreateLotsInput = z
   .object({
-    identifierType: z.string().min(1).default("qr"),
-    values: z.array(z.string().min(1)).max(1000).optional(),
+    itemTypeId: z.uuid(),
+    lotCodes: z.array(z.string().min(1)).max(1000).optional(),
     prefix: z.string().min(1).optional(),
     start: z.number().int().positive().default(1),
     count: z.number().int().positive().max(1000).optional(),
     padTo: z.number().int().nonnegative().max(12).default(0),
-    createItemTypeId: z.uuid().nullable().optional(),
-    createStatus: z.string().nullable().optional(),
-    assignedTo: z.uuid().nullable().optional(),
-    label: z.string().nullable().optional(),
-    isActive: z.boolean().default(true),
+    status: z.string().min(1).default("created"),
+    uom: z.string().min(1).default("each"),
+    locationId: z.uuid().nullable().optional(),
+    attributes: z.record(z.string(), z.unknown()).optional(),
   })
   .superRefine((input, ctx) => {
-    const hasExplicitValues = !!input.values?.length;
+    const hasExplicitValues = !!input.lotCodes?.length;
     const hasGenerator = !!input.prefix && !!input.count;
 
     if (!hasExplicitValues && !hasGenerator) {
       ctx.addIssue({
         code: "custom",
         message:
-          "Provide either `values` or both `prefix` and `count` to generate identifiers.",
+          "Provide either `lotCodes` or both `prefix` and `count` to generate lot codes.",
       });
     }
 
@@ -41,176 +70,177 @@ const batchCreateUnassignedIdentifiersInput = z
       ctx.addIssue({
         code: "custom",
         message:
-          "Use either explicit `values` or generator options (`prefix` + `count`), not both.",
+          "Use either explicit `lotCodes` or generator options (`prefix` + `count`), not both.",
       });
     }
   });
 
 export const lotRouter = createTRPCRouter({
-  batchCreateUnassignedIdentifiers: publicProcedure
-    .input(batchCreateUnassignedIdentifiersInput)
+  getCodeSequence: publicProcedure
+    .input(z.object({ itemTypeId: z.uuid() }))
+    .query(async ({ ctx, input }) => {
+      const [sequence] = await ctx.db
+        .select()
+        .from(lotCodeSequence)
+        .where(eq(lotCodeSequence.itemTypeId, input.itemTypeId))
+        .limit(1);
+
+      return sequence ?? null;
+    }),
+
+  upsertCodeSequence: publicProcedure
+    .input(upsertLotCodeSequenceInput)
     .mutation(async ({ ctx, input }) => {
-      const generatedValues =
-        input.values
-          ?.map((value) => value.trim())
-          .filter((value) => value.length > 0) ??
-        Array.from({ length: input.count ?? 0 }, (_, index) => {
-          const sequenceNumber = String(input.start + index).padStart(
-            input.padTo,
-            "0",
-          );
-          return `${input.prefix ?? ""}${sequenceNumber}`;
-        });
+      const [existing] = await ctx.db
+        .select()
+        .from(lotCodeSequence)
+        .where(eq(lotCodeSequence.itemTypeId, input.itemTypeId))
+        .limit(1);
 
-      const uniqueValues = [...new Set(generatedValues)];
+      if (existing) {
+        const [updated] = await ctx.db
+          .update(lotCodeSequence)
+          .set({
+            prefix: input.prefix,
+            variantCode: input.variantCode,
+            nextNumber: input.nextNumber,
+          })
+          .where(eq(lotCodeSequence.id, existing.id))
+          .returning();
 
-      if (uniqueValues.length === 0) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "No identifier values provided for batch creation.",
-        });
+        return updated ?? existing;
       }
 
-      if (uniqueValues.length !== generatedValues.length) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "Duplicate values detected in request payload.",
-        });
-      }
-
-      const existingRows = await ctx.db
-        .select({
-          identifierValue: lotIdentifier.identifierValue,
+      const [created] = await ctx.db
+        .insert(lotCodeSequence)
+        .values({
+          itemTypeId: input.itemTypeId,
+          prefix: input.prefix,
+          variantCode: input.variantCode,
+          nextNumber: input.nextNumber,
         })
-        .from(lotIdentifier)
-        .where(
-          and(
-            eq(lotIdentifier.identifierType, input.identifierType),
-            inArray(lotIdentifier.identifierValue, uniqueValues),
-          ),
-        );
-
-      if (existingRows.length > 0) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: `Some identifiers already exist: ${existingRows
-            .map((row) => row.identifierValue)
-            .join(", ")}`,
-        });
-      }
-
-      const insertedRows = await ctx.db
-        .insert(lotIdentifier)
-        .values(
-          uniqueValues.map((identifierValue) => ({
-            identifierType: input.identifierType,
-            identifierValue,
-            lotId: null,
-            createItemTypeId: input.createItemTypeId,
-            createStatus: input.createStatus,
-            assignedTo: input.assignedTo,
-            label: input.label,
-            isActive: input.isActive,
-          })),
-        )
         .returning();
 
+      if (!created) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to save lot code sequence",
+        });
+      }
+
+      return created;
+    }),
+
+  list: publicProcedure.query(async ({ ctx }) => {
+    return ctx.db.select().from(lot).orderBy(desc(lot.createdAt));
+  }),
+
+  getByCode: publicProcedure
+    .input(z.object({ lotCode: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const [currentLot] = await ctx.db
+        .select()
+        .from(lot)
+        .where(eq(lot.lotCode, input.lotCode))
+        .limit(1);
+
+      if (!currentLot) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Lot not found",
+        });
+      }
+
+      const [currentItemType] = await ctx.db
+        .select()
+        .from(itemType)
+        .where(eq(itemType.id, currentLot.itemTypeId))
+        .limit(1);
+
       return {
-        created: insertedRows.length,
-        identifiers: insertedRows,
+        lot: currentLot,
+        itemType: currentItemType ?? null,
       };
     }),
 
-  resolveIdentifier: publicProcedure
-    .input(resolveIdentifierInput)
-    .query(async ({ ctx, input }) => {
-      const [existingIdentifier] = await ctx.db
-        .select()
-        .from(lotIdentifier)
-        .where(
-          and(
-            eq(lotIdentifier.identifierValue, input.identifierValue),
-            eq(lotIdentifier.identifierType, input.identifierType),
-          ),
-        )
-        .limit(1);
+  create: publicProcedure
+    .input(createLotInput)
+    .mutation(async ({ ctx, input }) => {
+      const createdLot = await ctx.db.transaction(async (tx) => {
+        let lotCodeValue = input.lotCode ?? "";
 
-      if (!existingIdentifier) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Identifier not found",
-        });
-      }
+        if (input.useSequence) {
+          const [sequence] = await tx
+            .select()
+            .from(lotCodeSequence)
+            .where(eq(lotCodeSequence.itemTypeId, input.itemTypeId))
+            .limit(1);
 
-      if (existingIdentifier.lotId) {
-        const [existingLot] = await ctx.db
-          .select()
-          .from(lot)
-          .where(eq(lot.id, existingIdentifier.lotId))
-          .limit(1);
+          if (!sequence) {
+            throw new TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: "No lot code sequence configured for this item type",
+            });
+          }
 
-        if (!existingLot) {
+          const paddedNumber = String(sequence.nextNumber).padStart(5, "0");
+
+          lotCodeValue =
+            sequence.variantCode === "_"
+              ? `${sequence.prefix}-${paddedNumber}`
+              : `${sequence.prefix}-${sequence.variantCode}-${paddedNumber}`;
+
+          await tx
+            .update(lotCodeSequence)
+            .set({ nextNumber: sequence.nextNumber + 1 })
+            .where(eq(lotCodeSequence.id, sequence.id));
+        }
+
+        const [newLot] = await tx
+          .insert(lot)
+          .values({
+            itemTypeId: input.itemTypeId,
+            lotCode: lotCodeValue,
+            status: input.status,
+            uom: input.uom,
+            locationId: input.locationId,
+            notes: input.notes,
+            attributes: input.attributes ?? {},
+          })
+          .returning();
+
+        if (!newLot) {
           throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Linked lot not found for identifier",
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create lot",
           });
         }
 
-        return {
-          lot: existingLot,
-          identifier: existingIdentifier,
-          createdLot: false,
-        };
-      }
+        const [linkedIdentifier] = await tx
+          .select()
+          .from(lotIdentifier)
+          .where(eq(lotIdentifier.lotId, newLot.id))
+          .limit(1);
 
-      if (!input.resolve) {
-        return {
-          lot: null,
-          identifier: existingIdentifier,
-          createdLot: false,
-        };
-      }
+        if (!linkedIdentifier) {
+          await tx.insert(lotIdentifier).values({
+            lotId: newLot.id,
+            identifierType: "QR Code",
+            identifierValue: `${input.hostname}/l/${newLot.id}`,
+            linkedAt: new Date(),
+            isActive: true,
+          });
+        }
 
-      if (!existingIdentifier.createItemTypeId) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message:
-            "Identifier cannot be converted: create_item_type_id is missing",
-        });
-      }
-
-      const [createdLot] = await ctx.db
-        .insert(lot)
-        .values({
-          itemTypeId: existingIdentifier.createItemTypeId,
-          lotCode: existingIdentifier.identifierValue,
-          status: existingIdentifier.createStatus ?? "created",
-        })
-        .returning();
+        return newLot;
+      });
 
       if (!createdLot) {
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to create lot from identifier",
+          message: "Failed to create lot",
         });
       }
-
-      const [updatedIdentifier] = await ctx.db
-        .update(lotIdentifier)
-        .set({
-          lotId: createdLot.id,
-          linkedAt: new Date(),
-        })
-        .where(eq(lotIdentifier.id, existingIdentifier.id))
-        .returning();
-
-      if (!updatedIdentifier) {
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: "Failed to update identifier",
-        });
-      }
-
       const [it] = await ctx.db
         .select()
         .from(itemType)
@@ -226,22 +256,170 @@ export const lotRouter = createTRPCRouter({
 
       await ctx.db.insert(lotEvent).values({
         lotId: createdLot.id,
-        eventType: "lot_created_from_identifier",
-        oldStatus: null,
-        newStatus: updatedIdentifier.createStatus,
-        // recordedBy: userId,
-        message: `${it?.name} created from ${existingIdentifier.identifierType}.`,
+        eventType: "lot_created_manual",
+        newStatus: createdLot.status,
+        newLocationId: createdLot.locationId,
+        message: `${it.name} created manually.`,
         payload: {
-          identifierType: existingIdentifier.identifierType,
-          identifierValue: existingIdentifier.identifierValue,
-          lotIdentifierId: existingIdentifier.id,
+          lotCode: createdLot.lotCode,
         },
       });
 
+      return createdLot;
+    }),
+
+  getById: publicProcedure
+    .input(z.object({ lotId: z.uuid() }))
+    .query(async ({ ctx, input }) => {
+      const [currentLot] = await ctx.db
+        .select()
+        .from(lot)
+        .where(eq(lot.id, input.lotId))
+        .limit(1);
+
+      if (!currentLot) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Lot not found",
+        });
+      }
+
+      const [currentItemType] = await ctx.db
+        .select()
+        .from(itemType)
+        .where(eq(itemType.id, currentLot.itemTypeId))
+        .limit(1);
+
+      const identifiers = await ctx.db
+        .select()
+        .from(lotIdentifier)
+        .where(eq(lotIdentifier.lotId, currentLot.id))
+        .orderBy(desc(lotIdentifier.createdAt));
+
+      const events = await ctx.db
+        .select()
+        .from(lotEvent)
+        .where(eq(lotEvent.lotId, currentLot.id))
+        .orderBy(desc(lotEvent.recordedAt));
+
+      const parentLinks = await ctx.db
+        .select()
+        .from(lotLineage)
+        .where(eq(lotLineage.childLotId, currentLot.id))
+        .orderBy(desc(lotLineage.createdAt));
+
+      const childLinks = await ctx.db
+        .select()
+        .from(lotLineage)
+        .where(eq(lotLineage.parentLotId, currentLot.id))
+        .orderBy(desc(lotLineage.createdAt));
+
+      const parentLots = parentLinks.length
+        ? await ctx.db
+            .select()
+            .from(lot)
+            .where(
+              inArray(
+                lot.id,
+                parentLinks.map((link) => link.parentLotId),
+              ),
+            )
+        : [];
+
+      const childLots = childLinks.length
+        ? await ctx.db
+            .select()
+            .from(lot)
+            .where(
+              inArray(
+                lot.id,
+                childLinks.map((link) => link.childLotId),
+              ),
+            )
+        : [];
+
       return {
-        lot: createdLot,
-        identifier: updatedIdentifier ?? existingIdentifier,
-        createdLot: true,
+        lot: currentLot,
+        itemType: currentItemType ?? null,
+        identifiers,
+        events,
+        parentLineage: parentLinks.map((link) => ({
+          link,
+          lot:
+            parentLots.find((parentLot) => parentLot.id === link.parentLotId) ??
+            null,
+        })),
+        childLineage: childLinks.map((link) => ({
+          link,
+          lot:
+            childLots.find((childLot) => childLot.id === link.childLotId) ??
+            null,
+        })),
+      };
+    }),
+
+  batchCreate: publicProcedure
+    .input(batchCreateLotsInput)
+    .mutation(async ({ ctx, input }) => {
+      const generatedCodes =
+        input.lotCodes
+          ?.map((code) => code.trim())
+          .filter((code) => code.length > 0) ??
+        Array.from({ length: input.count ?? 0 }, (_, index) => {
+          const sequenceNumber = String(input.start + index).padStart(
+            input.padTo,
+            "0",
+          );
+          return `${input.prefix ?? ""}${sequenceNumber}`;
+        });
+
+      const uniqueCodes = [...new Set(generatedCodes)];
+
+      if (uniqueCodes.length === 0) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No lot codes provided for batch creation.",
+        });
+      }
+
+      if (uniqueCodes.length !== generatedCodes.length) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Duplicate lot codes detected in request payload.",
+        });
+      }
+
+      const existingRows = await ctx.db
+        .select({ lotCode: lot.lotCode })
+        .from(lot)
+        .where(inArray(lot.lotCode, uniqueCodes));
+
+      if (existingRows.length > 0) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `Some lot codes already exist: ${existingRows
+            .map((row) => row.lotCode)
+            .join(", ")}`,
+        });
+      }
+
+      const insertedLots = await ctx.db
+        .insert(lot)
+        .values(
+          uniqueCodes.map((lotCode) => ({
+            itemTypeId: input.itemTypeId,
+            lotCode,
+            status: input.status,
+            uom: input.uom,
+            locationId: input.locationId,
+            attributes: input.attributes ?? {},
+          })),
+        )
+        .returning();
+
+      return {
+        created: insertedLots.length,
+        lots: insertedLots,
       };
     }),
 });

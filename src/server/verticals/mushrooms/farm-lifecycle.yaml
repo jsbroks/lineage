@@ -1,0 +1,1049 @@
+vertical: mushrooms
+version: 3
+name: farm_lifecycle
+description: >
+  Full mushroom farm lifecycle modeled after the Kinoko workflow. Tracks
+  individual blocks through each cultivation step (pasteurization,
+  inoculation, colonization, fruiting, harvest, disposal), monitors room
+  environmental metrics, and manages substrate and spawn inventory.
+  QR code labels enable mobile scanning for all daily operations.
+
+# ── Workflow ─────────────────────────────────────────────────────────
+#
+# Setup (web interface, one-time or as needed):
+#
+# 1. Create a farm with rooms for each process step: pasteurization,
+#    inoculation, colonization, fruiting, and storage. Within
+#    colonization, fruiting, and storage rooms you can optionally
+#    define racks, shelves, and slots for finer location tracking.
+#    Pasteurization and inoculation rooms do not support sub-locations.
+#
+# 2. Print QR code labels for all locations (one-time per location).
+#    Four label types are available: location, block, tray, and
+#    text/variety.
+#
+# 3. Create substrate recipes in inventory (e.g. "sawdust" with
+#    optional ingredient lists).
+#
+# 4. Create spawn lots in inventory, recording variety, supplier,
+#    strain, container type, and lot number.
+#
+# Per-batch production cycle:
+#
+# 5. Create a batch: assign it a substrate, set estimated block count
+#    and default bag weight. The batch auto-generates a name
+#    (date + sequence number).
+#
+# 6. Confirm pasteurization of the batch. Optional fields capture
+#    pasteurization details (temperature, duration, method). The
+#    dashboard shows an alert until pasteurization is confirmed.
+#
+# 7. Print block labels for the batch. This pre-creates block records
+#    in "uninoculated" status — one per label. The dashboard shows
+#    estimated vs. actual block squares for the batch.
+#
+# Daily operations (mobile app via QR scanning):
+#
+# 8. Inoculate: scan an uninoculated block's QR code. The app
+#    recognizes its status and prompts for spawn and room selection.
+#    The block transitions to "inoculated".
+#
+# 9. Transfer: move blocks between rooms. Two modes:
+#      - Single: scan block → select transfer → scan destination location
+#      - Multi:  scan destination location → select "transfer blocks"
+#                → scan multiple blocks → confirm
+#    Block status auto-transitions based on destination room type
+#    (colonization → "colonizing", grow → "fruiting").
+#
+# 10. Observe: scan blocks during room inspections to record
+#     contamination, pin formation, and general notes.
+#
+# 11. Harvest: scan one or multiple blocks → enter weight → save.
+#     Optionally scan a tray QR to track which tray the harvest goes
+#     onto. Blocks can be harvested multiple times (flushes).
+#
+# 12. Dispose: scan blocks to record disposal reason and remove from
+#     active inventory.
+#
+# Environmental monitoring:
+#
+# 13. Record room metrics (temperature, CO2, humidity) per location
+#     to maintain a history of growing conditions over time.
+# ─────────────────────────────────────────────────────────────────────
+
+# ── Location Hierarchy ───────────────────────────────────────────────
+#
+#   Farm
+#   └── Room (type: pasteurization | inoculation | colonization | fruiting | storage)
+#       └── Rack          ← only colonization, fruiting, and storage
+#           └── Shelf
+#               └── Slot
+#
+# Pasteurization and inoculation rooms are flat — they do not support
+# racks, shelves, or slots. Granular location tracking is most
+# valuable in colonization, fruiting, and storage where blocks sit
+# for extended periods.
+# ─────────────────────────────────────────────────────────────────────
+
+lot_types:
+  # ── QR Label ───────────────────────────────────────────────────────
+  # Printable labels for blocks, locations, trays, and text/variety.
+  # Scanned via mobile app to identify entities.
+  - key: qr_label
+    name: QR Label
+    category: identifier
+    default_uom: each
+    track_lineage: true
+    typical_identifiers:
+      - qr_code
+    attributes:
+      - entity_type
+      - custom_text
+    label_types: [location, block, tray, text]
+    state_model:
+      states: [printed, assigned, voided]
+      initial_state: printed
+      terminal_states: [voided]
+      transitions:
+        printed:
+          allowed_to: [assigned, voided]
+        assigned:
+          allowed_to: [voided]
+        voided:
+          allowed_to: []
+
+  # ── Substrate ──────────────────────────────────────────────────────
+  # Inventory/recipe item. Created via the web interface and
+  # referenced by batches. Not a per-unit tracked lot — represents
+  # a reusable recipe definition.
+  - key: substrate
+    name: Substrate
+    category: inventory
+    default_uom: each
+    track_lineage: false
+    typical_identifiers:
+      - name
+    attributes:
+      - name
+      - ingredients
+    state_model:
+      states: [active, archived]
+      initial_state: active
+      terminal_states: [archived]
+      transitions:
+        active:
+          allowed_to: [archived]
+        archived:
+          allowed_to: [active]
+
+  # ── Spawn ──────────────────────────────────────────────────────────
+  # Inventory item representing a mushroom culture used for
+  # inoculation. Each spawn lot records its genetics and sourcing.
+  - key: spawn
+    name: Spawn
+    category: inventory
+    default_uom: each
+    track_lineage: true
+    typical_identifiers:
+      - lot_code
+      - qr_code
+    attributes:
+      - variety
+      - supplier
+      - strain
+      - container_type
+      - substrate
+      - lot_number
+      - generation
+      - production_date
+    state_model:
+      states: [available, low_stock, depleted, expired]
+      initial_state: available
+      terminal_states: [depleted, expired]
+      transitions:
+        available:
+          allowed_to: [low_stock, depleted, expired]
+        low_stock:
+          allowed_to: [available, depleted, expired]
+        depleted:
+          allowed_to: []
+        expired:
+          allowed_to: []
+
+  # ── Batch ──────────────────────────────────────────────────────────
+  # Organizational grouping of blocks through the pasteurization and
+  # inoculation phases. A batch references a substrate, has an
+  # estimated block count and default bag weight. Blocks are
+  # pre-created under a batch when labels are printed.
+  - key: batch
+    name: Batch
+    category: production
+    default_uom: batch
+    track_lineage: true
+    typical_identifiers:
+      - batch_code
+    auto_name: "{date}-{sequence}"
+    attributes:
+      - substrate
+      - estimated_block_count
+      - actual_block_count
+      - default_bag_weight_lb
+      - pasteurization_date
+      - pasteurization_temp
+      - pasteurization_duration
+      - pasteurization_method
+      - pasteurization_notes
+    state_model:
+      states: [created, pasteurized, inoculating, complete, discarded]
+      initial_state: created
+      terminal_states: [complete, discarded]
+      transitions:
+        created:
+          allowed_to: [pasteurized, discarded]
+        pasteurized:
+          allowed_to: [inoculating, discarded]
+        inoculating:
+          allowed_to: [complete, discarded]
+        complete:
+          allowed_to: []
+        discarded:
+          allowed_to: []
+
+  # ── Block ──────────────────────────────────────────────────────────
+  # The core trackable unit. Pre-created when labels are printed for a
+  # batch (status: uninoculated). As the block is scanned through the
+  # workflow, it transitions through the full lifecycle. Blocks can
+  # cycle between fruiting and harvesting for multiple flushes.
+  - key: block
+    name: Block
+    category: product
+    default_uom: each
+    track_lineage: true
+    typical_identifiers:
+      - qr_code
+      - block_code
+    attributes:
+      - variety
+      - location
+      - bag_weight_lb
+      - inoculation_date
+      - flush_count
+      - total_harvest_weight
+      - notes
+    state_model:
+      states: [uninoculated, inoculated, colonizing, fruiting, harvesting, spent, disposed]
+      initial_state: uninoculated
+      terminal_states: [disposed]
+      transitions:
+        uninoculated:
+          allowed_to: [inoculated, disposed]
+        inoculated:
+          allowed_to: [colonizing, disposed]
+        colonizing:
+          allowed_to: [fruiting, disposed]
+        fruiting:
+          allowed_to: [harvesting, disposed]
+        harvesting:
+          allowed_to: [fruiting, spent, disposed]
+        spent:
+          allowed_to: [disposed]
+        disposed:
+          allowed_to: []
+
+  # ── Tray ───────────────────────────────────────────────────────────
+  # Harvest container in storage rooms. Collects harvested mushrooms
+  # from one or more blocks. Has its own QR label for scanning.
+  - key: tray
+    name: Tray
+    category: logistics
+    default_uom: each
+    track_lineage: true
+    typical_identifiers:
+      - qr_code
+      - tray_code
+    attributes:
+      - variety
+      - location
+      - total_weight
+    state_model:
+      states: [open, closed, shipped]
+      initial_state: open
+      terminal_states: [shipped]
+      transitions:
+        open:
+          allowed_to: [closed]
+        closed:
+          allowed_to: [open, shipped]
+        shipped:
+          allowed_to: []
+
+# ── QR Code Resolution ────────────────────────────────────────────
+#
+# When a QR code is scanned via the mobile app, the system:
+#
+#   1. Identifies the entity type (block, location, tray)
+#
+#   2. For blocks:
+#      - If "uninoculated" → shows inoculation form (select spawn, room)
+#      - If "inoculated" or later → shows block detail with options
+#        to transfer, observe, harvest, or dispose
+#
+#   3. For locations:
+#      - Shows location detail with current block inventory
+#      - Offers "transfer blocks here" for multi-block transfers
+#
+#   4. For trays:
+#      - Shows tray detail with harvest contents and total weight
+# ──────────────────────────────────────────────────────────────────
+
+operation_types:
+  # ─────────────────────────────────────────────────────────────────
+  # CREATE BATCH — start a new production batch
+  # ─────────────────────────────────────────────────────────────────
+  - key: create_batch
+    name: Create Batch
+    description: >
+      Create a new production batch. Assigns a substrate recipe, sets
+      the estimated block count and default bag weight. The batch
+      name is auto-generated from the date and a sequence number.
+
+    inputs:
+      lots:
+        - key: substrate
+          item_type: substrate
+          required: true
+          qty: { min: 1, max: 1 }
+          preconditions:
+            status: [active]
+
+      fields:
+        estimated_block_count:
+          description: Expected number of blocks in this batch
+          type: integer
+          required: true
+        default_bag_weight_lb:
+          description: Default bag weight in pounds
+          type: number
+          required: true
+
+    steps:
+      - name: Create batch
+        action: create_lot
+        item_type: batch
+        as: batch
+        with:
+          substrate: { ref: substrate }
+          estimated_block_count: { from: inputs.estimated_block_count }
+          default_bag_weight_lb: { from: inputs.default_bag_weight_lb }
+
+    outputs:
+      - key: batch
+        item_type: batch
+        status: created
+
+    validations:
+      - all_required_fields_provided
+
+  # ─────────────────────────────────────────────────────────────────
+  # PASTEURIZE BATCH — confirm pasteurization
+  # ─────────────────────────────────────────────────────────────────
+  - key: pasteurize_batch
+    name: Pasteurize Batch
+    description: >
+      Confirm that a batch has been pasteurized. Records optional
+      pasteurization details (temperature, duration, method, notes).
+      The batch must be pasteurized before blocks can be inoculated.
+      The dashboard shows an alert for unpasteurized batches.
+
+    inputs:
+      lots:
+        - key: batch
+          item_type: batch
+          required: true
+          qty: { min: 1, max: 1 }
+          preconditions:
+            status: [created]
+
+      fields:
+        pasteurization_date:
+          description: Date pasteurization was performed
+          type: date
+          required: false
+          default: today
+        pasteurization_temp:
+          description: Pasteurization temperature
+          type: string
+          required: false
+        pasteurization_duration:
+          description: Duration of pasteurization
+          type: string
+          required: false
+        pasteurization_method:
+          description: Method used (e.g. steam, lime bath, cold water)
+          type: string
+          required: false
+        pasteurization_notes:
+          description: Additional notes about the pasteurization
+          type: text
+          required: false
+        confirm:
+          description: Confirm that pasteurization is complete
+          type: boolean
+          required: true
+
+    steps:
+      - name: Record pasteurization details
+        action: set_attribute
+        target: batch
+        attributes:
+          pasteurization_date: { from: inputs.pasteurization_date }
+          pasteurization_temp: { from: inputs.pasteurization_temp }
+          pasteurization_duration: { from: inputs.pasteurization_duration }
+          pasteurization_method: { from: inputs.pasteurization_method }
+          pasteurization_notes: { from: inputs.pasteurization_notes }
+
+      - name: Confirm pasteurization
+        action: set_status
+        target: batch
+        value: pasteurized
+
+    outputs:
+      - key: batch
+        item_type: batch
+        status: pasteurized
+
+    validations:
+      - all_required_fields_provided
+
+  # ─────────────────────────────────────────────────────────────────
+  # PRINT BLOCK LABELS — pre-create blocks for a batch
+  # ─────────────────────────────────────────────────────────────────
+  - key: print_block_labels
+    name: Print Block Labels
+    description: >
+      Generate QR code labels for a batch. This pre-creates block
+      records in "uninoculated" status — one per label. Labels are
+      printed on Avery-compatible templates (or custom) via the web
+      interface. New blocks get the batch's default bag weight.
+      Existing block labels can also be reprinted without creating
+      new blocks.
+    needs: [create_batch]
+
+    inputs:
+      lots:
+        - key: batch
+          item_type: batch
+          required: true
+          qty: { min: 1, max: 1 }
+          preconditions:
+            status: [pasteurized, inoculating]
+
+      fields:
+        block_count:
+          description: Number of new block labels to print
+          type: integer
+          required: true
+        label_template:
+          description: Label template to use (e.g. Avery 5160)
+          type: string
+          required: false
+        custom_text:
+          description: Optional text to show on labels
+          type: string
+          required: false
+        mode:
+          description: Whether creating new blocks or reprinting existing labels
+          type: enum
+          options: [new, existing]
+          required: true
+          default: new
+
+    steps:
+      - name: Create block records
+        action: create_lot
+        condition: { equals: [inputs.mode, new] }
+        item_type: block
+        as: blocks
+        count: { from: inputs.block_count }
+        with:
+          bag_weight_lb: { from: batch.default_bag_weight_lb }
+
+      - name: Link blocks to batch
+        action: set_lineage
+        condition: { equals: [inputs.mode, new] }
+        with:
+          children: blocks
+          parent: batch
+          relationship: batch_member
+
+      - name: Create QR labels
+        action: create_lot
+        item_type: qr_label
+        as: labels
+        count: { from: inputs.block_count }
+        with:
+          entity_type: block
+          custom_text: { from: inputs.custom_text }
+
+      - name: Link labels to blocks
+        action: set_lineage
+        condition: { equals: [inputs.mode, new] }
+        with:
+          children: labels
+          parents: blocks
+          relationship: labels
+
+      - name: Mark labels as assigned
+        action: set_status
+        condition: { equals: [inputs.mode, new] }
+        target: labels
+        value: assigned
+
+      - name: Update actual block count
+        action: increment_attribute
+        condition: { equals: [inputs.mode, new] }
+        target: batch
+        attribute: actual_block_count
+        value: { from: inputs.block_count }
+
+      - name: Transition batch to inoculating
+        action: set_status
+        condition:
+          all:
+            - { equals: [inputs.mode, new] }
+            - { equals: [batch.status, pasteurized] }
+        target: batch
+        value: inoculating
+
+    outputs:
+      - key: blocks
+        item_type: block
+        status: uninoculated
+      - key: labels
+        item_type: qr_label
+
+    validations:
+      - all_required_fields_provided
+
+  # ─────────────────────────────────────────────────────────────────
+  # INOCULATE — scan an uninoculated block to record inoculation
+  # ─────────────────────────────────────────────────────────────────
+  - key: inoculate
+    name: Inoculate
+    description: >
+      Scan an uninoculated block's QR code. The mobile app recognizes
+      it as uninoculated and presents the inoculation form. Select the
+      spawn and inoculation room, then confirm. The block transitions
+      to "inoculated" and is linked to the spawn for genetic
+      traceability. This is typically done one block at a time as
+      each block is physically inoculated and labeled.
+    needs: [print_block_labels]
+
+    inputs:
+      lots:
+        - key: block
+          item_type: block
+          scan: qr_code
+          required: true
+          qty: { min: 1 }
+          preconditions:
+            status: [uninoculated]
+        - key: spawn
+          item_type: spawn
+          required: true
+          qty: { min: 1, max: 1 }
+          preconditions:
+            status: [available, low_stock]
+
+      fields:
+        location:
+          description: Inoculation room
+          type: location
+          required: true
+        inoculation_date:
+          description: Date of inoculation
+          type: date
+          required: false
+          default: today
+
+    steps:
+      - name: Set block variety from spawn
+        action: set_attribute
+        target: block
+        attribute: variety
+        value: { from: spawn.variety }
+
+      - name: Set block location
+        action: set_attribute
+        target: block
+        attribute: location
+        value: { from: inputs.location }
+
+      - name: Set inoculation date
+        action: set_attribute
+        target: block
+        attribute: inoculation_date
+        value: { from: inputs.inoculation_date }
+
+      - name: Link block to spawn
+        action: set_lineage
+        with:
+          child: block
+          parent: spawn
+          relationship: inoculated_from
+
+      - name: Mark block as inoculated
+        action: set_status
+        target: block
+        value: inoculated
+
+    outputs:
+      - key: block
+        item_type: block
+        status: inoculated
+
+    validations:
+      - all_lots_scanned
+      - all_required_fields_provided
+
+  # ─────────────────────────────────────────────────────────────────
+  # TRANSFER BLOCK (single) — scan block, then scan destination
+  # ─────────────────────────────────────────────────────────────────
+  - key: transfer_block
+    name: Transfer Block
+    description: >
+      Transfer a single block to a new location. Initiated by scanning
+      a block QR code, selecting "transfer", then scanning the
+      destination location QR code. Block status auto-transitions
+      based on the destination room type.
+    needs: [inoculate]
+
+    inputs:
+      lots:
+        - key: block
+          item_type: block
+          scan: qr_code
+          required: true
+          qty: { min: 1, max: 1 }
+          preconditions:
+            status: [inoculated, colonizing, fruiting, harvesting]
+
+      fields:
+        destination:
+          description: Target location (scanned via QR)
+          type: location
+          scan: qr_code
+          required: true
+        destination_room_type:
+          description: >
+            Inferred from the scanned location's room type.
+            Determines the block's new status.
+          type: enum
+          options: [pasteurization, inoculation, colonization, fruiting, storage]
+          auto: true
+
+    steps:
+      - name: Update block location
+        action: set_attribute
+        target: block
+        attribute: location
+        value: { from: inputs.destination }
+
+      - name: Transition to colonizing
+        action: set_status
+        condition: { equals: [inputs.destination_room_type, colonization] }
+        target: block
+        value: colonizing
+
+      - name: Transition to fruiting
+        action: set_status
+        condition: { equals: [inputs.destination_room_type, fruiting] }
+        target: block
+        value: fruiting
+
+    validations:
+      - all_lots_scanned
+
+  # ─────────────────────────────────────────────────────────────────
+  # TRANSFER BLOCKS (multi) — scan destination, then scan N blocks
+  # ─────────────────────────────────────────────────────────────────
+  - key: transfer_blocks_multi
+    name: Transfer Blocks (Multi)
+    description: >
+      Transfer multiple blocks to one location. Initiated by scanning
+      a destination location QR code, selecting "transfer blocks",
+      then scanning as many blocks as needed. All scanned blocks are
+      moved to the destination and their status auto-transitions.
+    needs: [inoculate]
+
+    inputs:
+      fields:
+        destination:
+          description: Target location (scanned first via QR)
+          type: location
+          scan: qr_code
+          required: true
+        destination_room_type:
+          description: Inferred from the scanned location's room type
+          type: enum
+          options: [pasteurization, inoculation, colonization, fruiting, storage]
+          auto: true
+
+      lots:
+        - key: blocks
+          item_type: block
+          scan: qr_code
+          required: true
+          qty: { min: 1 }
+          preconditions:
+            status: [inoculated, colonizing, fruiting, harvesting]
+
+    steps:
+      - name: Update block locations
+        action: set_attribute
+        target: blocks
+        attribute: location
+        value: { from: inputs.destination }
+
+      - name: Transition to colonizing
+        action: set_status
+        condition: { equals: [inputs.destination_room_type, colonization] }
+        target: blocks
+        value: colonizing
+
+      - name: Transition to fruiting
+        action: set_status
+        condition: { equals: [inputs.destination_room_type, fruiting] }
+        target: blocks
+        value: fruiting
+
+    validations:
+      - all_lots_scanned
+
+  # ─────────────────────────────────────────────────────────────────
+  # OBSERVE — record an inspection on blocks
+  # ─────────────────────────────────────────────────────────────────
+  - key: observe
+    name: Observe Block
+    description: >
+      Record an observation on one or more blocks during a room
+      inspection. Captures notes, contamination status, and whether
+      pin formation has begun. Can be done at any active block status.
+
+    inputs:
+      lots:
+        - key: blocks
+          item_type: block
+          scan: qr_code
+          required: true
+          qty: { min: 1 }
+          preconditions:
+            status: [inoculated, colonizing, fruiting, harvesting]
+
+      fields:
+        observation:
+          description: Observation notes
+          type: text
+          required: true
+        contamination:
+          description: Whether contamination was detected
+          type: boolean
+          required: false
+          default: false
+        pin_formation:
+          description: Whether pin formation has begun
+          type: boolean
+          required: false
+          default: false
+        observation_date:
+          description: Date of observation
+          type: date
+          required: true
+          default: today
+
+    steps:
+      - name: Log observation
+        action: record_event
+        target: blocks
+        event_type: observation
+        with:
+          observation: { from: inputs.observation }
+          contamination: { from: inputs.contamination }
+          pin_formation: { from: inputs.pin_formation }
+          observation_date: { from: inputs.observation_date }
+
+    validations:
+      - all_lots_scanned
+      - all_required_fields_provided
+
+  # ─────────────────────────────────────────────────────────────────
+  # HARVEST — pick mushrooms from blocks
+  # ─────────────────────────────────────────────────────────────────
+  - key: harvest
+    name: Harvest
+    description: >
+      Harvest mushrooms from one or more blocks. Scan block QR codes
+      and enter the harvest weight. Optionally scan a tray QR to
+      track which tray the harvest goes onto (for advanced workflow).
+      Blocks transition to "harvesting" and can return to "fruiting"
+      for additional flushes.
+    needs: [inoculate]
+
+    inputs:
+      lots:
+        - key: blocks
+          item_type: block
+          scan: qr_code
+          required: true
+          qty: { min: 1 }
+          preconditions:
+            status: [fruiting, harvesting]
+        - key: tray
+          item_type: tray
+          scan: qr_code
+          required: false
+          qty: { min: 0, max: 1 }
+          preconditions:
+            status: [open]
+
+      fields:
+        weight:
+          description: Net weight of this harvest
+          type: number
+          required: true
+        harvest_date:
+          description: Date of harvest
+          type: date
+          required: false
+          default: today
+
+    steps:
+      - name: Link harvest to tray
+        action: set_lineage
+        condition: { exists: tray }
+        with:
+          children: blocks
+          parent: tray
+          relationship: harvested_onto
+
+      - name: Record harvest event
+        action: record_event
+        target: blocks
+        event_type: harvest
+        with:
+          weight: { from: inputs.weight }
+          tray: { ref: tray }
+          harvest_date: { from: inputs.harvest_date }
+
+      - name: Mark blocks as harvesting
+        action: set_status
+        target: blocks
+        value: harvesting
+
+      - name: Increment flush count
+        action: increment_attribute
+        target: blocks
+        attribute: flush_count
+        value: 1
+
+      - name: Accumulate block harvest weight
+        action: increment_attribute
+        target: blocks
+        attribute: total_harvest_weight
+        value: { from: inputs.weight }
+
+      - name: Accumulate tray weight
+        action: increment_attribute
+        condition: { exists: tray }
+        target: tray
+        attribute: total_weight
+        value: { from: inputs.weight }
+
+    outputs:
+      - key: blocks
+        item_type: block
+        status: harvesting
+
+    validations:
+      - all_lots_scanned
+      - all_required_fields_provided
+
+  # ─────────────────────────────────────────────────────────────────
+  # MARK SPENT — flag blocks as spent after final flush
+  # ─────────────────────────────────────────────────────────────────
+  - key: mark_spent
+    name: Mark Block Spent
+    description: >
+      Mark one or more blocks as spent after their final harvest
+      flush. Spent blocks are ready for disposal.
+    needs: [harvest]
+
+    inputs:
+      lots:
+        - key: blocks
+          item_type: block
+          scan: qr_code
+          required: true
+          qty: { min: 1 }
+          preconditions:
+            status: [harvesting]
+
+    steps:
+      - name: Mark blocks as spent
+        action: set_status
+        target: blocks
+        value: spent
+
+    validations:
+      - all_lots_scanned
+
+  # ─────────────────────────────────────────────────────────────────
+  # DISPOSE — remove blocks from active inventory
+  # ─────────────────────────────────────────────────────────────────
+  - key: dispose
+    name: Dispose Block
+    description: >
+      Dispose of one or more blocks. Records the disposal reason
+      and permanently marks the blocks as disposed. Can be done at
+      any status — contaminated blocks may be disposed early without
+      going through the full lifecycle.
+
+    inputs:
+      lots:
+        - key: blocks
+          item_type: block
+          scan: qr_code
+          required: true
+          qty: { min: 1 }
+          preconditions:
+            status: [uninoculated, inoculated, colonizing, fruiting, harvesting, spent]
+
+      fields:
+        reason:
+          description: Reason for disposal
+          type: enum
+          options: [spent, contaminated, damaged, other]
+          required: true
+        notes:
+          description: Additional notes
+          type: text
+          required: false
+        disposal_date:
+          description: Date of disposal
+          type: date
+          required: true
+          default: today
+
+    steps:
+      - name: Record disposal
+        action: record_event
+        target: blocks
+        event_type: disposal
+        with:
+          reason: { from: inputs.reason }
+          notes: { from: inputs.notes }
+          disposal_date: { from: inputs.disposal_date }
+
+      - name: Mark blocks as disposed
+        action: set_status
+        target: blocks
+        value: disposed
+
+    validations:
+      - all_lots_scanned
+      - all_required_fields_provided
+
+  # ─────────────────────────────────────────────────────────────────
+  # CLOSE TRAY — seal a tray after it's full
+  # ─────────────────────────────────────────────────────────────────
+  - key: close_tray
+    name: Close Tray
+    description: >
+      Close a tray once it has reached its target weight or is
+      ready for shipment. Closed trays can be reopened if needed.
+
+    inputs:
+      lots:
+        - key: tray
+          item_type: tray
+          scan: qr_code
+          required: true
+          qty: { min: 1, max: 1 }
+          preconditions:
+            status: [open]
+
+      fields:
+        final_weight:
+          description: Verified final weight of the tray
+          type: number
+          required: false
+
+    steps:
+      - name: Update verified weight
+        action: set_attribute
+        condition: { exists: inputs.final_weight }
+        target: tray
+        attribute: total_weight
+        value: { from: inputs.final_weight }
+
+      - name: Close the tray
+        action: set_status
+        target: tray
+        value: closed
+
+    outputs:
+      - key: tray
+        item_type: tray
+        status: closed
+
+    validations:
+      - all_lots_scanned
+
+  # ─────────────────────────────────────────────────────────────────
+  # RECORD ROOM METRICS — environmental monitoring
+  # ─────────────────────────────────────────────────────────────────
+  - key: record_room_metrics
+    name: Record Room Metrics
+    description: >
+      Record environmental metrics for a room: temperature, CO2
+      levels, and humidity. Maintains a history of conditions for
+      each location over time, allowing growers to correlate
+      environmental data with block performance.
+
+    inputs:
+      fields:
+        location:
+          description: Room or location to record metrics for
+          type: location
+          required: true
+        temperature_c:
+          description: Temperature in Celsius
+          type: number
+          required: false
+        co2_ppm:
+          description: CO2 level in parts per million
+          type: number
+          required: false
+        humidity_pct:
+          description: Relative humidity percentage
+          type: number
+          required: false
+        recorded_at:
+          description: Date and time of the reading
+          type: datetime
+          required: true
+          default: now
+
+    steps:
+      - name: Log room metrics
+        action: record_event
+        event_type: room_metrics
+        with:
+          location: { from: inputs.location }
+          temperature_c: { from: inputs.temperature_c }
+          co2_ppm: { from: inputs.co2_ppm }
+          humidity_pct: { from: inputs.humidity_pct }
+          recorded_at: { from: inputs.recorded_at }
+
+    validations:
+      - all_required_fields_provided

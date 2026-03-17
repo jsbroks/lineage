@@ -18,7 +18,8 @@
     "preview": "next build && next start",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "auth:generate": "pnpm dlx auth@latest generate"
+    "auth:generate": "pnpm dlx auth@latest generate",
+    "test": "vitest"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
@@ -37,7 +38,9 @@
     "postgres": "^3.4.8",
     "radix-ui": "^1.4.3",
     "react": "^19.2.4",
+    "react-barcode": "^1.6.1",
     "react-dom": "^19.2.4",
+    "react-qr-code": "^2.0.18",
     "server-only": "^0.0.1",
     "shadcn": "^4.0.8",
     "superjson": "^2.2.6",
@@ -60,7 +63,8 @@
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.0"
+    "typescript-eslint": "^8.57.0",
+    "vitest": "^4.1.0"
   },
   "ct3aMetadata": {
     "initVersion": "7.40.0"

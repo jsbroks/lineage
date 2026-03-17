@@ -9,7 +9,6 @@ import {
 import { user } from "./auth";
 import { operationType } from "./operation-types";
 import { location } from "./location";
-import { lot } from "./lots";
 
 export const operation = pgTable(
   "operation",
@@ -18,7 +17,7 @@ export const operation = pgTable(
     // orgId:           uuid("org_id").notNull().references(() => organizations.id),
     operationTypeId: uuid("operation_type_id")
       .notNull()
-      .references(() => operationType.id),
+      .references(() => operationType.id, { onDelete: "cascade" }),
     status: text().notNull().default("completed"),
     startedAt: timestamp("started_at", { withTimezone: true }),
     completedAt: timestamp("completed_at", { withTimezone: true }).defaultNow(),
@@ -37,21 +36,3 @@ export const operation = pgTable(
   ],
 );
 export type Operation = typeof operation.$inferSelect;
-
-export const operationLots = pgTable(
-  "operation_lots",
-  {
-    id: uuid().primaryKey().defaultRandom(),
-    operationId: uuid("operation_id")
-      .notNull()
-      .references(() => operation.id, { onDelete: "cascade" }),
-    lotId: uuid("lot_id")
-      .notNull()
-      .references(() => lot.id),
-    direction: text().notNull(),
-    portRole: text("port_role").notNull(),
-    qty: numeric().notNull(),
-    uom: text().notNull().default("each"),
-  },
-  (t) => [],
-);

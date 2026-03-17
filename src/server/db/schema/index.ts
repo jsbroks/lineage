@@ -4,3 +4,4 @@ export * from "./operation";
 export * from "./item-types";
 export * from "./location";
 export * from "./lots";
+export * from "./status";

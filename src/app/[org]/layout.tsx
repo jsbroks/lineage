@@ -1,10 +1,7 @@
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "~/components/ui/sidebar";
+import { SidebarProvider } from "~/components/ui/sidebar";
 import { TooltipProvider } from "~/components/ui/tooltip";
 
+import { OrgLayoutFrame } from "./_components/org-layout-frame";
 import { OrgSidebar } from "./_components/org-sidebar";
 
 type OrgLayoutProps = {
@@ -19,12 +16,7 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
     <TooltipProvider>
       <SidebarProvider>
         <OrgSidebar org={org} />
-        <SidebarInset>
-          <header className="border-b px-4 py-2">
-            <SidebarTrigger />
-          </header>
-          {children}
-        </SidebarInset>
+        <OrgLayoutFrame org={org}>{children}</OrgLayoutFrame>
       </SidebarProvider>
     </TooltipProvider>
   );

@@ -1,6 +1,7 @@
 import { itemTypeRouter } from "~/server/api/routers/item-type";
 import { lotRouter } from "~/server/api/routers/lot";
 import { locationRouter } from "~/server/api/routers/location";
+import { operationRouter } from "~/server/api/routers/operation";
 import { operationTypeRouter } from "~/server/api/routers/operation-type";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
@@ -13,6 +14,7 @@ export const appRouter = createTRPCRouter({
   itemType: itemTypeRouter,
   lot: lotRouter,
   location: locationRouter,
+  operation: operationRouter,
   operationType: operationTypeRouter,
 });
 
