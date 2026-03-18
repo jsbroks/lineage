@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  integer,
   jsonb,
   numeric,
   pgTable,
@@ -9,7 +10,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { itemTemplate, itemType, itemTypeVariant } from "./item-types";
+import { itemType, itemTypeVariant } from "./item-types";
 import { location } from "./location";
 import { user } from "./auth";
 import { operation } from "./operation";
@@ -25,9 +26,7 @@ export const item = pgTable(
     itemTypeId: uuid("item_type_id")
       .notNull()
       .references(() => itemType.id),
-    templateId: uuid("template_id").references(() => itemTemplate.id, {
-      onDelete: "set null",
-    }),
+
     variantId: uuid("variant_id").references(() => itemTypeVariant.id, {
       onDelete: "set null",
     }),
@@ -37,10 +36,10 @@ export const item = pgTable(
     notes: text(),
 
     quantity: numeric("quantity").notNull().default("1"),
-    quantityUom: text("quantity_uom").notNull().default("each"),
+    quantityUnit: text("quantity_unit"),
 
-    weight: numeric("weight"),
-    weightUom: text("weight_uom"),
+    value: integer("value").notNull().default(0),
+    valueCurrency: text("value_currency"),
 
     locationId: uuid("location_id").references(() => location.id),
     attributes: jsonb().notNull().default({}),

@@ -18,22 +18,35 @@ export default function NewItemTypePage() {
   const utils = api.useUtils();
 
   const createMutation = api.itemType.create.useMutation();
+  const saveOptionsMutation = api.itemType.saveOptions.useMutation();
   const saveVariantsMutation = api.itemType.saveVariants.useMutation();
   const saveStatusesMutation = api.itemType.saveStatuses.useMutation();
+  const saveAttrDefsMutation =
+    api.itemType.saveAttributeDefinitions.useMutation();
 
   const isSubmitting =
     createMutation.isPending ||
+    saveOptionsMutation.isPending ||
     saveVariantsMutation.isPending ||
-    saveStatusesMutation.isPending;
+    saveStatusesMutation.isPending ||
+    saveAttrDefsMutation.isPending;
 
   const handleSubmit = async (formData: ItemTypeFormData) => {
-    const { base, variants, statuses, transitions } = formData;
+    const {
+      base,
+      options,
+      variants,
+      statuses,
+      transitions,
+      attributeDefinitions,
+    } = formData;
 
     const created = await createMutation.mutateAsync({
       name: base.name.trim(),
       slug: base.slug.trim(),
       category: base.category.trim(),
-      defaultUom: base.defaultUom.trim() || "each",
+      quantityName: base.quantityName.trim() || null,
+      quantityDefaultUnit: base.defaultUom.trim() || "each",
       description: base.description.trim() || null,
       icon: base.icon.trim() || null,
       color: base.color.trim() || null,
@@ -43,14 +56,31 @@ export default function NewItemTypePage() {
 
     if (!created) return;
 
+    const filteredOptions = options.filter((o) => o.name.trim());
+    if (filteredOptions.length > 0) {
+      await saveOptionsMutation.mutateAsync({
+        itemTypeId: created.id,
+        options: filteredOptions.map((o) => ({
+          name: o.name.trim(),
+          values: o.values.filter((v) => v.trim()),
+        })),
+      });
+    }
+
     if (variants.length > 0) {
       await saveVariantsMutation.mutateAsync({
         itemTypeId: created.id,
         variants: variants.map((v, i) => ({
-          name: v.name.trim(),
+          name: v.name,
           isDefault: v.isDefault,
           isActive: v.isActive,
           sortOrder: i,
+          defaultValue: v.defaultValue
+            ? parseInt(v.defaultValue, 10)
+            : null,
+          defaultValueCurrency: v.defaultValueCurrency.trim() || null,
+          defaultQuantity: v.defaultQuantity.trim() || null,
+          defaultQuantityUnit: v.defaultQuantityUnit.trim() || null,
         })),
       });
     }
@@ -67,6 +97,22 @@ export default function NewItemTypePage() {
           ordinal: i,
         })),
         transitions: transitions.filter((t) => t.fromSlug && t.toSlug),
+      });
+    }
+
+    const filteredAttrDefs = attributeDefinitions.filter((d) =>
+      d.attrKey.trim(),
+    );
+    if (filteredAttrDefs.length > 0) {
+      await saveAttrDefsMutation.mutateAsync({
+        itemTypeId: created.id,
+        definitions: filteredAttrDefs.map((d, i) => ({
+          attrKey: d.attrKey.trim(),
+          dataType: d.dataType,
+          isRequired: d.isRequired,
+          unit: d.unit.trim() || null,
+          sortOrder: i,
+        })),
       });
     }
 

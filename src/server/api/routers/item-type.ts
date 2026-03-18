@@ -1,11 +1,14 @@
 import { TRPCError } from "@trpc/server";
-import { asc, eq, sql, and, count, inArray } from "drizzle-orm";
+import { asc, eq, count, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import {
   itemType,
   itemTypeVariant,
+  itemTypeOption,
+  itemTypeOptionValue,
+  itemTypeAttributeDefinition,
   item,
   statusDefinition,
   statusTransition,
@@ -16,7 +19,8 @@ const itemTypeCreateInput = z.object({
   name: z.string().min(1),
   description: z.string().nullable().optional(),
   category: z.string().min(1),
-  defaultUom: z.string().min(1).optional(),
+  quantityName: z.string().nullable().optional(),
+  quantityDefaultUnit: z.string().min(1).optional(),
   icon: z.string().nullable().optional(),
   color: z.string().nullable().optional(),
   config: z.record(z.string(), z.unknown()).optional(),
@@ -43,7 +47,8 @@ export const itemTypeRouter = createTRPCRouter({
           name: input.name,
           description: input.description,
           category: input.category,
-          defaultUom: input.defaultUom,
+          quantityName: input.quantityName ?? null,
+          quantityDefaultUnit: input.quantityDefaultUnit,
           icon: input.icon,
           color: input.color,
           codePrefix: input.codePrefix ?? null,
@@ -64,7 +69,8 @@ export const itemTypeRouter = createTRPCRouter({
           name: input.name,
           description: input.description,
           category: input.category,
-          defaultUom: input.defaultUom,
+          quantityName: input.quantityName ?? null,
+          quantityDefaultUnit: input.quantityDefaultUnit,
           icon: input.icon,
           color: input.color,
           codePrefix: input.codePrefix ?? null,
@@ -123,6 +129,22 @@ export const itemTypeRouter = createTRPCRouter({
         .where(eq(itemTypeVariant.itemTypeId, input.id))
         .orderBy(asc(itemTypeVariant.sortOrder));
 
+      const options = await ctx.db
+        .select()
+        .from(itemTypeOption)
+        .where(eq(itemTypeOption.itemTypeId, input.id))
+        .orderBy(asc(itemTypeOption.position));
+
+      const optionIds = options.map((o) => o.id);
+      const optionValues =
+        optionIds.length > 0
+          ? await ctx.db
+              .select()
+              .from(itemTypeOptionValue)
+              .where(inArray(itemTypeOptionValue.optionId, optionIds))
+              .orderBy(asc(itemTypeOptionValue.position))
+          : [];
+
       const statuses = await ctx.db
         .select()
         .from(statusDefinition)
@@ -138,7 +160,21 @@ export const itemTypeRouter = createTRPCRouter({
               .where(inArray(statusTransition.fromStatusId, statusIds))
           : [];
 
-      return { itemType: it, variants, statuses, transitions };
+      const attributeDefinitions = await ctx.db
+        .select()
+        .from(itemTypeAttributeDefinition)
+        .where(eq(itemTypeAttributeDefinition.itemTypeId, input.id))
+        .orderBy(asc(itemTypeAttributeDefinition.sortOrder));
+
+      return {
+        itemType: it,
+        variants,
+        options,
+        optionValues,
+        statuses,
+        transitions,
+        attributeDefinitions,
+      };
     }),
 
   saveVariants: publicProcedure
@@ -152,6 +188,14 @@ export const itemTypeRouter = createTRPCRouter({
             isDefault: z.boolean().default(false),
             isActive: z.boolean().default(true),
             sortOrder: z.number().int().default(0),
+            defaultValue: z.number().int().nullable().optional(),
+            defaultValueCurrency: z.string().nullable().optional(),
+            defaultQuantity: z.string().nullable().optional(),
+            defaultQuantityUnit: z.string().nullable().optional(),
+            defaultAttributes: z
+              .record(z.string(), z.unknown())
+              .nullable()
+              .optional(),
           }),
         ),
       }),
@@ -159,26 +203,54 @@ export const itemTypeRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       return ctx.db.transaction(async (tx) => {
         const existing = await tx
-          .select({ id: itemTypeVariant.id })
+          .select()
           .from(itemTypeVariant)
           .where(eq(itemTypeVariant.itemTypeId, input.itemTypeId));
 
-        const incomingIds = new Set(
-          input.variants.map((v) => v.id).filter(Boolean),
-        );
-        const toDelete = existing.filter((e) => !incomingIds.has(e.id));
+        const incomingNames = new Set(input.variants.map((v) => v.name));
+        const existingByName = new Map(existing.map((v) => [v.name, v]));
+        const toRemove = existing.filter((e) => !incomingNames.has(e.name));
 
-        if (toDelete.length > 0) {
-          await tx.delete(itemTypeVariant).where(
-            inArray(
-              itemTypeVariant.id,
-              toDelete.map((d) => d.id),
-            ),
+        if (toRemove.length > 0) {
+          const assignedCounts = await tx
+            .select({ variantId: item.variantId, total: count() })
+            .from(item)
+            .where(inArray(item.variantId, toRemove.map((v) => v.id)))
+            .groupBy(item.variantId);
+
+          const assignedSet = new Set(
+            assignedCounts
+              .filter((r) => r.variantId !== null)
+              .map((r) => r.variantId!),
           );
+
+          for (const v of toRemove) {
+            if (assignedSet.has(v.id)) {
+              await tx
+                .update(itemTypeVariant)
+                .set({ isActive: false })
+                .where(eq(itemTypeVariant.id, v.id));
+            } else {
+              await tx
+                .delete(itemTypeVariant)
+                .where(eq(itemTypeVariant.id, v.id));
+            }
+          }
         }
 
         for (const v of input.variants) {
-          if (v.id) {
+          const defaults = {
+            defaultValue: v.defaultValue ?? null,
+            defaultValueCurrency: v.defaultValueCurrency ?? null,
+            defaultQuantity: v.defaultQuantity ?? null,
+            defaultQuantityUnit: v.defaultQuantityUnit ?? null,
+            defaultAttributes: v.defaultAttributes ?? null,
+          };
+          const match = v.id
+            ? existing.find((e) => e.id === v.id)
+            : existingByName.get(v.name);
+
+          if (match) {
             await tx
               .update(itemTypeVariant)
               .set({
@@ -186,8 +258,9 @@ export const itemTypeRouter = createTRPCRouter({
                 isDefault: v.isDefault,
                 isActive: v.isActive,
                 sortOrder: v.sortOrder,
+                ...defaults,
               })
-              .where(eq(itemTypeVariant.id, v.id));
+              .where(eq(itemTypeVariant.id, match.id));
           } else {
             await tx.insert(itemTypeVariant).values({
               itemTypeId: input.itemTypeId,
@@ -195,6 +268,7 @@ export const itemTypeRouter = createTRPCRouter({
               isDefault: v.isDefault,
               isActive: v.isActive,
               sortOrder: v.sortOrder,
+              ...defaults,
             });
           }
         }
@@ -204,6 +278,78 @@ export const itemTypeRouter = createTRPCRouter({
           .from(itemTypeVariant)
           .where(eq(itemTypeVariant.itemTypeId, input.itemTypeId))
           .orderBy(asc(itemTypeVariant.sortOrder));
+      });
+    }),
+
+  saveOptions: publicProcedure
+    .input(
+      z.object({
+        itemTypeId: z.uuid(),
+        options: z.array(
+          z.object({
+            id: z.uuid().optional(),
+            name: z.string().min(1),
+            values: z.array(z.string().min(1)),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.transaction(async (tx) => {
+        const existingOptions = await tx
+          .select()
+          .from(itemTypeOption)
+          .where(eq(itemTypeOption.itemTypeId, input.itemTypeId));
+
+        const incomingIds = new Set(
+          input.options.map((o) => o.id).filter(Boolean),
+        );
+        const toDelete = existingOptions.filter((e) => !incomingIds.has(e.id));
+
+        if (toDelete.length > 0) {
+          const deleteIds = toDelete.map((d) => d.id);
+          await tx
+            .delete(itemTypeOptionValue)
+            .where(inArray(itemTypeOptionValue.optionId, deleteIds));
+          await tx
+            .delete(itemTypeOption)
+            .where(inArray(itemTypeOption.id, deleteIds));
+        }
+
+        for (let pos = 0; pos < input.options.length; pos++) {
+          const o = input.options[pos]!;
+          let optionId: string;
+
+          if (o.id) {
+            await tx
+              .update(itemTypeOption)
+              .set({ name: o.name, position: pos })
+              .where(eq(itemTypeOption.id, o.id));
+            optionId = o.id;
+
+            await tx
+              .delete(itemTypeOptionValue)
+              .where(eq(itemTypeOptionValue.optionId, optionId));
+          } else {
+            const [created] = await tx
+              .insert(itemTypeOption)
+              .values({
+                itemTypeId: input.itemTypeId,
+                name: o.name,
+                position: pos,
+              })
+              .returning();
+            optionId = created!.id;
+          }
+
+          for (let vPos = 0; vPos < o.values.length; vPos++) {
+            await tx.insert(itemTypeOptionValue).values({
+              optionId,
+              value: o.values[vPos]!,
+              position: vPos,
+            });
+          }
+        }
       });
     }),
 
@@ -292,9 +438,7 @@ export const itemTypeRouter = createTRPCRouter({
         if (existingStatusIds.length > 0) {
           await tx
             .delete(statusTransition)
-            .where(
-              inArray(statusTransition.fromStatusId, existingStatusIds),
-            );
+            .where(inArray(statusTransition.fromStatusId, existingStatusIds));
         }
 
         for (const t of input.transitions) {
@@ -308,16 +452,92 @@ export const itemTypeRouter = createTRPCRouter({
           }
         }
 
-        const transitions = existingStatusIds.length > 0
-          ? await tx
-              .select()
-              .from(statusTransition)
-              .where(
-                inArray(statusTransition.fromStatusId, existingStatusIds),
-              )
-          : [];
+        const transitions =
+          existingStatusIds.length > 0
+            ? await tx
+                .select()
+                .from(statusTransition)
+                .where(
+                  inArray(statusTransition.fromStatusId, existingStatusIds),
+                )
+            : [];
 
         return { statuses: saved, transitions };
+      });
+    }),
+
+  saveAttributeDefinitions: publicProcedure
+    .input(
+      z.object({
+        itemTypeId: z.uuid(),
+        definitions: z.array(
+          z.object({
+            id: z.uuid().optional(),
+            attrKey: z.string().min(1),
+            dataType: z.enum(["text", "number", "boolean", "date", "select"]),
+            isRequired: z.boolean().default(false),
+            unit: z.string().nullable().optional(),
+            options: z.array(z.string()).nullable().optional(),
+            defaultValue: z.string().nullable().optional(),
+            sortOrder: z.number().int().default(0),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.transaction(async (tx) => {
+        const existing = await tx
+          .select({ id: itemTypeAttributeDefinition.id })
+          .from(itemTypeAttributeDefinition)
+          .where(eq(itemTypeAttributeDefinition.itemTypeId, input.itemTypeId));
+
+        const incomingIds = new Set(
+          input.definitions.map((d) => d.id).filter(Boolean),
+        );
+        const toDelete = existing.filter((e) => !incomingIds.has(e.id));
+
+        if (toDelete.length > 0) {
+          await tx.delete(itemTypeAttributeDefinition).where(
+            inArray(
+              itemTypeAttributeDefinition.id,
+              toDelete.map((d) => d.id),
+            ),
+          );
+        }
+
+        for (const d of input.definitions) {
+          if (d.id) {
+            await tx
+              .update(itemTypeAttributeDefinition)
+              .set({
+                attrKey: d.attrKey,
+                dataType: d.dataType,
+                isRequired: d.isRequired,
+                unit: d.unit ?? null,
+                options: d.options ?? null,
+                defaultValue: d.defaultValue ?? null,
+                sortOrder: d.sortOrder,
+              })
+              .where(eq(itemTypeAttributeDefinition.id, d.id));
+          } else {
+            await tx.insert(itemTypeAttributeDefinition).values({
+              itemTypeId: input.itemTypeId,
+              attrKey: d.attrKey,
+              dataType: d.dataType,
+              isRequired: d.isRequired,
+              unit: d.unit ?? null,
+              options: d.options ?? null,
+              defaultValue: d.defaultValue ?? null,
+              sortOrder: d.sortOrder,
+            });
+          }
+        }
+
+        return tx
+          .select()
+          .from(itemTypeAttributeDefinition)
+          .where(eq(itemTypeAttributeDefinition.itemTypeId, input.itemTypeId))
+          .orderBy(asc(itemTypeAttributeDefinition.sortOrder));
       });
     }),
 
@@ -333,19 +553,54 @@ export const itemTypeRouter = createTRPCRouter({
       .where(eq(itemTypeVariant.isActive, true))
       .orderBy(asc(itemTypeVariant.sortOrder));
 
-    const counts = await ctx.db
+    const statuses = await ctx.db.select().from(statusDefinition);
+
+    const initialSlugs = new Map<string, Set<string>>();
+    const terminalSlugs = new Map<string, Set<string>>();
+    for (const s of statuses) {
+      if (!s.itemTypeId) continue;
+      if (s.isInitial) {
+        if (!initialSlugs.has(s.itemTypeId))
+          initialSlugs.set(s.itemTypeId, new Set());
+        initialSlugs.get(s.itemTypeId)!.add(s.slug);
+      }
+      if (s.isTerminal) {
+        if (!terminalSlugs.has(s.itemTypeId))
+          terminalSlugs.set(s.itemTypeId, new Set());
+        terminalSlugs.get(s.itemTypeId)!.add(s.slug);
+      }
+    }
+
+    const itemCounts = await ctx.db
       .select({
         itemTypeId: item.itemTypeId,
         variantId: item.variantId,
+        status: item.status,
         total: count(),
       })
       .from(item)
-      .groupBy(item.itemTypeId, item.variantId);
+      .groupBy(item.itemTypeId, item.variantId, item.status);
 
-    const countMap = new Map<string, number>();
-    for (const row of counts) {
+    type Counts = { prepared: number; active: number; completed: number };
+    const countMap = new Map<string, Counts>();
+
+    for (const row of itemCounts) {
       const key = `${row.itemTypeId}::${row.variantId ?? "_"}`;
-      countMap.set(key, row.total);
+      if (!countMap.has(key))
+        countMap.set(key, { prepared: 0, active: 0, completed: 0 });
+      const c = countMap.get(key)!;
+      const isInitial =
+        initialSlugs.get(row.itemTypeId)?.has(row.status) ?? false;
+      const isTerminal =
+        terminalSlugs.get(row.itemTypeId)?.has(row.status) ?? false;
+
+      if (isInitial) {
+        c.prepared += row.total;
+      } else if (isTerminal) {
+        c.completed += row.total;
+      } else {
+        c.active += row.total;
+      }
     }
 
     type Row = {
@@ -356,15 +611,19 @@ export const itemTypeRouter = createTRPCRouter({
       variantId: string | null;
       variantName: string | null;
       sku: string | null;
-      onHand: number;
+      prepared: number;
+      active: number;
+      completed: number;
     };
 
     const rows: Row[] = [];
+    const empty: Counts = { prepared: 0, active: 0, completed: 0 };
 
     for (const t of types) {
       const typeVariants = variants.filter((v) => v.itemTypeId === t.id);
 
       if (typeVariants.length === 0) {
+        const c = countMap.get(`${t.id}::_`) ?? empty;
         rows.push({
           itemTypeId: t.id,
           itemTypeName: t.name,
@@ -373,10 +632,11 @@ export const itemTypeRouter = createTRPCRouter({
           variantId: null,
           variantName: null,
           sku: t.codePrefix,
-          onHand: countMap.get(`${t.id}::_`) ?? 0,
+          ...c,
         });
       } else {
         for (const v of typeVariants) {
+          const c = countMap.get(`${t.id}::${v.id}`) ?? empty;
           rows.push({
             itemTypeId: t.id,
             itemTypeName: t.name,
@@ -385,7 +645,7 @@ export const itemTypeRouter = createTRPCRouter({
             variantId: v.id,
             variantName: v.name,
             sku: t.codePrefix,
-            onHand: countMap.get(`${t.id}::${v.id}`) ?? 0,
+            ...c,
           });
         }
       }

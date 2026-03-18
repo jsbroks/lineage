@@ -1,0 +1,121 @@
+locations:
+  - name: "Harvest Room #1"
+    icon: Warehouse
+
+  - name: "Harvest Room #2"
+    icon: Warehouse
+
+  - name: "Harvest Room #3"
+    icon: Warehouse
+
+  - name: "Harvest Room #4"
+    icon: Warehouse
+
+  - name: "Harvest Room #5"
+    icon: Warehouse
+
+  - name: "Harvest Room #6"
+    icon: Warehouse
+    category: Logistics
+
+  - name: "Cold Storage"
+    icon: Freezer
+
+  - name: "QA Room"
+    icon: Warehouse
+
+items:
+  - name: Mushroom Box
+    icon: Mushroom
+    category: Product
+    color: Green
+    codePrefix: Box
+    quantity:
+      unit: lb
+      name: Weight
+    variants:
+      - name: Type
+        options:
+          - Portobello
+          - Cremini
+          - Button
+    variantDefaults:
+      - match: { Type: Portobello }
+        set:
+          value: 1299
+          valueCurrency: CAD
+          quantity: 3
+          attributes:
+            My Property: Value
+      - match: { Type: Cremini }
+        set:
+          value: 1099
+          valueCurrency: CAD
+          quantity: 5
+          attributes:
+            My Property: Value
+      - match: { Type: Button }
+        set:
+          value: 999
+          valueCurrency: CAD
+          quantity: 5
+          attributes:
+            My Property: Value
+
+    initialStatus: Created
+    status:
+      - name: Created
+        to: [Approved, Discarded]
+      - name: Approved
+        to: [Discarded, Shipped, Discarded]
+      - name: Shipped
+        to: [Discarded]
+        isTerminal: true
+      - name: Discarded
+        isTerminal: true
+    customAttributes:
+      - name: Harvest By
+        type: string
+      - name: Harvest On
+        type: date
+      - name: Harvest Room
+        type: string
+        options:
+          - "Harvest Room #1"
+          - "Harvest Room #2"
+          - "Harvest Room #3"
+          - "Harvest Room #4"
+          - "Harvest Room #5"
+          - "Harvest Room #6"
+
+  - name: Skid
+    icon: Truck
+    color: Neutral
+    category: Logistics
+    codePrefix: SKID
+    initialStatus: Created
+    status:
+      - name: Created
+        to: [Ready]
+      - name: Ready
+        to: [Staged]
+      - name: Staged
+        to: [Shipped]
+      - name: Discarded
+        isTerminal: true
+    customAttributes:
+      - name: Destination
+        type: string
+      - name: Carrier
+        type: string
+      - name: Ship Date
+        type: date
+
+operations:
+  - name: Harvest Mushroom Box
+    description: Harvest a mushroom box from a harvest room
+    inputs:
+      items:
+        - key: mushroomBox
+          itemType: Mushroom Box
+          scan: barcode

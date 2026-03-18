@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Package2, Plus } from "lucide-react";
+import { ArrowRight, Package2, Plus } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -19,6 +19,9 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { api } from "~/trpc/react";
+import { Icon } from "~/app/_components/IconPicker";
+import { cn } from "~/lib/utils";
+import { Colors, getColorClasses } from "~/app/_components/ColorSelector";
 
 export default function InventoryPage() {
   const params = useParams<{ org: string }>();
@@ -49,8 +52,6 @@ export default function InventoryPage() {
       return next;
     });
   };
-
-  let prevItemTypeId: string | null = null;
 
   return (
     <div className="flex min-h-full flex-col">
@@ -106,24 +107,15 @@ export default function InventoryPage() {
                 <TableHead className="w-10 pl-4">
                   <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
                 </TableHead>
-                <TableHead>
-                  Product
-                  <span className="text-muted-foreground ml-0.5 inline-block align-middle text-[10px]">
-                    &#x25B4;&#x25BE;
-                  </span>
-                </TableHead>
-                <TableHead>SKU</TableHead>
-                <TableHead className="text-center">Unavailable</TableHead>
-                <TableHead className="text-center">Committed</TableHead>
-                <TableHead className="w-28">Available</TableHead>
-                <TableHead className="w-28">On hand</TableHead>
+                <TableHead>Asset</TableHead>
+                <TableCell className="text-center">Prepared</TableCell>
+                <TableCell className="text-center">Active</TableCell>
+                <TableCell className="text-center">Completed</TableCell>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rows.map((row) => {
                 const key = `${row.itemTypeId}::${row.variantId ?? "_"}`;
-                const showName = row.itemTypeId !== prevItemTypeId;
-                prevItemTypeId = row.itemTypeId;
 
                 return (
                   <TableRow
@@ -138,65 +130,44 @@ export default function InventoryPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2.5">
-                        {showName ? (
-                          <div
-                            className="bg-muted flex size-8 shrink-0 items-center justify-center rounded"
-                            style={
-                              row.itemTypeColor
-                                ? { backgroundColor: row.itemTypeColor + "20" }
-                                : undefined
-                            }
-                          >
-                            <Package2
-                              className="text-muted-foreground size-4"
-                              style={
-                                row.itemTypeColor
-                                  ? { color: row.itemTypeColor }
-                                  : undefined
-                              }
-                            />
-                          </div>
-                        ) : (
-                          <div className="size-8 shrink-0" />
-                        )}
-                        <div className="flex items-center gap-2">
-                          {showName && (
-                            <Link
-                              href={`/${params.org}/inventory/type/${row.itemTypeId}`}
-                              className="hover:text-primary font-medium underline-offset-4 hover:underline"
-                            >
-                              {row.itemTypeName}
-                            </Link>
+                        <div
+                          className={cn(
+                            "flex size-8 shrink-0 items-center justify-center rounded",
+                            getColorClasses(row.itemTypeColor).bg,
+                            getColorClasses(row.itemTypeColor).text,
                           )}
+                          style={
+                            row.itemTypeColor
+                              ? { backgroundColor: row.itemTypeColor + "20" }
+                              : undefined
+                          }
+                        >
+                          <Icon icon={row.itemTypeIcon} className="size-4" />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/${params.org}/inventory/type/${row.itemTypeId}`}
+                            className="hover:text-primary font-medium underline-offset-4 hover:underline"
+                          >
+                            {row.itemTypeName}
+                          </Link>
                           {row.variantName && (
-                            <Badge variant="secondary" className="text-[11px]">
-                              {row.variantName}
-                            </Badge>
+                            <>
+                              <ArrowRight className="text-muted-foreground size-2" />
+                              <Badge
+                                variant="secondary"
+                                className="px-2 py-3 text-xs"
+                              >
+                                {row.variantName}
+                              </Badge>
+                            </>
                           )}
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {row.sku ?? "No SKU"}
-                    </TableCell>
-                    <TableCell className="text-center">0</TableCell>
-                    <TableCell className="text-center">0</TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={row.onHand}
-                        readOnly
-                        className="h-8 w-20"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        value={row.onHand}
-                        readOnly
-                        className="h-8 w-20"
-                      />
-                    </TableCell>
+                    <TableCell className="text-center">{row.prepared}</TableCell>
+                    <TableCell className="text-center">{row.active}</TableCell>
+                    <TableCell className="text-center">{row.completed}</TableCell>
                   </TableRow>
                 );
               })}

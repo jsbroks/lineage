@@ -2,6 +2,7 @@ import {
   boolean,
   integer,
   jsonb,
+  numeric,
   pgTable,
   text,
   timestamp,
@@ -15,7 +16,8 @@ export const itemType = pgTable("item_type", {
   name: text().notNull(),
   description: text(),
   category: text().notNull(),
-  defaultUom: text("default_uom").notNull().default("each"),
+  quantityName: text("quantity_name"),
+  quantityDefaultUnit: text("default_unit").notNull().default("each"),
   icon: text(),
   color: text(),
   codePrefix: text("code_prefix"),
@@ -23,25 +25,6 @@ export const itemType = pgTable("item_type", {
 });
 
 export type ItemType = typeof itemType.$inferSelect;
-
-export const itemTemplate = pgTable("item_template", {
-  id: uuid().primaryKey().defaultRandom(),
-  itemTypeId: uuid("item_type_id")
-    .notNull()
-    .references(() => itemType.id, { onDelete: "cascade" }),
-  name: text().notNull(),
-  description: text(),
-  defaultAttributes: jsonb("default_attributes").notNull().default({}),
-  sortOrder: integer("sort_order").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
-
-export type ItemTemplate = typeof itemTemplate.$inferSelect;
 
 export const itemTypeOption = pgTable(
   "item_type_option",
@@ -80,7 +63,11 @@ export const itemTypeVariant = pgTable("item_type_variant", {
   name: text().notNull(),
   isDefault: boolean("is_default").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
-  attributes: jsonb().notNull().default({}),
+  defaultValue: integer("default_value"),
+  defaultValueCurrency: text("default_value_currency"),
+  defaultQuantity: numeric("default_quantity"),
+  defaultQuantityUnit: text("default_quantity_unit"),
+  defaultAttributes: jsonb("default_attributes"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

@@ -46,7 +46,7 @@ export const createItem: ActionHandler = async (tx, step, config, ctx) => {
         itemTypeId: it.id,
         code,
         status: initialStatus,
-        quantityUom: it.defaultUom ?? "each",
+        quantityUnit: it.quantityDefaultUnit ?? "each",
         attributes: withAttrs ?? {},
       })
       .returning();
