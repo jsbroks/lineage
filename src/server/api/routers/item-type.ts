@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { asc, eq, count, inArray } from "drizzle-orm";
+import { asc, eq, count, inArray, sum, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
@@ -571,35 +571,70 @@ export const itemTypeRouter = createTRPCRouter({
       }
     }
 
-    const itemCounts = await ctx.db
+    const itemAgg = await ctx.db
       .select({
         itemTypeId: item.itemTypeId,
         variantId: item.variantId,
         status: item.status,
         total: count(),
+        totalValue: sum(item.value),
+        totalQuantity: sql<string>`sum(${item.quantity}::numeric)`,
       })
       .from(item)
       .groupBy(item.itemTypeId, item.variantId, item.status);
 
-    type Counts = { prepared: number; active: number; completed: number };
-    const countMap = new Map<string, Counts>();
+    type Bucket = {
+      prepared: number;
+      active: number;
+      completed: number;
+      totalValue: number;
+      totalQuantity: number;
+    };
+    const emptyBucket = (): Bucket => ({
+      prepared: 0,
+      active: 0,
+      completed: 0,
+      totalValue: 0,
+      totalQuantity: 0,
+    });
 
-    for (const row of itemCounts) {
-      const key = `${row.itemTypeId}::${row.variantId ?? "_"}`;
-      if (!countMap.has(key))
-        countMap.set(key, { prepared: 0, active: 0, completed: 0 });
-      const c = countMap.get(key)!;
+    // key = "typeId::variantId" (variantId = "_" for null)
+    const bucketMap = new Map<string, Bucket>();
+    // also aggregate per type for the "all" total
+    const typeBucketMap = new Map<string, Bucket>();
+
+    for (const row of itemAgg) {
+      const varKey = `${row.itemTypeId}::${row.variantId ?? "_"}`;
+      if (!bucketMap.has(varKey)) bucketMap.set(varKey, emptyBucket());
+      const b = bucketMap.get(varKey)!;
+
+      if (!typeBucketMap.has(row.itemTypeId))
+        typeBucketMap.set(row.itemTypeId, emptyBucket());
+      const tb = typeBucketMap.get(row.itemTypeId)!;
+
       const isInitial =
         initialSlugs.get(row.itemTypeId)?.has(row.status) ?? false;
       const isTerminal =
         terminalSlugs.get(row.itemTypeId)?.has(row.status) ?? false;
 
+      const cnt = row.total;
+      const val = Number(row.totalValue) || 0;
+      const qty = Number(row.totalQuantity) || 0;
+
+      b.totalValue += val;
+      b.totalQuantity += qty;
+      tb.totalValue += val;
+      tb.totalQuantity += qty;
+
       if (isInitial) {
-        c.prepared += row.total;
+        b.prepared += cnt;
+        tb.prepared += cnt;
       } else if (isTerminal) {
-        c.completed += row.total;
+        b.completed += cnt;
+        tb.completed += cnt;
       } else {
-        c.active += row.total;
+        b.active += cnt;
+        tb.active += cnt;
       }
     }
 
@@ -608,44 +643,76 @@ export const itemTypeRouter = createTRPCRouter({
       itemTypeName: string;
       itemTypeIcon: string | null;
       itemTypeColor: string | null;
+      quantityUnit: string | null;
       variantId: string | null;
       variantName: string | null;
       sku: string | null;
       prepared: number;
       active: number;
       completed: number;
+      totalValue: number;
+      totalQuantity: number;
     };
 
     const rows: Row[] = [];
-    const empty: Counts = { prepared: 0, active: 0, completed: 0 };
+    const empty = emptyBucket();
 
     for (const t of types) {
       const typeVariants = variants.filter((v) => v.itemTypeId === t.id);
 
       if (typeVariants.length === 0) {
-        const c = countMap.get(`${t.id}::_`) ?? empty;
+        const b = typeBucketMap.get(t.id) ?? empty;
         rows.push({
           itemTypeId: t.id,
           itemTypeName: t.name,
           itemTypeIcon: t.icon,
           itemTypeColor: t.color,
+          quantityUnit: t.quantityDefaultUnit,
           variantId: null,
           variantName: null,
           sku: t.codePrefix,
-          ...c,
+          ...b,
         });
       } else {
+        // Type-level summary row that totals across all variants
+        const tb = typeBucketMap.get(t.id) ?? empty;
+        rows.push({
+          itemTypeId: t.id,
+          itemTypeName: t.name,
+          itemTypeIcon: t.icon,
+          itemTypeColor: t.color,
+          quantityUnit: t.quantityDefaultUnit,
+          variantId: null,
+          variantName: null,
+          sku: t.codePrefix,
+          ...tb,
+        });
         for (const v of typeVariants) {
-          const c = countMap.get(`${t.id}::${v.id}`) ?? empty;
+          const b = bucketMap.get(`${t.id}::${v.id}`) ?? empty;
           rows.push({
             itemTypeId: t.id,
             itemTypeName: t.name,
             itemTypeIcon: t.icon,
             itemTypeColor: t.color,
+            quantityUnit: t.quantityDefaultUnit,
             variantId: v.id,
             variantName: v.name,
             sku: t.codePrefix,
-            ...c,
+            ...b,
+          });
+        }
+        const unassigned = bucketMap.get(`${t.id}::_`);
+        if (unassigned) {
+          rows.push({
+            itemTypeId: t.id,
+            itemTypeName: t.name,
+            itemTypeIcon: t.icon,
+            itemTypeColor: t.color,
+            quantityUnit: t.quantityDefaultUnit,
+            variantId: "_unassigned",
+            variantName: "Unassigned",
+            sku: t.codePrefix,
+            ...unassigned,
           });
         }
       }

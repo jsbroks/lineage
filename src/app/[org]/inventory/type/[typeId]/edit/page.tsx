@@ -18,11 +18,11 @@ import {
   ItemTypeForm,
   type ItemTypeFormData,
 } from "../../../_components/item-type-form";
+import { useItemTypeMutations } from "../../../_hooks/use-item-type-mutations";
 import { Icon } from "~/app/_components/IconPicker";
 
 export default function EditItemTypePage() {
   const params = useParams<{ org: string; typeId: string }>();
-  const utils = api.useUtils();
 
   const { data, isLoading } = api.itemType.getById.useQuery(
     { id: params.typeId },
@@ -30,18 +30,14 @@ export default function EditItemTypePage() {
   );
 
   const editMutation = api.itemType.edit.useMutation();
-  const saveOptionsMutation = api.itemType.saveOptions.useMutation();
-  const saveVariantsMutation = api.itemType.saveVariants.useMutation();
-  const saveStatusesMutation = api.itemType.saveStatuses.useMutation();
-  const saveAttrDefsMutation =
-    api.itemType.saveAttributeDefinitions.useMutation();
+  const {
+    buildBasePayload,
+    saveRelatedData,
+    invalidateCommon,
+    isSavingRelated,
+  } = useItemTypeMutations();
 
-  const isSubmitting =
-    editMutation.isPending ||
-    saveOptionsMutation.isPending ||
-    saveVariantsMutation.isPending ||
-    saveStatusesMutation.isPending ||
-    saveAttrDefsMutation.isPending;
+  const isSubmitting = editMutation.isPending || isSavingRelated;
 
   const initialData: ItemTypeFormData | undefined = useMemo(() => {
     if (!data) return undefined;
@@ -102,90 +98,12 @@ export default function EditItemTypePage() {
   }, [data]);
 
   const handleSubmit = async (formData: ItemTypeFormData) => {
-    const {
-      base,
-      options,
-      variants,
-      statuses,
-      transitions,
-      attributeDefinitions,
-    } = formData;
-
     await editMutation.mutateAsync({
       id: params.typeId,
-      name: base.name.trim(),
-      slug: base.slug.trim(),
-      category: base.category.trim(),
-      quantityName: base.quantityName.trim() || null,
-      quantityDefaultUnit: base.defaultUom.trim() || "each",
-      description: base.description.trim() || null,
-      icon: base.icon.trim() || null,
-      color: base.color.trim() || null,
-      codePrefix: base.codePrefix.trim() || null,
-      codeNextNumber: Number(base.codeNextNumber) || undefined,
+      ...buildBasePayload(formData.base),
     });
-
-    await saveOptionsMutation.mutateAsync({
-      itemTypeId: params.typeId,
-      options: options
-        .filter((o) => o.name.trim())
-        .map((o) => ({
-          id: o.id,
-          name: o.name.trim(),
-          values: o.values.filter((v) => v.trim()),
-        })),
-    });
-
-    if (variants.length > 0) {
-      await saveVariantsMutation.mutateAsync({
-        itemTypeId: params.typeId,
-        variants: variants.map((v, i) => ({
-          id: v.id,
-          name: v.name,
-          isDefault: v.isDefault,
-          isActive: v.isActive,
-          sortOrder: i,
-          defaultValue: v.defaultValue
-            ? parseInt(v.defaultValue, 10)
-            : null,
-          defaultValueCurrency: v.defaultValueCurrency.trim() || null,
-          defaultQuantity: v.defaultQuantity.trim() || null,
-          defaultQuantityUnit: v.defaultQuantityUnit.trim() || null,
-        })),
-      });
-    }
-
-    await saveStatusesMutation.mutateAsync({
-      itemTypeId: params.typeId,
-      statuses: statuses.map((s, i) => ({
-        id: s.id,
-        slug: s.slug.trim(),
-        name: s.name.trim(),
-        color: s.color.trim() || null,
-        isInitial: s.isInitial,
-        isTerminal: s.isTerminal,
-        ordinal: i,
-      })),
-      transitions: transitions.filter((t) => t.fromSlug && t.toSlug),
-    });
-
-    await saveAttrDefsMutation.mutateAsync({
-      itemTypeId: params.typeId,
-      definitions: attributeDefinitions
-        .filter((d) => d.attrKey.trim())
-        .map((d, i) => ({
-          id: d.id,
-          attrKey: d.attrKey.trim(),
-          dataType: d.dataType,
-          isRequired: d.isRequired,
-          unit: d.unit.trim() || null,
-          sortOrder: i,
-        })),
-    });
-
-    await utils.itemType.getById.invalidate({ id: params.typeId });
-    await utils.itemType.list.invalidate();
-    await utils.itemType.inventoryOverview.invalidate();
+    await saveRelatedData(params.typeId, formData);
+    await invalidateCommon(params.typeId);
   };
 
   const it = data?.itemType;

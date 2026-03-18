@@ -104,8 +104,10 @@ export default function ItemTypeDetailPage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
+  const [bulkVariantOpen, setBulkVariantOpen] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkNewStatus, setBulkNewStatus] = useState("");
+  const [bulkNewVariant, setBulkNewVariant] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [createCount, setCreateCount] = useState("10");
   const [createVariant, setCreateVariant] = useState<string>("none");
@@ -156,6 +158,17 @@ export default function ItemTypeDetailPage() {
       setSelected(new Set());
       setBulkStatusOpen(false);
       setBulkNewStatus("");
+    },
+  });
+
+  const bulkSetVariant = api.item.bulkSetVariant.useMutation({
+    onSuccess: () => {
+      void utils.item.listByType.invalidate();
+      void utils.item.statusCountsByType.invalidate();
+      void utils.itemType.inventoryOverview.invalidate();
+      setSelected(new Set());
+      setBulkVariantOpen(false);
+      setBulkNewVariant("");
     },
   });
 
@@ -321,6 +334,14 @@ export default function ItemTypeDetailPage() {
     bulkUpdateStatus.mutate({
       itemIds: Array.from(selected),
       status: bulkNewStatus,
+    });
+  };
+
+  const handleBulkSetVariant = () => {
+    if (selected.size === 0 || !bulkNewVariant) return;
+    bulkSetVariant.mutate({
+      itemIds: Array.from(selected),
+      variantId: bulkNewVariant === "none" ? null : bulkNewVariant,
     });
   };
 
@@ -1039,6 +1060,16 @@ export default function ItemTypeDetailPage() {
                   >
                     Change status
                   </Button>
+                  {variants.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => setBulkVariantOpen(true)}
+                    >
+                      Set variant
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -1230,6 +1261,46 @@ export default function ItemTypeDetailPage() {
               disabled={bulkDelete.isPending}
             >
               {bulkDelete.isPending ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk set variant dialog */}
+      <Dialog open={bulkVariantOpen} onOpenChange={setBulkVariantOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set variant</DialogTitle>
+            <DialogDescription>
+              Assign a variant to {selected.size} selected item
+              {selected.size > 1 ? "s" : ""}.
+            </DialogDescription>
+          </DialogHeader>
+          <Select value={bulkNewVariant} onValueChange={setBulkNewVariant}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select variant" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Unassigned</SelectItem>
+              {variants.map((v) => (
+                <SelectItem key={v.id} value={v.id}>
+                  {v.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkVariantOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleBulkSetVariant}
+              disabled={!bulkNewVariant || bulkSetVariant.isPending}
+            >
+              {bulkSetVariant.isPending ? "Updating..." : "Set variant"}
             </Button>
           </DialogFooter>
         </DialogContent>

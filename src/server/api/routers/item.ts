@@ -287,9 +287,27 @@ export const itemRouter = createTRPCRouter({
             )
         : [];
 
+      const [currentVariant] = currentItem.variantId
+        ? await ctx.db
+            .select()
+            .from(itemTypeVariant)
+            .where(eq(itemTypeVariant.id, currentItem.variantId))
+            .limit(1)
+        : [undefined];
+
+      const [currentLocation] = currentItem.locationId
+        ? await ctx.db
+            .select()
+            .from(location)
+            .where(eq(location.id, currentItem.locationId))
+            .limit(1)
+        : [undefined];
+
       return {
         item: currentItem,
         itemType: currentItemType ?? null,
+        variant: currentVariant ?? null,
+        location: currentLocation ?? null,
         identifiers,
         events,
         parentLineage: parentLinks.map((link) => ({
@@ -591,6 +609,97 @@ export const itemRouter = createTRPCRouter({
         .where(inArray(item.id, input.itemIds))
         .returning({ id: item.id });
 
+      return { updated: updated.length };
+    }),
+
+  bulkSetVariant: publicProcedure
+    .input(
+      z.object({
+        itemIds: z.array(z.uuid()).min(1).max(1000),
+        variantId: z.uuid().nullable(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (!input.variantId) {
+        const updated = await ctx.db
+          .update(item)
+          .set({ variantId: null, updatedAt: new Date() })
+          .where(inArray(item.id, input.itemIds))
+          .returning({ id: item.id });
+        return { updated: updated.length };
+      }
+
+      const [variant] = await ctx.db
+        .select()
+        .from(itemTypeVariant)
+        .where(eq(itemTypeVariant.id, input.variantId))
+        .limit(1);
+
+      if (!variant) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Variant not found",
+        });
+      }
+
+      const hasDefaults =
+        variant.defaultValue !== null ||
+        variant.defaultValueCurrency !== null ||
+        variant.defaultQuantity !== null ||
+        variant.defaultQuantityUnit !== null ||
+        variant.defaultAttributes !== null;
+
+      if (!hasDefaults) {
+        const updated = await ctx.db
+          .update(item)
+          .set({ variantId: input.variantId, updatedAt: new Date() })
+          .where(inArray(item.id, input.itemIds))
+          .returning({ id: item.id });
+        return { updated: updated.length };
+      }
+
+      const defaults: Record<string, unknown> = {
+        variantId: input.variantId,
+        updatedAt: new Date(),
+      };
+      if (variant.defaultValue !== null) defaults.value = variant.defaultValue;
+      if (variant.defaultValueCurrency !== null)
+        defaults.valueCurrency = variant.defaultValueCurrency;
+      if (variant.defaultQuantity !== null)
+        defaults.quantity = variant.defaultQuantity;
+      if (variant.defaultQuantityUnit !== null)
+        defaults.quantityUnit = variant.defaultQuantityUnit;
+
+      if (variant.defaultAttributes !== null) {
+        const variantAttrs = variant.defaultAttributes as Record<
+          string,
+          unknown
+        >;
+        const items = await ctx.db
+          .select({ id: item.id, attributes: item.attributes })
+          .from(item)
+          .where(inArray(item.id, input.itemIds));
+
+        let updated = 0;
+        for (const it of items) {
+          const existing = (it.attributes ?? {}) as Record<string, unknown>;
+          await ctx.db
+            .update(item)
+            .set({
+              ...(defaults as typeof item.$inferInsert),
+              attributes: { ...variantAttrs, ...existing },
+            })
+            .where(eq(item.id, it.id));
+          updated++;
+        }
+        return { updated };
+      }
+
+      const updated = await ctx.db
+        .update(item)
+        .set(defaults as typeof item.$inferInsert)
+        .where(inArray(item.id, input.itemIds))
+        .returning({ id: item.id });
       return { updated: updated.length };
     }),
 
