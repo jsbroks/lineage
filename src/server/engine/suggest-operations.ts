@@ -1,6 +1,6 @@
 /**
- * Given a set of lots the user has scanned / selected, returns operation
- * types ranked by how well the lots satisfy their input port definitions.
+ * Given a set of items the user has scanned / selected, returns operation
+ * types ranked by how well the items satisfy their input port definitions.
  *
  * Scoring per operation type:
  *
@@ -8,7 +8,7 @@
  *     +3  required port fully satisfied (item type match + status match + qty in range)
  *     +2  required port item type matches but status doesn't match preconditions
  *     +1  optional port satisfied
- *     -10 required port with zero matching lots (hard penalty)
+ *     -10 required port with zero matching items (hard penalty)
  *
  *   Bonus:
  *     +2  every required port is satisfied (ready to execute)
@@ -22,7 +22,7 @@ import type { db as dbInstance } from "~/server/db";
 
 type Db = typeof dbInstance;
 
-type LotSummary = {
+type ItemSummary = {
   id: string;
   itemTypeId: string;
   status: string;
@@ -36,7 +36,7 @@ export type PortMatch = {
   preconditionsStatuses: string[] | null;
   qtyMin: number;
   qtyMax: number | null;
-  matchedLotIds: string[];
+  matchedItemIds: string[];
   satisfied: boolean;
   statusMismatch: boolean;
 };
@@ -56,28 +56,28 @@ export type SuggestedOperation = {
 
 export async function suggestOperations(
   db: Db,
-  lotIds: string[],
+  itemIds: string[],
 ): Promise<SuggestedOperation[]> {
-  if (lotIds.length === 0) return [];
+  if (itemIds.length === 0) return [];
 
-  // 1. Load the scanned lots
-  const lots = await db
+  // 1. Load the scanned items
+  const items = await db
     .select({
       id: item.id,
       itemTypeId: item.itemTypeId,
       status: item.status,
     })
     .from(item)
-    .where(inArray(item.id, lotIds));
+    .where(inArray(item.id, itemIds));
 
-  if (lots.length === 0) return [];
+  if (items.length === 0) return [];
 
-  // Index lots by item type for fast lookup
-  const lotsByItemType = new Map<string, LotSummary[]>();
-  for (const l of lots) {
-    const arr = lotsByItemType.get(l.itemTypeId) ?? [];
+  // Index items by item type for fast lookup
+  const itemsByType = new Map<string, ItemSummary[]>();
+  for (const l of items) {
+    const arr = itemsByType.get(l.itemTypeId) ?? [];
     arr.push(l);
-    lotsByItemType.set(l.itemTypeId, arr);
+    itemsByType.set(l.itemTypeId, arr);
   }
 
   // 2. Load all operation types + their input ports
@@ -110,7 +110,7 @@ export async function suggestOperations(
     const portMatches: PortMatch[] = [];
 
     for (const port of inputPorts) {
-      const candidates = lotsByItemType.get(port.itemTypeId) ?? [];
+      const candidates = itemsByType.get(port.itemTypeId) ?? [];
       const qtyMin = Number(port.qtyMin ?? 0);
       const qtyMax = port.qtyMax ? Number(port.qtyMax) : null;
 
@@ -127,7 +127,7 @@ export async function suggestOperations(
       const statusMismatch =
         candidates.length > 0 && fullyMatched.length < candidates.length;
 
-      // Apply qty constraints to select which lots actually fill this port
+      // Apply qty constraints to select which items actually fill this port
       const matched = qtyMax ? fullyMatched.slice(0, qtyMax) : fullyMatched;
 
       const satisfied = matched.length >= qtyMin && matched.length > 0;
@@ -155,7 +155,7 @@ export async function suggestOperations(
         preconditionsStatuses: port.preconditionsStatuses,
         qtyMin,
         qtyMax,
-        matchedLotIds: matched.map((l) => l.id),
+        matchedItemIds: matched.map((l) => l.id),
         satisfied,
         statusMismatch,
       });

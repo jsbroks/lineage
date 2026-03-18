@@ -1,5 +1,5 @@
 import { ActionRegistry } from "../types";
-import { createLot } from "./create-lot";
+import { createItem } from "./create-item";
 import { incrementAttribute } from "./increment-attribute";
 import { recordEvent } from "./record-event";
 import { setAttribute } from "./set-attribute";
@@ -10,6 +10,6 @@ export const registry = new ActionRegistry()
   .register("set_status", setStatus)
   .register("set_attribute", setAttribute)
   .register("increment_attribute", incrementAttribute)
-  .register("create_lot", createLot)
+  .register("create_item", createItem)
   .registerAlias(["set_lineage", "link"], setLineage)
   .register("record_event", recordEvent);

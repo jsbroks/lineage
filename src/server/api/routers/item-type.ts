@@ -14,6 +14,8 @@ const itemTypeCreateInput = z.object({
   icon: z.string().nullable().optional(),
   color: z.string().nullable().optional(),
   config: z.record(z.string(), z.unknown()).optional(),
+  codePrefix: z.string().min(1).nullable().optional(),
+  codeNextNumber: z.number().int().positive().optional(),
 });
 
 const itemTypeEditInput = itemTypeCreateInput.extend({
@@ -38,7 +40,8 @@ export const itemTypeRouter = createTRPCRouter({
           defaultUom: input.defaultUom,
           icon: input.icon,
           color: input.color,
-          config: input.config,
+          codePrefix: input.codePrefix ?? null,
+          codeNextNumber: input.codeNextNumber,
         })
         .returning();
 
@@ -58,7 +61,8 @@ export const itemTypeRouter = createTRPCRouter({
           defaultUom: input.defaultUom,
           icon: input.icon,
           color: input.color,
-          config: input.config,
+          codePrefix: input.codePrefix ?? null,
+          codeNextNumber: input.codeNextNumber,
         })
         .where(eq(itemType.id, input.id))
         .returning();

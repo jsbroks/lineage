@@ -35,20 +35,20 @@ function formatTimeAgo(timestamp: Date | string) {
   return "just now";
 }
 
-export default function LotDetailPage() {
-  const params = useParams<{ lotId: string; org: string }>();
-  const lotId = params.lotId;
+export default function ItemDetailPage() {
+  const params = useParams<{ itemId: string; org: string }>();
+  const itemId = params.itemId;
   const org = params.org;
 
-  const { data, isLoading, error } = api.lot.getById.useQuery(
-    { lotId },
-    { enabled: !!lotId },
+  const { data, isLoading, error } = api.item.getById.useQuery(
+    { itemId },
+    { enabled: !!itemId },
   );
 
   if (isLoading) {
     return (
       <div className="text-muted-foreground p-6 text-sm">
-        Loading lot details...
+        Loading item details...
       </div>
     );
   }
@@ -56,7 +56,7 @@ export default function LotDetailPage() {
   if (error || !data) {
     return (
       <div className="text-destructive p-6 text-sm">
-        Unable to load lot details.
+        Unable to load item details.
       </div>
     );
   }
@@ -72,42 +72,42 @@ export default function LotDetailPage() {
         <div>
           <Badge variant="outline">{data.itemType?.name}</Badge>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {data.lot.lotCode}
+            {data.item.code}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Status: {data.lot.status} | UOM: {data.lot.uom}
+            Status: {data.item.status} | Unit: {data.item.uom}
           </p>
         </div>
         <Link
-          href={`/${org}/lots/new`}
+          href={`/${org}/items/new`}
           className="text-sm underline underline-offset-4"
         >
-          Back to lots
+          Back to items
         </Link>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Properties</CardTitle>
+            <CardTitle>Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <p>
-              <span className="font-medium">Item type:</span>{" "}
-              {data.itemType?.name ?? data.lot.itemTypeId}
+              <span className="font-medium">Category:</span>{" "}
+              {data.itemType?.name ?? data.item.itemTypeId}
             </p>
             <p>
               <span className="font-medium">Created:</span>{" "}
-              {new Date(data.lot.createdAt).toLocaleString()}
+              {new Date(data.item.createdAt).toLocaleString()}
             </p>
             <p>
               <span className="font-medium">Updated:</span>{" "}
-              {new Date(data.lot.updatedAt).toLocaleString()}
+              {new Date(data.item.updatedAt).toLocaleString()}
             </p>
             <div>
               <p className="mb-1 font-medium">Attributes</p>
               <pre className="bg-muted overflow-auto rounded-md p-2 text-xs">
-                {JSON.stringify(data.lot.attributes ?? {}, null, 2)}
+                {JSON.stringify(data.item.attributes ?? {}, null, 2)}
               </pre>
             </div>
           </CardContent>
@@ -115,7 +115,7 @@ export default function LotDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Identifiers</CardTitle>
+            <CardTitle>Labels &amp; Codes</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="mb-3 rounded-md">
@@ -123,19 +123,19 @@ export default function LotDetailPage() {
               <div className="flex items-center gap-3">
                 <div className="rounded-md bg-white p-2">
                   <QRCode
-                    value={`${window.location.origin}/l/${data.lot.id}`}
+                    value={`${window.location.origin}/l/${data.item.id}`}
                     size={100}
                   />
                 </div>
                 <div className="flex h-full flex-col break-all">
                   <div className="font-mono font-medium">
-                    <div>{data.lot.lotCode}</div>
+                    <div>{data.item.code}</div>
                   </div>
                   <span className="text-muted-foreground mb-6">
                     {data.itemType?.name}
                   </span>
                   <span className="text-muted-foreground text-[0.5rem]">
-                    {data.lot.id}
+                    {data.item.id}
                   </span>
                 </div>
               </div>
@@ -146,10 +146,10 @@ export default function LotDetailPage() {
 
               <div>
                 <Barcode
-                  value={data.lot.lotCode}
+                  value={data.item.code}
                   height={50}
                   width={2}
-                  text={data.lot.lotCode}
+                  text={data.item.code}
                   fontSize={12}
                 />
               </div>
@@ -184,22 +184,22 @@ export default function LotDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Parents</CardTitle>
+            <CardTitle>Came From</CardTitle>
           </CardHeader>
           <CardContent>
             {data.parentLineage.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                No parent lineage links.
+                No source items recorded.
               </p>
             ) : (
               <div className="space-y-2">
-                {data.parentLineage.map(({ link, lot }) => (
+                {data.parentLineage.map(({ link, item: parentItem }) => (
                   <div
                     key={link.id}
                     className="border-border rounded-md border p-2 text-sm"
                   >
                     <p className="font-medium">
-                      {lot?.lotCode ?? link.parentLotId}
+                      {parentItem?.code ?? link.parentItemId}
                     </p>
                     <p className="text-muted-foreground text-xs">
                       Relation: {link.relationship}
@@ -213,22 +213,22 @@ export default function LotDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Children</CardTitle>
+            <CardTitle>Used to Make</CardTitle>
           </CardHeader>
           <CardContent>
             {data.childLineage.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                No child lineage links.
+                Not yet used in another step.
               </p>
             ) : (
               <div className="space-y-2">
-                {data.childLineage.map(({ link, lot }) => (
+                {data.childLineage.map(({ link, item: childItem }) => (
                   <div
                     key={link.id}
                     className="border-border rounded-md border p-2 text-sm"
                   >
                     <p className="font-medium">
-                      {lot?.lotCode ?? link.childLotId}
+                      {childItem?.code ?? link.childItemId}
                     </p>
                     <p className="text-muted-foreground text-xs">
                       Relation: {link.relationship}
@@ -242,11 +242,11 @@ export default function LotDetailPage() {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Events</CardTitle>
+            <CardTitle>Activity Log</CardTitle>
           </CardHeader>
           <CardContent>
             {data.events.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No lot events.</p>
+              <p className="text-muted-foreground text-sm">No activity recorded yet.</p>
             ) : (
               <div className="relative pl-6">
                 <div className="bg-border absolute top-0 bottom-0 left-3 w-px" />

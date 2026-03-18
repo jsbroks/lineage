@@ -33,5 +33,5 @@ export const locationsRelations = relations(location, ({ one, many }) => ({
     relationName: "parentChild",
   }),
   children: many(location, { relationName: "parentChild" }),
-  // lots:         many(lots),
+  // items:        many(items),
 }));

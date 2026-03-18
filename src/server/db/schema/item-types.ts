@@ -18,7 +18,8 @@ export const itemType = pgTable("item_type", {
   defaultUom: text("default_uom").notNull().default("each"),
   icon: text(),
   color: text(),
-  config: jsonb().notNull().default({}),
+  codePrefix: text("code_prefix"),
+  codeNextNumber: integer("code_next_number").notNull().default(1),
 });
 
 export type ItemType = typeof itemType.$inferSelect;
@@ -41,6 +42,69 @@ export const itemTemplate = pgTable("item_template", {
 });
 
 export type ItemTemplate = typeof itemTemplate.$inferSelect;
+
+export const itemTypeOption = pgTable(
+  "item_type_option",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    itemTypeId: uuid("item_type_id")
+      .notNull()
+      .references(() => itemType.id, { onDelete: "cascade" }),
+    name: text().notNull(),
+    position: integer().notNull(),
+  },
+  (t) => [
+    uniqueIndex("uq_item_type_option_name").on(t.itemTypeId, t.name),
+    uniqueIndex("uq_item_type_option_position").on(t.itemTypeId, t.position),
+  ],
+);
+
+export const itemTypeOptionValue = pgTable(
+  "item_type_option_value",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    optionId: uuid("option_id")
+      .notNull()
+      .references(() => itemTypeOption.id, { onDelete: "cascade" }),
+    value: text().notNull(),
+    position: integer().notNull(),
+  },
+  (t) => [uniqueIndex("uq_option_value").on(t.optionId, t.value)],
+);
+
+export const itemTypeVariant = pgTable("item_type_variant", {
+  id: uuid().primaryKey().defaultRandom(),
+  itemTypeId: uuid("item_type_id")
+    .notNull()
+    .references(() => itemType.id, { onDelete: "cascade" }),
+  name: text().notNull(),
+  isDefault: boolean("is_default").notNull().default(false),
+  isActive: boolean("is_active").notNull().default(true),
+  attributes: jsonb().notNull().default({}),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const itemTypeVariantOptionValue = pgTable(
+  "item_type_variant_option_value",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    variantId: uuid("variant_id")
+      .notNull()
+      .references(() => itemTypeVariant.id, { onDelete: "cascade" }),
+    optionValueId: uuid("option_value_id")
+      .notNull()
+      .references(() => itemTypeOptionValue.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    uniqueIndex("uq_variant_option_value").on(t.variantId, t.optionValueId),
+  ],
+);
 
 export const itemTypeAttributeDefinition = pgTable(
   "item_type_attribute_definition",

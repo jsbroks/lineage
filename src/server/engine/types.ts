@@ -5,20 +5,20 @@ export type Tx = Parameters<
   Parameters<(typeof dbInstance)["transaction"]>[0]
 >[0];
 
-export type Lot = typeof item.$inferSelect;
+export type Item = typeof item.$inferSelect;
 
 export type Step = typeof operationTypeStep.$inferSelect;
 
 export type ExecCtx = {
-  /** Items keyed by port role or alias (from create_lot "as") */
-  lots: Record<string, Lot[]>;
+  /** Items keyed by port role or alias (from create_item "as") */
+  items: Record<string, Item[]>;
   /** User-provided field values */
   inputs: Record<string, unknown>;
   /** itemTypeId → display name (e.g. "Block", "Packaged Product") */
   itemTypeNames: Map<string, string>;
   /** Accumulate IDs for the result */
-  lotsCreated: string[];
-  lotsUpdated: Set<string>;
+  itemsCreated: string[];
+  itemsUpdated: Set<string>;
   lineageCreated: number;
   /** The operation record ID (created before steps run) */
   operationId: string;
@@ -27,7 +27,7 @@ export type ExecCtx = {
 export type ExecuteOperationInput = {
   operationTypeId: string;
   /** portRole → array of item IDs */
-  lots: Record<string, string[]>;
+  items: Record<string, string[]>;
   /** field key → user-provided value */
   fields: Record<string, unknown>;
   performedBy?: string | null;
@@ -46,8 +46,8 @@ export type StepResult = {
 export type ExecuteOperationResult = {
   operationId: string;
   steps: StepResult[];
-  lotsCreated: string[];
-  lotsUpdated: string[];
+  itemsCreated: string[];
+  itemsUpdated: string[];
   lineageCreated: number;
 };
 

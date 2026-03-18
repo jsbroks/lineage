@@ -29,17 +29,16 @@ export default function OperationsSettingsPage() {
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">
-            Operation Types
+            Task Types
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Define operation types and their input/output ports, fields, and
-            steps.
+            Define the tasks your team performs (Harvest, Inoculate, Transfer, etc.)
           </p>
         </div>
         <Button asChild size="sm" className="gap-1.5">
           <Link href={`/${org}/settings/operations/new`}>
             <Plus className="size-3.5" />
-            New Operation Type
+            New Task Type
           </Link>
         </Button>
       </div>
@@ -48,7 +47,7 @@ export default function OperationsSettingsPage() {
         <p className="text-muted-foreground text-sm">Loading...</p>
       ) : operationTypes.length === 0 ? (
         <div className="border-border text-muted-foreground rounded-lg border border-dashed px-6 py-12 text-center text-sm">
-          No operation types yet. Create one to get started.
+          No task types yet. Create one to get started.
         </div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[1.1fr_1fr]">

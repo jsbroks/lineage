@@ -44,9 +44,9 @@ type ExecuteResult = RouterOutputs["operation"]["execute"];
 export default function OperationsPage() {
   const params = useParams<{ org: string }>();
 
-  // Lot selection
-  const [lotSearch, setLotSearch] = useState("");
-  const [selectedLotIds, setSelectedLotIds] = useState<string[]>([]);
+  // Item selection
+  const [itemSearch, setItemSearch] = useState("");
+  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 
   // Workflow state
   const [chosenOp, setChosenOp] = useState<SuggestedOperation | null>(null);
@@ -55,12 +55,12 @@ export default function OperationsPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Queries
-  const lotsQuery = api.lot.list.useQuery();
-  const lots = lotsQuery.data ?? [];
+  const itemsQuery = api.item.list.useQuery();
+  const items = itemsQuery.data ?? [];
 
   const suggestQuery = api.operation.suggest.useQuery(
-    { lotIds: selectedLotIds },
-    { enabled: selectedLotIds.length > 0 },
+    { itemIds: selectedItemIds },
+    { enabled: selectedItemIds.length > 0 },
   );
 
   const opTypeQuery = api.operationType.getById.useQuery(
@@ -71,26 +71,26 @@ export default function OperationsPage() {
   const executeMutation = api.operation.execute.useMutation();
 
   // Search filtering
-  const searchResults = lotSearch.trim()
-    ? lots.filter(
+  const searchResults = itemSearch.trim()
+    ? items.filter(
         (l) =>
-          l.lotCode.toLowerCase().includes(lotSearch.toLowerCase()) &&
-          !selectedLotIds.includes(l.id),
+          l.code.toLowerCase().includes(itemSearch.toLowerCase()) &&
+          !selectedItemIds.includes(l.id),
       )
     : [];
 
-  const selectedLots = lots.filter((l) => selectedLotIds.includes(l.id));
+  const selectedItems = items.filter((l) => selectedItemIds.includes(l.id));
 
-  const addLot = (id: string) => {
-    setSelectedLotIds((prev) => [...prev, id]);
-    setLotSearch("");
+  const addItem = (id: string) => {
+    setSelectedItemIds((prev) => [...prev, id]);
+    setItemSearch("");
     setChosenOp(null);
     setResult(null);
     setError(null);
   };
 
-  const removeLot = (id: string) => {
-    setSelectedLotIds((prev) => prev.filter((x) => x !== id));
+  const removeItem = (id: string) => {
+    setSelectedItemIds((prev) => prev.filter((x) => x !== id));
     setChosenOp(null);
     setResult(null);
     setError(null);
@@ -106,11 +106,11 @@ export default function OperationsPage() {
   const handleExecute = async () => {
     if (!chosenOp) return;
 
-    // Build the lots map: portRole → lot IDs from the suggestion's port matches
-    const lotsMap: Record<string, string[]> = {};
+    // Build the items map: portRole → item IDs from the suggestion's port matches
+    const itemsMap: Record<string, string[]> = {};
     for (const port of chosenOp.ports) {
-      if (port.matchedLotIds.length > 0) {
-        lotsMap[port.portRole] = port.matchedLotIds;
+      if (port.matchedItemIds.length > 0) {
+        itemsMap[port.portRole] = port.matchedItemIds;
       }
     }
 
@@ -118,7 +118,7 @@ export default function OperationsPage() {
     try {
       const res = await executeMutation.mutateAsync({
         operationTypeId: chosenOp.operationType.id,
-        lots: lotsMap,
+        items: itemsMap,
         fields: fieldValues,
       });
       setResult(res);
@@ -128,20 +128,20 @@ export default function OperationsPage() {
   };
 
   const reset = () => {
-    setSelectedLotIds([]);
+    setSelectedItemIds([]);
     setChosenOp(null);
     setFieldValues({});
     setResult(null);
     setError(null);
-    setLotSearch("");
+    setItemSearch("");
   };
 
   return (
     <div className="container mx-auto max-w-4xl px-6 py-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Operations</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Record Task</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Scan or select items, then choose an operation to execute.
+          Scan or pick items, then choose a task to record.
         </p>
       </div>
 
@@ -152,17 +152,17 @@ export default function OperationsPage() {
 
       {!result && (
         <div className="space-y-6">
-          {/* Step 1: Select lots */}
+          {/* Step 1: Select items */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <span className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-full text-xs font-bold">
                   1
                 </span>
-                Select Items
+                Scan or Pick Items
               </CardTitle>
               <CardDescription>
-                Search by code to add items for this operation.
+                Search by code to add items for this task.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -170,8 +170,8 @@ export default function OperationsPage() {
                 <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
                 <Input
                   placeholder="Search by code..."
-                  value={lotSearch}
-                  onChange={(e) => setLotSearch(e.target.value)}
+                  value={itemSearch}
+                  onChange={(e) => setItemSearch(e.target.value)}
                   className="pl-8"
                 />
               </div>
@@ -184,9 +184,9 @@ export default function OperationsPage() {
                       key={l.id}
                       type="button"
                       className="hover:bg-muted flex w-full items-center justify-between px-3 py-2 text-left text-sm"
-                      onClick={() => addLot(l.id)}
+                      onClick={() => addItem(l.id)}
                     >
-                      <span className="font-medium">{l.lotCode}</span>
+                      <span className="font-medium">{l.code}</span>
                       <span className="text-muted-foreground text-xs">
                         {l.status}
                       </span>
@@ -195,19 +195,19 @@ export default function OperationsPage() {
                 </div>
               )}
 
-              {/* Selected lots */}
-              {selectedLots.length > 0 && (
+              {/* Selected items */}
+              {selectedItems.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {selectedLots.map((l) => (
+                  {selectedItems.map((l) => (
                     <Badge
                       key={l.id}
                       variant="secondary"
                       className="gap-1 pr-1"
                     >
-                      {l.lotCode}
+                      {l.code}
                       <button
                         type="button"
-                        onClick={() => removeLot(l.id)}
+                        onClick={() => removeItem(l.id)}
                         className="hover:bg-muted rounded-full p-0.5"
                       >
                         <X className="size-3" />
@@ -220,30 +220,30 @@ export default function OperationsPage() {
           </Card>
 
           {/* Step 2: Suggested operations */}
-          {selectedLotIds.length > 0 && (
+          {selectedItemIds.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <span className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-full text-xs font-bold">
                     2
                   </span>
-                  Choose Operation
+                  What are you doing?
                 </CardTitle>
                 <CardDescription>
-                  Operations ranked by how well they match the selected items.
+                  Tasks ranked by how well they match the selected items.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {suggestQuery.isLoading && (
                   <div className="text-muted-foreground flex items-center gap-2 py-4 text-sm">
                     <Loader2 className="size-4 animate-spin" />
-                    Finding matching operations...
+                    Finding matching tasks...
                   </div>
                 )}
 
                 {suggestQuery.data && suggestQuery.data.length === 0 && (
                   <p className="text-muted-foreground py-4 text-center text-sm">
-                    No matching operations for the selected items.
+                    No matching tasks for the selected items.
                   </p>
                 )}
 
@@ -279,7 +279,7 @@ export default function OperationsPage() {
                               className="bg-yellow-300/20 text-xs text-yellow-700"
                             >
                               <AlertCircle className="mr-0.5 size-3" />
-                              Partial match
+                              Needs more items
                             </Badge>
                           )}
                         </div>
@@ -290,25 +290,7 @@ export default function OperationsPage() {
                           {suggestion.operationType.description}
                         </p>
                       )}
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {suggestion.ports.map((port) => (
-                          <Badge
-                            key={port.portRole}
-                            variant="outline"
-                            className={`text-xs ${
-                              port.satisfied
-                                ? "border-green-300 text-green-700"
-                                : port.statusMismatch
-                                  ? "border-yellow-300 text-yellow-700"
-                                  : "border-red-300 text-red-600"
-                            }`}
-                          >
-                            {port.portRole}: {port.matchedLotIds.length}/
-                            {port.qtyMin}
-                            {port.isRequired ? "*" : ""}
-                          </Badge>
-                        ))}
-                      </div>
+                      
                     </button>
                   ))}
                 </div>
@@ -324,10 +306,10 @@ export default function OperationsPage() {
                   <span className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-full text-xs font-bold">
                     3
                   </span>
-                  Configure & Execute
+                  Fill in Details
                 </CardTitle>
                 <CardDescription>
-                  Fill in any required fields, then run the operation.
+                  Fill in any required fields, then record the task.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -353,19 +335,19 @@ export default function OperationsPage() {
                     {executeMutation.isPending ? (
                       <>
                         <Loader2 className="size-4 animate-spin" />
-                        Executing...
+                        Recording...
                       </>
                     ) : (
                       <>
                         <Play className="size-4" />
-                        Execute {chosenOp.operationType.name}
+                        Record {chosenOp.operationType.name}
                       </>
                     )}
                   </Button>
                   {!chosenOp.ready && (
                     <p className="text-muted-foreground mt-2 text-xs">
-                      Not all required inputs are satisfied. Add more items or
-                      choose a different operation.
+                      Not all required items are present. Add more items or
+                      choose a different task.
                     </p>
                   )}
                 </div>
@@ -546,8 +528,8 @@ function ResultsView({
             <div className="flex-1">
               <h2 className="text-lg font-semibold">
                 {hasErrors
-                  ? "Operation completed with errors"
-                  : "Operation completed"}
+                  ? "Task completed with errors"
+                  : "Done!"}
               </h2>
               <p className="text-muted-foreground mt-0.5 text-sm">
                 {succeededCount} step(s) succeeded
@@ -560,19 +542,19 @@ function ResultsView({
               </p>
 
               <div className="mt-3 flex flex-wrap gap-4 text-sm">
-                {result.lotsCreated.length > 0 && (
+                {result.itemsCreated.length > 0 && (
                   <div className="flex items-center gap-1.5">
                     <Zap className="size-3.5 text-blue-500" />
                     <span>
-                      {result.lotsCreated.length} created
+                      {result.itemsCreated.length} created
                     </span>
                   </div>
                 )}
-                {result.lotsUpdated.length > 0 && (
+                {result.itemsUpdated.length > 0 && (
                   <div className="flex items-center gap-1.5">
                     <Check className="size-3.5 text-green-500" />
                     <span>
-                      {result.lotsUpdated.length} updated
+                      {result.itemsUpdated.length} updated
                     </span>
                   </div>
                 )}
@@ -580,7 +562,7 @@ function ResultsView({
                   <div className="flex items-center gap-1.5">
                     <ChevronRight className="size-3.5 text-purple-500" />
                     <span>
-                      {result.lineageCreated} lineage link(s)
+                      {result.lineageCreated} connection(s)
                     </span>
                   </div>
                 )}
@@ -590,80 +572,45 @@ function ResultsView({
         </CardContent>
       </Card>
 
-      {/* Step details */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Step Results</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-1">
-            {result.steps.map((step, idx) => (
-              <div
-                key={idx}
-                className={`flex items-start gap-3 rounded-md px-3 py-2 ${
-                  step.skipped
-                    ? "opacity-50"
-                    : !step.success
-                      ? "bg-red-50 dark:bg-red-950/20"
-                      : ""
-                }`}
-              >
-                <div className="mt-0.5 shrink-0">
-                  {step.skipped ? (
-                    <div className="bg-muted text-muted-foreground flex size-5 items-center justify-center rounded-full text-xs">
-                      —
-                    </div>
-                  ) : step.success ? (
-                    <div className="flex size-5 items-center justify-center rounded-full bg-green-100 text-green-600 dark:bg-green-900/40">
-                      <Check className="size-3" />
-                    </div>
-                  ) : (
+      {/* Show failed steps only if there were errors */}
+      {hasErrors && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Issues</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1">
+              {failedSteps.map((step, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-start gap-3 rounded-md bg-red-50 px-3 py-2 dark:bg-red-950/20"
+                >
+                  <div className="mt-0.5 shrink-0">
                     <div className="flex size-5 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/40">
                       <X className="size-3" />
                     </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
+                  </div>
+                  <div className="min-w-0 flex-1">
                     <span className="text-sm font-medium">
                       {step.stepName}
                     </span>
-                    <Badge variant="outline" className="font-mono text-xs">
-                      {step.action}
-                    </Badge>
-                    {step.skipped && (
-                      <Badge variant="secondary" className="text-xs">
-                        skipped
-                      </Badge>
-                    )}
-                    {!step.skipped && !step.success && (
-                      <Badge variant="destructive" className="text-xs">
-                        failed
-                      </Badge>
+                    {step.detail && (
+                      <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">
+                        {step.detail}
+                      </p>
                     )}
                   </div>
-                  {step.detail && (
-                    <p
-                      className={`mt-0.5 text-xs ${
-                        !step.skipped && !step.success
-                          ? "text-red-600 dark:text-red-400"
-                          : "text-muted-foreground"
-                      }`}
-                    >
-                      {step.detail}
-                    </p>
-                  )}
                 </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Action */}
       <div className="flex gap-3">
         <Button onClick={onReset} variant="outline">
-          Run Another Operation
+          Record Another Task
         </Button>
       </div>
     </div>

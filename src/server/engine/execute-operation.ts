@@ -8,13 +8,13 @@
  *
  * Supported actions:  (see ./actions/ for implementations)
  *   set_status, set_attribute, set_attributes, increment_attribute,
- *   create_lot, set_lineage / link, record_event
+ *   create_item, set_lineage / link, record_event
  *
  * Value references inside step config:
- *   { from: "inputs.<key>" }    — resolve from input fields
- *   { from: "<lotKey>.<attr>" } — resolve from a lot's attribute
- *   { ref: "<lotKey>" }         — resolve to lot ID(s) for a key
- *   plain value                 — used as-is
+ *   { from: "inputs.<key>" }     — resolve from input fields
+ *   { from: "<itemKey>.<attr>" } — resolve from an item's attribute
+ *   { ref: "<itemKey>" }         — resolve to item ID(s) for a key
+ *   plain value                  — used as-is
  *
  * Conditions:
  *   { equals: [a, b] }   — equality (values can be refs)
@@ -40,7 +40,7 @@ import type {
   ExecCtx,
   ExecuteOperationInput,
   ExecuteOperationResult,
-  Lot,
+  Item,
   StepResult,
   Tx,
 } from "./types";
@@ -90,42 +90,42 @@ export async function executeOperation(
   }
 
   // 3. Validate required input ports & load items
-  const loadedLots: Record<string, Lot[]> = {};
+  const loadedItems: Record<string, Item[]> = {};
 
   for (const port of ports) {
     if (port.direction !== "input") continue;
 
-    const lotIds = input.lots[port.portRole] ?? [];
+    const itemIds = input.items[port.portRole] ?? [];
 
-    if (port.isRequired && lotIds.length === 0) {
+    if (port.isRequired && itemIds.length === 0) {
       throw new Error(`Required input "${port.portRole}" is empty`);
     }
 
-    if (port.qtyMin && lotIds.length < Number(port.qtyMin)) {
+    if (port.qtyMin && itemIds.length < Number(port.qtyMin)) {
       throw new Error(
-        `"${port.portRole}" requires at least ${port.qtyMin}, got ${lotIds.length}`,
+        `"${port.portRole}" requires at least ${port.qtyMin}, got ${itemIds.length}`,
       );
     }
 
-    if (port.qtyMax && lotIds.length > Number(port.qtyMax)) {
+    if (port.qtyMax && itemIds.length > Number(port.qtyMax)) {
       throw new Error(
-        `"${port.portRole}" allows at most ${port.qtyMax}, got ${lotIds.length}`,
+        `"${port.portRole}" allows at most ${port.qtyMax}, got ${itemIds.length}`,
       );
     }
 
-    if (lotIds.length > 0) {
+    if (itemIds.length > 0) {
       const rows = await tx
         .select()
         .from(item)
         .where(
-          lotIds.length === 1
-            ? eq(item.id, lotIds[0]!)
-            : sql`${item.id} = ANY(${lotIds})`,
+          itemIds.length === 1
+            ? eq(item.id, itemIds[0]!)
+            : sql`${item.id} = ANY(${itemIds})`,
         );
 
-      if (rows.length !== lotIds.length) {
+      if (rows.length !== itemIds.length) {
         const found = new Set(rows.map((r) => r.id));
-        const missing = lotIds.filter((id) => !found.has(id));
+        const missing = itemIds.filter((id) => !found.has(id));
         throw new Error(
           `"${port.portRole}" references missing items: ${missing.join(", ")}`,
         );
@@ -136,21 +136,21 @@ export async function executeOperation(
         for (const r of rows) {
           if (!allowed.has(r.status)) {
             throw new Error(
-              `${r.lotCode} has status "${r.status}" but "${port.portRole}" requires one of: ${port.preconditionsStatuses.join(", ")}`,
+              `${r.code} has status "${r.status}" but "${port.portRole}" requires one of: ${port.preconditionsStatuses.join(", ")}`,
             );
           }
         }
       }
 
-      loadedLots[port.portRole] = rows;
+      loadedItems[port.portRole] = rows;
     }
   }
 
-  // 4. Build item type name lookup from loaded lots
+  // 4. Build item type name lookup from loaded items
   const itemTypeNames = new Map<string, string>();
   const seenItemTypeIds = new Set<string>();
-  for (const lots of Object.values(loadedLots)) {
-    for (const l of lots) seenItemTypeIds.add(l.itemTypeId);
+  for (const group of Object.values(loadedItems)) {
+    for (const l of group) seenItemTypeIds.add(l.itemTypeId);
   }
   if (seenItemTypeIds.size > 0) {
     const ids = [...seenItemTypeIds];
@@ -184,11 +184,11 @@ export async function executeOperation(
 
   // 6. Build execution context
   const ctx: ExecCtx = {
-    lots: loadedLots,
+    items: loadedItems,
     inputs: input.fields,
     itemTypeNames,
-    lotsCreated: [],
-    lotsUpdated: new Set(),
+    itemsCreated: [],
+    itemsUpdated: new Set(),
     lineageCreated: 0,
     operationId: op.id,
   };
@@ -250,8 +250,8 @@ export async function executeOperation(
   return {
     operationId: op.id,
     steps: stepResults,
-    lotsCreated: ctx.lotsCreated,
-    lotsUpdated: [...ctx.lotsUpdated],
+    itemsCreated: ctx.itemsCreated,
+    itemsUpdated: [...ctx.itemsUpdated],
     lineageCreated: ctx.lineageCreated,
   };
 }

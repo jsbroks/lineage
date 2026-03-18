@@ -79,7 +79,7 @@ export const OperationCard: React.FC<OperationCardProps> = ({
           <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3">
             <div className="col-span-1">
               <p className="text-muted-foreground mb-1 text-xs uppercase">
-                Inputs
+                What goes in
               </p>
               <div className="space-y-0.5">
                 {inputPorts.map((port) => (
@@ -102,16 +102,16 @@ export const OperationCard: React.FC<OperationCardProps> = ({
 
             <div className="col-span-1">
               <p className="text-muted-foreground mb-1 text-xs uppercase">
-                Outputs
+                What comes out
               </p>
 
               {outputPorts.length == 0 && (
                 <div className="text-muted-foreground pt-1 text-xs">
-                  Links{" "}
+                  Connects{" "}
                   {inputPorts
                     .map((port) => getItemTypeName(port.itemTypeId))
                     .join(", ")}{" "}
-                  via lineage
+                  via history
                 </div>
               )}
               <div>

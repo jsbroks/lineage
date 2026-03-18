@@ -20,8 +20,8 @@ export const incrementAttribute: ActionHandler = async (
   config,
   ctx,
 ) => {
-  const targetLots = getTargetItems(step.target, ctx);
-  if (targetLots.length === 0)
+  const targetItems = getTargetItems(step.target, ctx);
+  if (targetItems.length === 0)
     return step.target
       ? `no "${step.target}" provided`
       : "no target role specified";
@@ -32,9 +32,9 @@ export const incrementAttribute: ActionHandler = async (
 
   if (!attrKey) return "no attribute key specified";
 
-  for (const targetLot of targetLots) {
+  for (const targetItem of targetItems) {
     const attrs = computeIncrement(
-      (targetLot.attributes ?? {}) as Record<string, unknown>,
+      (targetItem.attributes ?? {}) as Record<string, unknown>,
       attrKey,
       by,
     );
@@ -42,11 +42,11 @@ export const incrementAttribute: ActionHandler = async (
     await tx
       .update(item)
       .set({ attributes: attrs, updatedAt: new Date() })
-      .where(eq(item.id, targetLot.id));
+      .where(eq(item.id, targetItem.id));
 
-    (targetLot as Record<string, unknown>).attributes = attrs;
-    ctx.lotsUpdated.add(targetLot.id);
+    (targetItem as Record<string, unknown>).attributes = attrs;
+    ctx.itemsUpdated.add(targetItem.id);
   }
 
-  return `incremented ${attrKey} by ${by} on ${describeItems(targetLots, ctx)}`;
+  return `incremented ${attrKey} by ${by} on ${describeItems(targetItems, ctx)}`;
 };

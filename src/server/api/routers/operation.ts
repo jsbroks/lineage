@@ -9,7 +9,7 @@ import { suggestOperations } from "~/server/engine/suggest-operations";
 
 const executeInput = z.object({
   operationTypeId: z.uuid(),
-  lots: z.record(z.string(), z.array(z.uuid())),
+  items: z.record(z.string(), z.array(z.uuid())),
   fields: z.record(z.string(), z.unknown()),
   performedBy: z.uuid().nullable().optional(),
   locationId: z.uuid().nullable().optional(),
@@ -20,9 +20,9 @@ export const operationRouter = createTRPCRouter({
   actions: publicProcedure.query(() => registry.actions),
 
   suggest: publicProcedure
-    .input(z.object({ lotIds: z.array(z.uuid()).min(1) }))
+    .input(z.object({ itemIds: z.array(z.uuid()).min(1) }))
     .query(async ({ ctx, input }) => {
-      return suggestOperations(ctx.db, input.lotIds);
+      return suggestOperations(ctx.db, input.itemIds);
     }),
 
   execute: publicProcedure
@@ -31,7 +31,7 @@ export const operationRouter = createTRPCRouter({
       return ctx.db.transaction(async (tx) => {
         return executeOperation(tx, {
           operationTypeId: input.operationTypeId,
-          lots: input.lots,
+          items: input.items,
           fields: input.fields,
           performedBy: input.performedBy,
           locationId: input.locationId,

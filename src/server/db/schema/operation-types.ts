@@ -113,16 +113,16 @@ export type OperationTypeStep = typeof operationTypeStep.$inferSelect;
 // ============================================================================
 // One table for all validation rules across the system.
 // Each rule is attached to either:
-//   - An item type (lot-level validation on create or status change)
+//   - An item type (item-level validation on create or status change)
 //   - An operation type port (operation-level validation on scan)
 //
 // Exactly one of item_type_id or operation_type_port_id is set (not both).
 //
 // context determines WHEN the rule fires:
-//   - 'on_create'           : when a lot of this item type is created
-//   - 'on_status:colonized' : when a lot transitions to 'colonized'
-//   - 'on_status:packed'    : when a lot transitions to 'packed'
-//   - 'on_scan'             : when a lot is scanned into an operation port
+//   - 'on_create'           : when an item of this item type is created
+//   - 'on_status:colonized' : when an item transitions to 'colonized'
+//   - 'on_status:packed'    : when an item transitions to 'packed'
+//   - 'on_scan'             : when an item is scanned into an operation port
 export const validationRule = pgTable(
   "validation_rule",
   {

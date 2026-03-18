@@ -129,7 +129,7 @@ export default function OperationTypeDetailPage() {
   const handleDelete = async () => {
     if (
       !window.confirm(
-        `Delete "${opType?.name}" and all its ports, fields, and steps?`,
+        `Delete "${opType?.name}" and all its configuration?`,
       )
     )
       return;
@@ -139,7 +139,7 @@ export default function OperationTypeDetailPage() {
   if (!isNew && isLoading) {
     return (
       <div className="text-muted-foreground p-8 text-sm">
-        Loading operation type...
+        Loading task type...
       </div>
     );
   }
@@ -147,7 +147,7 @@ export default function OperationTypeDetailPage() {
   if (!isNew && !opType) {
     return (
       <div className="text-destructive p-8 text-sm">
-        Operation type not found.
+        Task type not found.
       </div>
     );
   }
@@ -167,7 +167,7 @@ export default function OperationTypeDetailPage() {
           </Link>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              {isNew ? "New Operation Type" : opType?.name}
+              {isNew ? "New Task Type" : opType?.name}
             </h1>
             {!isNew && (
               <p className="text-muted-foreground mt-0.5 text-sm">
@@ -195,12 +195,12 @@ export default function OperationTypeDetailPage() {
           <CardHeader>
             <CardTitle>General</CardTitle>
             <CardDescription>
-              Basic information about this operation type.
+              Basic information about this task type.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 sm:col-span-2">
                 <label className="text-sm font-medium" htmlFor="op-name">
                   Name
                 </label>
@@ -210,21 +210,7 @@ export default function OperationTypeDetailPage() {
                   value={name}
                   onChange={(e) => {
                     setName(e.target.value);
-                    if (!slugTouched) setSlug(slugify(e.target.value));
-                  }}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="op-slug">
-                  Slug
-                </label>
-                <Input
-                  id="op-slug"
-                  placeholder="harvest"
-                  value={slug}
-                  onChange={(e) => {
-                    setSlug(e.target.value);
-                    setSlugTouched(true);
+                    setSlug(slugify(e.target.value));
                   }}
                 />
               </div>
@@ -234,20 +220,9 @@ export default function OperationTypeDetailPage() {
                 </label>
                 <Textarea
                   id="op-description"
-                  placeholder="Describe what this operation does..."
+                  placeholder="Describe what this task does..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium" htmlFor="op-icon">
-                  Icon
-                </label>
-                <Input
-                  id="op-icon"
-                  placeholder="package"
-                  value={icon}
-                  onChange={(e) => setIcon(e.target.value)}
                 />
               </div>
             </div>
@@ -259,7 +234,7 @@ export default function OperationTypeDetailPage() {
                 {isSaving
                   ? "Saving..."
                   : isNew
-                    ? "Create Operation Type"
+                    ? "Create Task Type"
                     : "Save Changes"}
               </Button>
             </div>
@@ -356,7 +331,9 @@ function PortsSection({
   ) => (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <h4 className="text-sm font-medium capitalize">{direction}s</h4>
+        <h4 className="text-sm font-medium">
+          {direction === "input" ? "What goes in" : "What comes out"}
+        </h4>
         <Button
           variant="ghost"
           size="sm"
@@ -364,13 +341,13 @@ function PortsSection({
           className="h-7 gap-1 text-xs"
         >
           <Plus className="size-3" />
-          Add {direction}
+          Add
         </Button>
       </div>
 
       {dirPorts.length === 0 && adding !== direction && (
         <p className="text-muted-foreground py-3 text-center text-xs">
-          No {direction} ports configured.
+          No {direction === "input" ? "inputs" : "outputs"} configured.
         </p>
       )}
 
@@ -475,9 +452,9 @@ function PortsSection({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Inputs & Outputs</CardTitle>
+        <CardTitle>What Goes In / What Comes Out</CardTitle>
         <CardDescription>
-          Define what item types flow in and out of this operation.
+          Define what categories of items this task uses and produces.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -570,7 +547,7 @@ function PortForm({
     >
       <div className="mb-3 flex items-center justify-between">
         <span className="text-xs font-medium tracking-wider uppercase">
-          {initial ? "Edit" : "New"} {direction} port
+          {initial ? "Edit" : "New"} {direction === "input" ? "input" : "output"}
         </span>
         <Button
           type="button"
@@ -584,7 +561,7 @@ function PortForm({
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
-          <label className="text-xs font-medium">Port Role</label>
+          <label className="text-xs font-medium">Role</label>
           <Input
             required
             placeholder="primary"
@@ -593,10 +570,10 @@ function PortForm({
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium">Item Type</label>
+          <label className="text-xs font-medium">Category</label>
           <Select value={itemTypeId} onValueChange={setItemTypeId}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select item type" />
+              <SelectValue placeholder="Select category" />
             </SelectTrigger>
             <SelectContent>
               {itemTypes.map((it) => (
@@ -608,7 +585,7 @@ function PortForm({
           </Select>
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium">UOM</label>
+          <label className="text-xs font-medium">Unit</label>
           <Input
             placeholder="each"
             value={uom}
@@ -787,9 +764,9 @@ function FieldsSection({ operationTypeId, fields }: FieldsSectionProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Fields</CardTitle>
+            <CardTitle>Information to Collect</CardTitle>
             <CardDescription>
-              Data fields captured during this operation.
+              Data fields captured during this task.
             </CardDescription>
           </div>
           <Button
@@ -806,7 +783,7 @@ function FieldsSection({ operationTypeId, fields }: FieldsSectionProps) {
       <CardContent>
         {fields.length === 0 && !adding && (
           <p className="text-muted-foreground py-4 text-center text-sm">
-            No fields configured yet.
+            No fields configured yet. Add one to collect data during this task.
           </p>
         )}
 
@@ -1122,7 +1099,7 @@ function StepsSection({ operationTypeId, steps }: StepsSectionProps) {
           <div>
             <CardTitle>Steps</CardTitle>
             <CardDescription>
-              Ordered steps that make up this operation's workflow.
+              Ordered steps that make up this task&apos;s workflow.
             </CardDescription>
           </div>
           <Button

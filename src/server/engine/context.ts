@@ -20,9 +20,9 @@ export function resolveRef(ref: unknown, ctx: ExecCtx): unknown {
     }
 
     if (typeof obj.ref === "string") {
-      const lots = ctx.lots[obj.ref];
-      if (!lots || lots.length === 0) return null;
-      return lots.length === 1 ? lots[0]!.id : lots.map((l) => l.id);
+      const items = ctx.items[obj.ref];
+      if (!items || items.length === 0) return null;
+      return items.length === 1 ? items[0]!.id : items.map((l) => l.id);
     }
 
     const resolved: Record<string, unknown> = {};
@@ -42,13 +42,13 @@ export function resolvePath(path: string, ctx: ExecCtx): unknown {
     return ctx.inputs[parts.slice(1).join(".")];
   }
 
-  const lots = ctx.lots[parts[0]!];
-  if (lots && lots.length > 0) {
-    const firstLot = lots[0]!;
+  const items = ctx.items[parts[0]!];
+  if (items && items.length > 0) {
+    const firstItem = items[0]!;
     const attrPath = parts.slice(1).join(".");
-    if (attrPath === "status") return firstLot.status;
-    if (attrPath === "id") return firstLot.id;
-    const attrs = (firstLot.attributes ?? {}) as Record<string, unknown>;
+    if (attrPath === "status") return firstItem.status;
+    if (attrPath === "id") return firstItem.id;
+    const attrs = (firstItem.attributes ?? {}) as Record<string, unknown>;
     return attrs[attrPath];
   }
 
@@ -75,7 +75,7 @@ export function evaluateCondition(cond: unknown, ctx: ExecCtx): boolean {
   if ("exists" in c && typeof c.exists === "string") {
     const val = resolvePath(c.exists, ctx);
     if (val === undefined || val === null || val === "") return false;
-    if (ctx.lots[c.exists] && ctx.lots[c.exists]!.length > 0) return true;
+    if (ctx.items[c.exists] && ctx.items[c.exists]!.length > 0) return true;
     return true;
   }
 
@@ -119,7 +119,7 @@ export function getStepConfig(step: Step): {
 
 export function getTargetItems(target: string | null, ctx: ExecCtx) {
   if (!target) return [];
-  return ctx.lots[target] ?? [];
+  return ctx.items[target] ?? [];
 }
 
 /**

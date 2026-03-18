@@ -4,8 +4,8 @@ import { describeItems, getTargetItems, resolveRef } from "../context";
 import type { ActionHandler } from "../types";
 
 export const setAttribute: ActionHandler = async (tx, step, config, ctx) => {
-  const targetLots = getTargetItems(step.target, ctx);
-  if (targetLots.length === 0)
+  const targetItems = getTargetItems(step.target, ctx);
+  if (targetItems.length === 0)
     return step.target
       ? `no "${step.target}" provided`
       : "no target role specified";
@@ -15,20 +15,20 @@ export const setAttribute: ActionHandler = async (tx, step, config, ctx) => {
 
   if (!attrKey) return "no attribute key specified";
 
-  for (const targetLot of targetLots) {
+  for (const targetItem of targetItems) {
     const attrs = {
-      ...((targetLot.attributes ?? {}) as Record<string, unknown>),
+      ...((targetItem.attributes ?? {}) as Record<string, unknown>),
     };
     attrs[attrKey] = attrValue;
 
     await tx
       .update(item)
       .set({ attributes: attrs, updatedAt: new Date() })
-      .where(eq(item.id, targetLot.id));
+      .where(eq(item.id, targetItem.id));
 
-    (targetLot as Record<string, unknown>).attributes = attrs;
-    ctx.lotsUpdated.add(targetLot.id);
+    (targetItem as Record<string, unknown>).attributes = attrs;
+    ctx.itemsUpdated.add(targetItem.id);
   }
 
-  return `set ${attrKey} on ${describeItems(targetLots, ctx)}`;
+  return `set ${attrKey} on ${describeItems(targetItems, ctx)}`;
 };

@@ -29,7 +29,7 @@ export default function Home() {
       <div>
         <header>
           <h2 className="text-foreground text-2xl font-semibold tracking-tight">
-            Pipeline
+            Today&apos;s Overview
           </h2>
         </header>
 

@@ -26,7 +26,6 @@ type FormState = {
 type SequenceFormState = {
   enabled: boolean;
   prefix: string;
-  variantCode: string;
   nextNumber: string;
 };
 
@@ -44,7 +43,6 @@ const EMPTY_FORM: FormState = {
 const EMPTY_SEQUENCE_FORM: SequenceFormState = {
   enabled: false,
   prefix: "",
-  variantCode: "_",
   nextNumber: "1",
 };
 
@@ -59,11 +57,6 @@ export default function ItemTypesSettingsPage() {
   const utils = api.useUtils();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const { data: itemTypes = [], isLoading } = api.itemType.list.useQuery();
-  const { data: existingSequence } = api.lot.getCodeSequence.useQuery(
-    { itemTypeId: selectedId ?? "00000000-0000-0000-0000-000000000000" },
-    { enabled: !!selectedId },
-  );
-
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [sequenceForm, setSequenceForm] =
     useState<SequenceFormState>(EMPTY_SEQUENCE_FORM);
@@ -106,8 +99,6 @@ export default function ItemTypesSettingsPage() {
 
   const editMutation = api.itemType.edit.useMutation();
 
-  const upsertSequenceMutation = api.lot.upsertCodeSequence.useMutation();
-
   const deleteMutation = api.itemType.delete.useMutation({
     onSuccess: async () => {
       await utils.itemType.list.invalidate();
@@ -121,27 +112,25 @@ export default function ItemTypesSettingsPage() {
   useEffect(() => {
     if (!selectedId) return;
 
-    if (!existingSequence) {
+    const existing = itemTypes.find((item) => item.id === selectedId);
+    if (!existing?.codePrefix) {
       setSequenceForm(EMPTY_SEQUENCE_FORM);
       return;
     }
 
     setSequenceForm({
       enabled: true,
-      prefix: existingSequence.prefix,
-      variantCode: existingSequence.variantCode,
-      nextNumber: String(existingSequence.nextNumber),
+      prefix: existing.codePrefix,
+      nextNumber: String(existing.codeNextNumber),
     });
-  }, [selectedId, existingSequence]);
+  }, [selectedId, itemTypes]);
 
   const handleNameChange = (value: string) => {
-    setForm((prev) => {
-      const next = { ...prev, name: value };
-      if (!selectedId) {
-        next.slug = slugify(value);
-      }
-      return next;
-    });
+    setForm((prev) => ({
+      ...prev,
+      name: value,
+      slug: slugify(value),
+    }));
   };
 
   const parseConfig = () => {
@@ -178,11 +167,8 @@ export default function ItemTypesSettingsPage() {
       config,
     };
 
-    let sequencePayload: {
-      prefix: string;
-      variantCode: string;
-      nextNumber: number;
-    } | null = null;
+    let codePrefix: string | null = null;
+    let codeNextNumber: number | undefined;
 
     if (sequenceForm.enabled) {
       const nextNumber = Number(sequenceForm.nextNumber);
@@ -194,16 +180,9 @@ export default function ItemTypesSettingsPage() {
         setSequenceError("Sequence prefix is required.");
         return;
       }
-      if (!sequenceForm.variantCode.trim()) {
-        setSequenceError("Variant code is required.");
-        return;
-      }
 
-      sequencePayload = {
-        prefix: sequenceForm.prefix.trim(),
-        variantCode: sequenceForm.variantCode.trim(),
-        nextNumber,
-      };
+      codePrefix = sequenceForm.prefix.trim();
+      codeNextNumber = nextNumber;
     }
     setSequenceError(null);
 
@@ -211,34 +190,18 @@ export default function ItemTypesSettingsPage() {
       await editMutation.mutateAsync({
         id: selectedId,
         ...payload,
+        codePrefix,
+        codeNextNumber,
       });
-      if (sequencePayload) {
-        await upsertSequenceMutation.mutateAsync({
-          itemTypeId: selectedId,
-          ...sequencePayload,
-        });
-      }
       await utils.itemType.list.invalidate();
-      if (selectedId) {
-        await utils.lot.getCodeSequence.invalidate({ itemTypeId: selectedId });
-      }
       return;
     }
 
-    const createdItemType = await createMutation.mutateAsync(payload);
-    if (!createdItemType) {
-      setSequenceError("Failed to create item type.");
-      return;
-    }
-    if (sequencePayload) {
-      await upsertSequenceMutation.mutateAsync({
-        itemTypeId: createdItemType.id,
-        ...sequencePayload,
-      });
-      await utils.lot.getCodeSequence.invalidate({
-        itemTypeId: createdItemType.id,
-      });
-    }
+    await createMutation.mutateAsync({
+      ...payload,
+      codePrefix,
+      codeNextNumber,
+    });
     await utils.itemType.list.invalidate();
     resetForCreate();
   };
@@ -247,30 +210,30 @@ export default function ItemTypesSettingsPage() {
     <div className="container mx-auto max-w-6xl px-6 py-8">
       <div className="mb-6 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Item Types</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Categories</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Create and manage inventory item types.
+            Set up the types of things you track (blocks, batches, trays, etc.)
           </p>
         </div>
         <Button variant="outline" onClick={resetForCreate}>
-          New item type
+          New category
         </Button>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         <Card>
           <CardHeader>
-            <CardTitle>Existing item types</CardTitle>
+            <CardTitle>Existing categories</CardTitle>
             <CardDescription>Pick one to edit.</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
               <p className="text-muted-foreground text-sm">
-                Loading item types...
+                Loading categories...
               </p>
             ) : itemTypes.length === 0 ? (
               <p className="text-muted-foreground text-sm">
-                No item types yet. Create one to get started.
+                No categories yet. Create one to get started.
               </p>
             ) : (
               <div className="space-y-2">
@@ -291,7 +254,9 @@ export default function ItemTypesSettingsPage() {
                         {item.category}
                       </span>
                     </div>
-                    <p className="text-muted-foreground text-xs">{item.slug}</p>
+                    {item.description && (
+                      <p className="text-muted-foreground text-xs">{item.description}</p>
+                    )}
                   </button>
                 ))}
               </div>
@@ -302,41 +267,26 @@ export default function ItemTypesSettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {selectedId ? "Edit item type" : "Create item type"}
+              {selectedId ? "Edit category" : "Create category"}
             </CardTitle>
             <CardDescription>
               {selectedId
-                ? "Update the selected item type."
-                : "Define a new item type for inventory and operations."}
+                ? "Update the selected category."
+                : "Define a new category for your inventory."}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-1 text-sm">
-                  <span>Name</span>
-                  <input
-                    value={form.name}
-                    onChange={(e) => handleNameChange(e.target.value)}
-                    required
-                    className="border-input bg-background w-full rounded-md border px-3 py-2"
-                    placeholder="Fruiting Bed"
-                  />
-                </label>
-
-                <label className="space-y-1 text-sm">
-                  <span>Slug</span>
-                  <input
-                    value={form.slug}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, slug: e.target.value }))
-                    }
-                    required
-                    className="border-input bg-background w-full rounded-md border px-3 py-2"
-                    placeholder="fruiting-bed"
-                  />
-                </label>
-              </div>
+              <label className="space-y-1 text-sm">
+                <span>Name</span>
+                <input
+                  value={form.name}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  required
+                  className="border-input bg-background w-full rounded-md border px-3 py-2"
+                  placeholder="Fruiting Bed"
+                />
+              </label>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="space-y-1 text-sm">
@@ -353,7 +303,7 @@ export default function ItemTypesSettingsPage() {
                 </label>
 
                 <label className="space-y-1 text-sm">
-                  <span>Default UOM</span>
+                  <span>Default Unit</span>
                   <input
                     value={form.defaultUom}
                     onChange={(e) =>
@@ -384,42 +334,7 @@ export default function ItemTypesSettingsPage() {
                 />
               </label>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <label className="space-y-1 text-sm">
-                  <span>Icon</span>
-                  <input
-                    value={form.icon}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, icon: e.target.value }))
-                    }
-                    className="border-input bg-background w-full rounded-md border px-3 py-2"
-                    placeholder="box"
-                  />
-                </label>
-
-                <label className="space-y-1 text-sm">
-                  <span>Color</span>
-                  <input
-                    value={form.color}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, color: e.target.value }))
-                    }
-                    className="border-input bg-background w-full rounded-md border px-3 py-2"
-                    placeholder="#16a34a"
-                  />
-                </label>
-              </div>
-
-              <label className="space-y-1 text-sm">
-                <span>Config (JSON object)</span>
-                <textarea
-                  value={form.configText}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, configText: e.target.value }))
-                  }
-                  className="border-input bg-background min-h-28 w-full rounded-md border px-3 py-2 font-mono text-xs"
-                />
-              </label>
+              
               <div className="grid gap-4 rounded-md border p-4 md:grid-cols-2">
                 <label className="flex items-center gap-2 text-sm md:col-span-2">
                   <input
@@ -433,11 +348,11 @@ export default function ItemTypesSettingsPage() {
                     }
                     className="size-4"
                   />
-                  <span>Configure lot code sequence for this item type</span>
+                  <span>Configure item code sequence for this item type</span>
                 </label>
 
                 <label className="space-y-1 text-sm">
-                  <span>Sequence Name</span>
+                  <span>Code Prefix</span>
                   <input
                     value={sequenceForm.prefix}
                     onChange={(e) =>
@@ -453,22 +368,6 @@ export default function ItemTypesSettingsPage() {
                 </label>
 
                 <label className="space-y-1 text-sm">
-                  <span>Variant Code</span>
-                  <input
-                    value={sequenceForm.variantCode}
-                    onChange={(e) =>
-                      setSequenceForm((prev) => ({
-                        ...prev,
-                        variantCode: e.target.value,
-                      }))
-                    }
-                    disabled={!sequenceForm.enabled}
-                    className="border-input bg-background w-full rounded-md border px-3 py-2 disabled:opacity-50"
-                    placeholder="_"
-                  />
-                </label>
-
-                <label className="space-y-1 text-sm md:col-span-2">
                   <span>Next Number</span>
                   <input
                     value={sequenceForm.nextNumber}
@@ -498,11 +397,9 @@ export default function ItemTypesSettingsPage() {
               <div className="flex items-center gap-2">
                 <Button
                   type="submit"
-                  disabled={
-                    isSaving || isDeleting || upsertSequenceMutation.isPending
-                  }
+                  disabled={isSaving || isDeleting}
                 >
-                  {selectedId ? "Save changes" : "Create item type"}
+                  {selectedId ? "Save changes" : "Create category"}
                 </Button>
                 {selectedId && selectedItemType && (
                   <Button

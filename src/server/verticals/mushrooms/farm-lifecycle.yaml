@@ -25,8 +25,8 @@ description: >
 # 3. Create substrate recipes in inventory (e.g. "sawdust" with
 #    optional ingredient lists).
 #
-# 4. Create spawn lots in inventory, recording variety, supplier,
-#    strain, container type, and lot number.
+# 4. Create spawn items in inventory, recording variety, supplier,
+#    strain, container type, and item number.
 #
 # Per-batch production cycle:
 #
@@ -85,7 +85,7 @@ description: >
 # for extended periods.
 # ─────────────────────────────────────────────────────────────────────
 
-lot_types:
+item_types:
   # ── QR Label ───────────────────────────────────────────────────────
   # Printable labels for blocks, locations, trays, and text/variety.
   # Scanned via mobile app to identify entities.
@@ -114,7 +114,7 @@ lot_types:
 
   # ── Substrate ──────────────────────────────────────────────────────
   # Inventory/recipe item. Created via the web interface and
-  # referenced by batches. Not a per-unit tracked lot — represents
+  # referenced by batches. Not a per-unit tracked item — represents
   # a reusable recipe definition.
   - key: substrate
     name: Substrate
@@ -138,7 +138,7 @@ lot_types:
 
   # ── Spawn ──────────────────────────────────────────────────────────
   # Inventory item representing a mushroom culture used for
-  # inoculation. Each spawn lot records its genetics and sourcing.
+  # inoculation. Each spawn item records its genetics and sourcing.
   - key: spawn
     name: Spawn
     category: inventory
@@ -308,7 +308,7 @@ operation_types:
       name is auto-generated from the date and a sequence number.
 
     inputs:
-      lots:
+      items:
         - key: substrate
           item_type: substrate
           required: true
@@ -328,7 +328,7 @@ operation_types:
 
     steps:
       - name: Create batch
-        action: create_lot
+        action: create_item
         item_type: batch
         as: batch
         with:
@@ -356,7 +356,7 @@ operation_types:
       The dashboard shows an alert for unpasteurized batches.
 
     inputs:
-      lots:
+      items:
         - key: batch
           item_type: batch
           required: true
@@ -430,7 +430,7 @@ operation_types:
     needs: [create_batch]
 
     inputs:
-      lots:
+      items:
         - key: batch
           item_type: batch
           required: true
@@ -460,7 +460,7 @@ operation_types:
 
     steps:
       - name: Create block records
-        action: create_lot
+        action: create_item
         condition: { equals: [inputs.mode, new] }
         item_type: block
         as: blocks
@@ -477,7 +477,7 @@ operation_types:
           relationship: batch_member
 
       - name: Create QR labels
-        action: create_lot
+        action: create_item
         item_type: qr_label
         as: labels
         count: { from: inputs.block_count }
@@ -540,7 +540,7 @@ operation_types:
     needs: [print_block_labels]
 
     inputs:
-      lots:
+      items:
         - key: block
           item_type: block
           scan: qr_code
@@ -619,7 +619,7 @@ operation_types:
     needs: [inoculate]
 
     inputs:
-      lots:
+      items:
         - key: block
           item_type: block
           scan: qr_code
@@ -689,7 +689,7 @@ operation_types:
           options: [pasteurization, inoculation, colonization, fruiting, storage]
           auto: true
 
-      lots:
+      items:
         - key: blocks
           item_type: block
           scan: qr_code
@@ -731,7 +731,7 @@ operation_types:
       pin formation has begun. Can be done at any active block status.
 
     inputs:
-      lots:
+      items:
         - key: blocks
           item_type: block
           scan: qr_code
@@ -790,7 +790,7 @@ operation_types:
     needs: [inoculate]
 
     inputs:
-      lots:
+      items:
         - key: blocks
           item_type: block
           scan: qr_code
@@ -879,7 +879,7 @@ operation_types:
     needs: [harvest]
 
     inputs:
-      lots:
+      items:
         - key: blocks
           item_type: block
           scan: qr_code
@@ -909,7 +909,7 @@ operation_types:
       going through the full lifecycle.
 
     inputs:
-      lots:
+      items:
         - key: blocks
           item_type: block
           scan: qr_code
@@ -963,7 +963,7 @@ operation_types:
       ready for shipment. Closed trays can be reopened if needed.
 
     inputs:
-      lots:
+      items:
         - key: tray
           item_type: tray
           scan: qr_code

@@ -3,17 +3,18 @@ import {
   computeIncrement,
   incrementAttribute,
 } from "./increment-attribute";
-import type { ExecCtx, Lot } from "../types";
+import type { ExecCtx, Item } from "../types";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeLot(overrides: Partial<Lot> = {}): Lot {
+function makeItem(overrides: Partial<Item> = {}): Item {
   return {
-    id: "lot-1",
+    id: "item-1",
     itemTypeId: "item-type-1",
-    lotCode: "LOT-001",
+    templateId: null,
+    code: "ITEM-001",
     status: "active",
     qtyOnHand: "0",
     qtyReserved: "0",
@@ -30,11 +31,11 @@ function makeLot(overrides: Partial<Lot> = {}): Lot {
 
 function makeCtx(overrides: Partial<ExecCtx> = {}): ExecCtx {
   return {
-    lots: {},
+    items: {},
     inputs: {},
     itemTypeNames: new Map(),
-    lotsCreated: [],
-    lotsUpdated: new Set(),
+    itemsCreated: [],
+    itemsUpdated: new Set(),
     lineageCreated: 0,
     operationId: "op-1",
     ...overrides,
@@ -123,7 +124,7 @@ describe("incrementAttribute", () => {
     vi.setSystemTime(new Date("2025-06-01T00:00:00Z"));
   });
 
-  it("returns early when no target lots exist", async () => {
+  it("returns early when no target items exist", async () => {
     const ctx = makeCtx();
     const step = makeStep({ target: "product" });
     const result = await incrementAttribute(tx as never, step, { attribute: "weight", by: 5 }, ctx);
@@ -139,8 +140,8 @@ describe("incrementAttribute", () => {
   });
 
   it("returns early when no attribute key is specified", async () => {
-    const lotObj = makeLot();
-    const ctx = makeCtx({ lots: { product: [lotObj] } });
+    const itemObj = makeItem();
+    const ctx = makeCtx({ items: { product: [itemObj] } });
     const step = makeStep();
     const result = await incrementAttribute(tx as never, step, { by: 5 }, ctx);
     expect(result).toBe("no attribute key specified");
@@ -148,9 +149,9 @@ describe("incrementAttribute", () => {
   });
 
   it("increments an attribute and writes to the database", async () => {
-    const lotObj = makeLot({ attributes: { weight: 10 } });
+    const itemObj = makeItem({ attributes: { weight: 10 } });
     const ctx = makeCtx({
-      lots: { product: [lotObj] },
+      items: { product: [itemObj] },
       itemTypeNames: new Map([["item-type-1", "Product"]]),
     });
     const step = makeStep();
@@ -163,16 +164,16 @@ describe("incrementAttribute", () => {
       attributes: { weight: 15 },
       updatedAt: new Date("2025-06-01T00:00:00Z"),
     });
-    expect(ctx.lotsUpdated.has("lot-1")).toBe(true);
-    expect(lotObj.attributes).toEqual({ weight: 15 });
+    expect(ctx.itemsUpdated.has("item-1")).toBe(true);
+    expect(itemObj.attributes).toEqual({ weight: 15 });
     expect(result).toBe("incremented weight by 5 on 1 Product");
   });
 
-  it("processes multiple target lots", async () => {
-    const lot1 = makeLot({ id: "lot-1", attributes: { count: 1 } });
-    const lot2 = makeLot({ id: "lot-2", attributes: { count: 3 } });
+  it("processes multiple target items", async () => {
+    const item1 = makeItem({ id: "item-1", attributes: { count: 1 } });
+    const item2 = makeItem({ id: "item-2", attributes: { count: 3 } });
     const ctx = makeCtx({
-      lots: { product: [lot1, lot2] },
+      items: { product: [item1, item2] },
       itemTypeNames: new Map([["item-type-1", "Widget"]]),
     });
     const step = makeStep();
@@ -181,17 +182,17 @@ describe("incrementAttribute", () => {
     const result = await incrementAttribute(tx as never, step, config, ctx);
 
     expect(tx.update).toHaveBeenCalledTimes(2);
-    expect(ctx.lotsUpdated.has("lot-1")).toBe(true);
-    expect(ctx.lotsUpdated.has("lot-2")).toBe(true);
-    expect(lot1.attributes).toEqual({ count: 11 });
-    expect(lot2.attributes).toEqual({ count: 13 });
+    expect(ctx.itemsUpdated.has("item-1")).toBe(true);
+    expect(ctx.itemsUpdated.has("item-2")).toBe(true);
+    expect(item1.attributes).toEqual({ count: 11 });
+    expect(item2.attributes).toEqual({ count: 13 });
     expect(result).toBe("incremented count by 10 on 2 Widgets");
   });
 
   it("resolves 'value' config key when 'by' is absent", async () => {
-    const lotObj = makeLot({ attributes: {} });
+    const itemObj = makeItem({ attributes: {} });
     const ctx = makeCtx({
-      lots: { product: [lotObj] },
+      items: { product: [itemObj] },
       itemTypeNames: new Map([["item-type-1", "Item"]]),
     });
     const step = makeStep();
@@ -206,9 +207,9 @@ describe("incrementAttribute", () => {
   });
 
   it("defaults increment to 0 when no by/value/config._value", async () => {
-    const lotObj = makeLot({ attributes: { weight: 10 } });
+    const itemObj = makeItem({ attributes: { weight: 10 } });
     const ctx = makeCtx({
-      lots: { product: [lotObj] },
+      items: { product: [itemObj] },
       itemTypeNames: new Map([["item-type-1", "Item"]]),
     });
     const step = makeStep();

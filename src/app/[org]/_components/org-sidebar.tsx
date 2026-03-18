@@ -36,7 +36,7 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
 
   const mainNav = [
     { label: "Home", href: `/${org}`, icon: Home },
-    { label: "Inventory", href: `/${org}/lots/new`, icon: Package2 },
+    { label: "Inventory", href: `/${org}/items/new`, icon: Package2 },
     {
       label: "Record Task",
       href: `/${org}/operations`,

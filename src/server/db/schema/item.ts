@@ -1,7 +1,6 @@
 import {
   boolean,
   index,
-  integer,
   jsonb,
   numeric,
   pgTable,
@@ -10,7 +9,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { itemTemplate, itemType } from "./item-types";
+import { itemTemplate, itemType, itemTypeVariant } from "./item-types";
 import { location } from "./location";
 import { user } from "./auth";
 import { operation } from "./operation";
@@ -22,20 +21,30 @@ export const item = pgTable(
     // orgId: uuid("org_id")
     //   .notNull()
     //   .references(() => organizations.id),
+
     itemTypeId: uuid("item_type_id")
       .notNull()
       .references(() => itemType.id),
     templateId: uuid("template_id").references(() => itemTemplate.id, {
       onDelete: "set null",
     }),
+    variantId: uuid("variant_id").references(() => itemTypeVariant.id, {
+      onDelete: "set null",
+    }),
     code: text("code").notNull(),
     status: text().notNull().default("created"),
-    qtyOnHand: numeric("qty_on_hand").notNull().default("0"),
-    qtyReserved: numeric("qty_reserved").notNull().default("0"),
-    uom: text().notNull().default("each"),
+
+    notes: text(),
+
+    quantity: numeric("quantity").notNull().default("1"),
+    quantityUom: text("quantity_uom").notNull().default("each"),
+
+    weight: numeric("weight"),
+    weightUom: text("weight_uom"),
+
     locationId: uuid("location_id").references(() => location.id),
     attributes: jsonb().notNull().default({}),
-    notes: text(),
+
     createdBy: uuid("created_by").references(() => user.id),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -45,23 +54,6 @@ export const item = pgTable(
       .defaultNow(),
   },
   (t) => [],
-);
-
-export const itemCodeSequence = pgTable(
-  "item_code_sequence",
-  {
-    id: uuid().primaryKey().defaultRandom(),
-    // orgId: uuid("org_id")
-    //   .notNull()
-    //   .references(() => organizations.id),
-    itemTypeId: uuid("item_type_id")
-      .notNull()
-      .references(() => itemType.id),
-    prefix: text().notNull(),
-    variantCode: text("variant_code").notNull().default("_"),
-    nextNumber: integer("next_number").notNull().default(1),
-  },
-  (t) => [uniqueIndex().on(t.itemTypeId, t.prefix, t.variantCode)],
 );
 
 export const itemIdentifier = pgTable(
@@ -136,7 +128,7 @@ export const itemEvent = pgTable(
       .defaultNow(),
   },
   (t) => [
-    // index("idx_events_lot").on(t.lotId, t.recordedAt),
+    // index("idx_events_item").on(t.itemId, t.recordedAt),
     // index("idx_events_org").on(t.orgId, t.recordedAt),
     // index("idx_events_type").on(t.orgId, t.eventType),
   ],

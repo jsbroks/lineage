@@ -4,8 +4,8 @@ import { describeItems, getTargetItems, resolveRef } from "../context";
 import type { ActionHandler } from "../types";
 
 export const setStatus: ActionHandler = async (tx, step, config, ctx) => {
-  const targetLots = getTargetItems(step.target, ctx);
-  if (targetLots.length === 0)
+  const targetItems = getTargetItems(step.target, ctx);
+  if (targetItems.length === 0)
     return step.target
       ? `no "${step.target}" provided`
       : "no target role specified";
@@ -16,15 +16,15 @@ export const setStatus: ActionHandler = async (tx, step, config, ctx) => {
   );
   if (typeof newStatus !== "string") return "invalid status value";
 
-  for (const targetLot of targetLots) {
-    const oldStatus = targetLot.status;
+  for (const targetItem of targetItems) {
+    const oldStatus = targetItem.status;
     await tx
       .update(item)
       .set({ status: newStatus, updatedAt: new Date() })
-      .where(eq(item.id, targetLot.id));
+      .where(eq(item.id, targetItem.id));
 
     await tx.insert(itemEvent).values({
-      lotId: targetLot.id,
+      itemId: targetItem.id,
       eventType: step.eventType ?? "status_change",
       operationId: ctx.operationId,
       oldStatus,
@@ -32,9 +32,9 @@ export const setStatus: ActionHandler = async (tx, step, config, ctx) => {
       message: `${step.name}: ${oldStatus} → ${newStatus}`,
     });
 
-    targetLot.status = newStatus;
-    ctx.lotsUpdated.add(targetLot.id);
+    targetItem.status = newStatus;
+    ctx.itemsUpdated.add(targetItem.id);
   }
 
-  return `set status to "${newStatus}" on ${describeItems(targetLots, ctx)}`;
+  return `set status to "${newStatus}" on ${describeItems(targetItems, ctx)}`;
 };

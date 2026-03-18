@@ -3,8 +3,8 @@ import { describeItems, getTargetItems, resolveRef } from "../context";
 import type { ActionHandler } from "../types";
 
 export const recordEvent: ActionHandler = async (tx, step, config, ctx) => {
-  const targetLots = getTargetItems(step.target, ctx);
-  if (targetLots.length === 0)
+  const targetItems = getTargetItems(step.target, ctx);
+  if (targetItems.length === 0)
     return step.target
       ? `no "${step.target}" provided`
       : "no target role specified";
@@ -15,9 +15,9 @@ export const recordEvent: ActionHandler = async (tx, step, config, ctx) => {
     ? (resolveRef(config.with, ctx) as Record<string, unknown>)
     : {};
 
-  for (const targetLot of targetLots) {
+  for (const targetItem of targetItems) {
     await tx.insert(itemEvent).values({
-      lotId: targetLot.id,
+      itemId: targetItem.id,
       eventType,
       operationId: ctx.operationId,
       message: step.name,
@@ -25,5 +25,5 @@ export const recordEvent: ActionHandler = async (tx, step, config, ctx) => {
     });
   }
 
-  return `recorded "${eventType}" event on ${describeItems(targetLots, ctx)}`;
+  return `recorded "${eventType}" event on ${describeItems(targetItems, ctx)}`;
 };
