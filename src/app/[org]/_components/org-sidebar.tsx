@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Boxes,
+  ClipboardList,
   Cog,
-  Factory,
   Home,
   MapPin,
   Package2,
@@ -21,6 +21,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
 } from "~/components/ui/sidebar";
 
@@ -28,22 +31,30 @@ type OrgSidebarProps = {
   org: string;
 };
 
-const getNavItems = (org: string) => [
-  { label: "Home", href: `/${org}`, icon: Home },
-  { label: "Item Types", href: `/${org}/settings/item-types`, icon: Boxes },
-  {
-    label: "Operation Types",
-    href: `/${org}/settings/operations`,
-    icon: Settings2,
-  },
-  { label: "Locations", href: `/${org}/settings/locations`, icon: MapPin },
-  { label: "Operations", href: `/${org}/operations`, icon: Factory },
-  { label: "Lots", href: `/${org}/lots/new`, icon: Package2 },
-];
-
 export function OrgSidebar({ org }: OrgSidebarProps) {
   const pathname = usePathname();
-  const navItems = getNavItems(org);
+
+  const mainNav = [
+    { label: "Home", href: `/${org}`, icon: Home },
+    { label: "Inventory", href: `/${org}/lots/new`, icon: Package2 },
+    {
+      label: "Record Task",
+      href: `/${org}/operations`,
+      icon: ClipboardList,
+    },
+  ];
+
+  const setupSubItems = [
+    { label: "Categories", href: `/${org}/settings/item-types`, icon: Boxes },
+    {
+      label: "Task Types",
+      href: `/${org}/settings/operations`,
+      icon: Settings2,
+    },
+    { label: "Rooms & Areas", href: `/${org}/settings/locations`, icon: MapPin },
+  ];
+
+  const isSetupActive = pathname.startsWith(`/${org}/settings`);
 
   return (
     <Sidebar variant="inset" collapsible="icon">
@@ -54,7 +65,7 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
         <SidebarGroup>
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarMenu>
-            {navItems.map((item) => (
+            {mainNav.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton asChild isActive={pathname === item.href}>
                   <Link href={item.href}>
@@ -64,17 +75,40 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
+          </SidebarMenu>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Setup</SidebarGroupLabel>
+          <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
                 isActive={pathname === `/${org}/settings`}
-                tooltip="Settings"
+                tooltip="Setup"
               >
                 <Link href={`/${org}/settings`}>
                   <Cog />
-                  <span>Settings</span>
+                  <span>Setup</span>
                 </Link>
               </SidebarMenuButton>
+              {isSetupActive && (
+                <SidebarMenuSub>
+                  {setupSubItems.map((item) => (
+                    <SidebarMenuSubItem key={item.href}>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={pathname.startsWith(item.href)}
+                      >
+                        <Link href={item.href}>
+                          <item.icon />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  ))}
+                </SidebarMenuSub>
+              )}
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
