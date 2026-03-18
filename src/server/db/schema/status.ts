@@ -7,7 +7,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm/relations";
-import { itemTypes } from "~/app/[org]/data";
 import { itemType } from "~/server/db/schema/item-types";
 
 export const statusDefinition = pgTable(

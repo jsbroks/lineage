@@ -10,13 +10,13 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { itemType } from "./item-types";
+import { itemTemplate, itemType } from "./item-types";
 import { location } from "./location";
 import { user } from "./auth";
 import { operation } from "./operation";
 
-export const lot = pgTable(
-  "lot",
+export const item = pgTable(
+  "item",
   {
     id: uuid().primaryKey().defaultRandom(),
     // orgId: uuid("org_id")
@@ -25,7 +25,10 @@ export const lot = pgTable(
     itemTypeId: uuid("item_type_id")
       .notNull()
       .references(() => itemType.id),
-    lotCode: text("lot_code").notNull(),
+    templateId: uuid("template_id").references(() => itemTemplate.id, {
+      onDelete: "set null",
+    }),
+    code: text("code").notNull(),
     status: text().notNull().default("created"),
     qtyOnHand: numeric("qty_on_hand").notNull().default("0"),
     qtyReserved: numeric("qty_reserved").notNull().default("0"),
@@ -44,8 +47,8 @@ export const lot = pgTable(
   (t) => [],
 );
 
-export const lotCodeSequence = pgTable(
-  "lot_code_sequence",
+export const itemCodeSequence = pgTable(
+  "item_code_sequence",
   {
     id: uuid().primaryKey().defaultRandom(),
     // orgId: uuid("org_id")
@@ -61,15 +64,15 @@ export const lotCodeSequence = pgTable(
   (t) => [uniqueIndex().on(t.itemTypeId, t.prefix, t.variantCode)],
 );
 
-export const lotIdentifier = pgTable(
-  "lot_identifier",
+export const itemIdentifier = pgTable(
+  "item_identifier",
   {
     id: uuid().primaryKey().defaultRandom(),
     // orgId: uuid("org_id")
     //   .notNull()
     //   .references(() => organizations.id),
-    lotId: uuid("lot_id")
-      .references(() => lot.id, { onDelete: "cascade" })
+    itemId: uuid("item_id")
+      .references(() => item.id, { onDelete: "cascade" })
       .notNull(),
     identifierType: text("identifier_type").notNull(),
     identifierValue: text("identifier_value").notNull(),
@@ -84,21 +87,21 @@ export const lotIdentifier = pgTable(
   },
   (t) => [
     uniqueIndex().on(t.identifierType, t.identifierValue),
-    index().on(t.lotId),
+    index().on(t.itemId),
     index().on(t.identifierValue),
   ],
 );
 
-export const lotLineage = pgTable(
-  "lot_lineage",
+export const itemLineage = pgTable(
+  "item_lineage",
   {
     id: uuid().primaryKey().defaultRandom(),
-    parentLotId: uuid("parent_lot_id")
+    parentItemId: uuid("parent_item_id")
       .notNull()
-      .references(() => lot.id),
-    childLotId: uuid("child_lot_id")
+      .references(() => item.id),
+    childItemId: uuid("child_item_id")
       .notNull()
-      .references(() => lot.id),
+      .references(() => item.id),
     relationship: text().notNull(),
     operationId: uuid("operation_id").references(() => operation.id),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -108,13 +111,13 @@ export const lotLineage = pgTable(
   (t) => [],
 );
 
-export const lotEvent = pgTable(
-  "lot_event",
+export const itemEvent = pgTable(
+  "item_event",
   {
     id: uuid().primaryKey().defaultRandom(),
-    lotId: uuid("lot_id")
+    itemId: uuid("item_id")
       .notNull()
-      .references(() => lot.id),
+      .references(() => item.id),
     // orgId: uuid("org_id")
     //   .notNull()
     //   .references(() => organizations.id),

@@ -1,7 +1,18 @@
 import { eq } from "drizzle-orm";
-import { lot } from "~/server/db/schema";
+import { item } from "~/server/db/schema";
 import { describeItems, getTargetItems, resolveRef } from "../context";
 import type { ActionHandler } from "../types";
+
+export function computeIncrement(
+  currentAttrs: Record<string, unknown>,
+  attrKey: string,
+  by: number,
+): Record<string, unknown> {
+  const attrs = { ...currentAttrs };
+  const current = Number(attrs[attrKey] ?? 0) || 0;
+  attrs[attrKey] = current + by;
+  return attrs;
+}
 
 export const incrementAttribute: ActionHandler = async (
   tx,
@@ -22,16 +33,16 @@ export const incrementAttribute: ActionHandler = async (
   if (!attrKey) return "no attribute key specified";
 
   for (const targetLot of targetLots) {
-    const attrs = {
-      ...((targetLot.attributes ?? {}) as Record<string, unknown>),
-    };
-    const current = Number(attrs[attrKey] ?? 0);
-    attrs[attrKey] = current + by;
+    const attrs = computeIncrement(
+      (targetLot.attributes ?? {}) as Record<string, unknown>,
+      attrKey,
+      by,
+    );
 
     await tx
-      .update(lot)
+      .update(item)
       .set({ attributes: attrs, updatedAt: new Date() })
-      .where(eq(lot.id, targetLot.id));
+      .where(eq(item.id, targetLot.id));
 
     (targetLot as Record<string, unknown>).attributes = attrs;
     ctx.lotsUpdated.add(targetLot.id);

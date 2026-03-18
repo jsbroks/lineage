@@ -27,7 +27,7 @@
 import { eq, inArray, sql } from "drizzle-orm";
 import {
   itemType,
-  lot,
+  item,
   operation,
   operationType,
   operationTypeField,
@@ -116,11 +116,11 @@ export async function executeOperation(
     if (lotIds.length > 0) {
       const rows = await tx
         .select()
-        .from(lot)
+        .from(item)
         .where(
           lotIds.length === 1
-            ? eq(lot.id, lotIds[0]!)
-            : sql`${lot.id} = ANY(${lotIds})`,
+            ? eq(item.id, lotIds[0]!)
+            : sql`${item.id} = ANY(${lotIds})`,
         );
 
       if (rows.length !== lotIds.length) {

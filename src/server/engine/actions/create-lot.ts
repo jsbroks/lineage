@@ -1,5 +1,10 @@
 import { eq } from "drizzle-orm";
-import { lot, lotEvent, lotCodeSequence, itemType } from "~/server/db/schema";
+import {
+  item,
+  itemEvent,
+  itemCodeSequence,
+  itemType,
+} from "~/server/db/schema";
 import { resolveRef } from "../context";
 import type { ActionHandler, Lot } from "../types";
 
@@ -30,8 +35,8 @@ export const createLot: ActionHandler = async (tx, step, config, ctx) => {
     let lotCode: string;
     const [sequence] = await tx
       .select()
-      .from(lotCodeSequence)
-      .where(eq(lotCodeSequence.itemTypeId, it.id))
+      .from(itemCodeSequence)
+      .where(eq(itemCodeSequence.itemTypeId, it.id))
       .limit(1);
 
     if (sequence) {
@@ -41,15 +46,15 @@ export const createLot: ActionHandler = async (tx, step, config, ctx) => {
           ? `${sequence.prefix}-${padded}`
           : `${sequence.prefix}-${sequence.variantCode}-${padded}`;
       await tx
-        .update(lotCodeSequence)
+        .update(itemCodeSequence)
         .set({ nextNumber: sequence.nextNumber + 1 })
-        .where(eq(lotCodeSequence.id, sequence.id));
+        .where(eq(itemCodeSequence.id, sequence.id));
     } else {
       lotCode = `${itemTypeSlug}-${crypto.randomUUID().slice(0, 8)}`;
     }
 
     const [created] = await tx
-      .insert(lot)
+      .insert(item)
       .values({
         itemTypeId: it.id,
         lotCode,
@@ -63,7 +68,7 @@ export const createLot: ActionHandler = async (tx, step, config, ctx) => {
       createdLots.push(created);
       ctx.lotsCreated.push(created.id);
 
-      await tx.insert(lotEvent).values({
+      await tx.insert(itemEvent).values({
         lotId: created.id,
         eventType: "created",
         operationId: ctx.operationId,

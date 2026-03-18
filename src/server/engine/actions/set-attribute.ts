@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { lot } from "~/server/db/schema";
+import { item } from "~/server/db/schema";
 import { describeItems, getTargetItems, resolveRef } from "../context";
 import type { ActionHandler } from "../types";
 
@@ -22,9 +22,9 @@ export const setAttribute: ActionHandler = async (tx, step, config, ctx) => {
     attrs[attrKey] = attrValue;
 
     await tx
-      .update(lot)
+      .update(item)
       .set({ attributes: attrs, updatedAt: new Date() })
-      .where(eq(lot.id, targetLot.id));
+      .where(eq(item.id, targetLot.id));
 
     (targetLot as Record<string, unknown>).attributes = attrs;
     ctx.lotsUpdated.add(targetLot.id);

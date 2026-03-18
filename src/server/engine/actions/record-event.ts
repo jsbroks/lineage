@@ -1,4 +1,4 @@
-import { lotEvent } from "~/server/db/schema";
+import { itemEvent } from "~/server/db/schema";
 import { describeItems, getTargetItems, resolveRef } from "../context";
 import type { ActionHandler } from "../types";
 
@@ -16,7 +16,7 @@ export const recordEvent: ActionHandler = async (tx, step, config, ctx) => {
     : {};
 
   for (const targetLot of targetLots) {
-    await tx.insert(lotEvent).values({
+    await tx.insert(itemEvent).values({
       lotId: targetLot.id,
       eventType,
       operationId: ctx.operationId,

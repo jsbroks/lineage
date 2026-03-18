@@ -1,4 +1,4 @@
-import { lotLineage } from "~/server/db/schema";
+import { itemLineage } from "~/server/db/schema";
 import type { ActionHandler } from "../types";
 
 export const setLineage: ActionHandler = async (tx, step, config, ctx) => {
@@ -25,7 +25,7 @@ export const setLineage: ActionHandler = async (tx, step, config, ctx) => {
   // 1:1 pairing when "parents" (plural) is used and counts match
   if (withConfig.parents && childLots.length === parentLots.length) {
     for (let i = 0; i < childLots.length; i++) {
-      await tx.insert(lotLineage).values({
+      await tx.insert(itemLineage).values({
         parentLotId: parentLots[i]!.id,
         childLotId: childLots[i]!.id,
         relationship,
@@ -36,7 +36,7 @@ export const setLineage: ActionHandler = async (tx, step, config, ctx) => {
   } else {
     for (const parent of parentLots) {
       for (const child of childLots) {
-        await tx.insert(lotLineage).values({
+        await tx.insert(itemLineage).values({
           parentLotId: parent.id,
           childLotId: child.id,
           relationship,

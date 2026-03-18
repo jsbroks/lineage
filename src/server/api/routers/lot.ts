@@ -5,11 +5,11 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import {
   itemType,
-  lot,
-  lotCodeSequence,
-  lotEvent,
-  lotIdentifier,
-  lotLineage,
+  item,
+  itemCodeSequence,
+  itemEvent,
+  itemIdentifier,
+  itemLineage,
 } from "~/server/db/schema";
 
 const createLotInput = z
@@ -81,8 +81,8 @@ export const lotRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const [sequence] = await ctx.db
         .select()
-        .from(lotCodeSequence)
-        .where(eq(lotCodeSequence.itemTypeId, input.itemTypeId))
+        .from(itemCodeSequence)
+        .where(eq(itemCodeSequence.itemTypeId, input.itemTypeId))
         .limit(1);
 
       return sequence ?? null;
@@ -93,26 +93,26 @@ export const lotRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const [existing] = await ctx.db
         .select()
-        .from(lotCodeSequence)
-        .where(eq(lotCodeSequence.itemTypeId, input.itemTypeId))
+        .from(itemCodeSequence)
+        .where(eq(itemCodeSequence.itemTypeId, input.itemTypeId))
         .limit(1);
 
       if (existing) {
         const [updated] = await ctx.db
-          .update(lotCodeSequence)
+          .update(itemCodeSequence)
           .set({
             prefix: input.prefix,
             variantCode: input.variantCode,
             nextNumber: input.nextNumber,
           })
-          .where(eq(lotCodeSequence.id, existing.id))
+          .where(eq(itemCodeSequence.id, existing.id))
           .returning();
 
         return updated ?? existing;
       }
 
       const [created] = await ctx.db
-        .insert(lotCodeSequence)
+        .insert(itemCodeSequence)
         .values({
           itemTypeId: input.itemTypeId,
           prefix: input.prefix,
@@ -132,7 +132,7 @@ export const lotRouter = createTRPCRouter({
     }),
 
   list: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db.select().from(lot).orderBy(desc(lot.createdAt));
+    return ctx.db.select().from(item).orderBy(desc(item.createdAt));
   }),
 
   getByCode: publicProcedure
@@ -140,8 +140,8 @@ export const lotRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const [currentLot] = await ctx.db
         .select()
-        .from(lot)
-        .where(eq(lot.lotCode, input.lotCode))
+        .from(item)
+        .where(eq(item.lotCode, input.lotCode))
         .limit(1);
 
       if (!currentLot) {
@@ -172,8 +172,8 @@ export const lotRouter = createTRPCRouter({
         if (input.useSequence) {
           const [sequence] = await tx
             .select()
-            .from(lotCodeSequence)
-            .where(eq(lotCodeSequence.itemTypeId, input.itemTypeId))
+            .from(itemCodeSequence)
+            .where(eq(itemCodeSequence.itemTypeId, input.itemTypeId))
             .limit(1);
 
           if (!sequence) {
@@ -191,13 +191,13 @@ export const lotRouter = createTRPCRouter({
               : `${sequence.prefix}-${sequence.variantCode}-${paddedNumber}`;
 
           await tx
-            .update(lotCodeSequence)
+            .update(itemCodeSequence)
             .set({ nextNumber: sequence.nextNumber + 1 })
-            .where(eq(lotCodeSequence.id, sequence.id));
+            .where(eq(itemCodeSequence.id, sequence.id));
         }
 
         const [newLot] = await tx
-          .insert(lot)
+          .insert(item)
           .values({
             itemTypeId: input.itemTypeId,
             lotCode: lotCodeValue,
@@ -218,12 +218,12 @@ export const lotRouter = createTRPCRouter({
 
         const [linkedIdentifier] = await tx
           .select()
-          .from(lotIdentifier)
-          .where(eq(lotIdentifier.lotId, newLot.id))
+          .from(itemIdentifier)
+          .where(eq(itemIdentifier.lotId, newLot.id))
           .limit(1);
 
         if (!linkedIdentifier) {
-          await tx.insert(lotIdentifier).values({
+          await tx.insert(itemIdentifier).values({
             lotId: newLot.id,
             identifierType: "QR Code",
             identifierValue: `${input.hostname}/l/${newLot.id}`,
@@ -254,7 +254,7 @@ export const lotRouter = createTRPCRouter({
         });
       }
 
-      await ctx.db.insert(lotEvent).values({
+      await ctx.db.insert(itemEvent).values({
         lotId: createdLot.id,
         eventType: "lot_created_manual",
         newStatus: createdLot.status,
@@ -273,8 +273,8 @@ export const lotRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const [currentLot] = await ctx.db
         .select()
-        .from(lot)
-        .where(eq(lot.id, input.lotId))
+        .from(item)
+        .where(eq(item.id, input.lotId))
         .limit(1);
 
       if (!currentLot) {
@@ -292,35 +292,35 @@ export const lotRouter = createTRPCRouter({
 
       const identifiers = await ctx.db
         .select()
-        .from(lotIdentifier)
-        .where(eq(lotIdentifier.lotId, currentLot.id))
-        .orderBy(desc(lotIdentifier.createdAt));
+        .from(itemIdentifier)
+        .where(eq(itemIdentifier.lotId, currentLot.id))
+        .orderBy(desc(itemIdentifier.createdAt));
 
       const events = await ctx.db
         .select()
-        .from(lotEvent)
-        .where(eq(lotEvent.lotId, currentLot.id))
-        .orderBy(desc(lotEvent.recordedAt));
+        .from(itemEvent)
+        .where(eq(itemEvent.lotId, currentLot.id))
+        .orderBy(desc(itemEvent.recordedAt));
 
       const parentLinks = await ctx.db
         .select()
-        .from(lotLineage)
-        .where(eq(lotLineage.childLotId, currentLot.id))
-        .orderBy(desc(lotLineage.createdAt));
+        .from(itemLineage)
+        .where(eq(itemLineage.childLotId, currentLot.id))
+        .orderBy(desc(itemLineage.createdAt));
 
       const childLinks = await ctx.db
         .select()
-        .from(lotLineage)
-        .where(eq(lotLineage.parentLotId, currentLot.id))
-        .orderBy(desc(lotLineage.createdAt));
+        .from(itemLineage)
+        .where(eq(itemLineage.parentLotId, currentLot.id))
+        .orderBy(desc(itemLineage.createdAt));
 
       const parentLots = parentLinks.length
         ? await ctx.db
             .select()
-            .from(lot)
+            .from(item)
             .where(
               inArray(
-                lot.id,
+                item.id,
                 parentLinks.map((link) => link.parentLotId),
               ),
             )
@@ -329,10 +329,10 @@ export const lotRouter = createTRPCRouter({
       const childLots = childLinks.length
         ? await ctx.db
             .select()
-            .from(lot)
+            .from(item)
             .where(
               inArray(
-                lot.id,
+                item.id,
                 childLinks.map((link) => link.childLotId),
               ),
             )
@@ -390,9 +390,9 @@ export const lotRouter = createTRPCRouter({
       }
 
       const existingRows = await ctx.db
-        .select({ lotCode: lot.lotCode })
-        .from(lot)
-        .where(inArray(lot.lotCode, uniqueCodes));
+        .select({ lotCode: item.lotCode })
+        .from(item)
+        .where(inArray(item.lotCode, uniqueCodes));
 
       if (existingRows.length > 0) {
         throw new TRPCError({
@@ -404,7 +404,7 @@ export const lotRouter = createTRPCRouter({
       }
 
       const insertedLots = await ctx.db
-        .insert(lot)
+        .insert(item)
         .values(
           uniqueCodes.map((lotCode) => ({
             itemTypeId: input.itemTypeId,

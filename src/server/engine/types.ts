@@ -1,11 +1,11 @@
 import type { db as dbInstance } from "~/server/db";
-import type { lot, operationTypeStep } from "~/server/db/schema";
+import type { item, operationTypeStep } from "~/server/db/schema";
 
 export type Tx = Parameters<
   Parameters<(typeof dbInstance)["transaction"]>[0]
 >[0];
 
-export type Lot = typeof lot.$inferSelect;
+export type Lot = typeof item.$inferSelect;
 
 export type Step = typeof operationTypeStep.$inferSelect;
 

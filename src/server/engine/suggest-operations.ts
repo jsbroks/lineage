@@ -17,11 +17,7 @@
  */
 
 import { asc, eq, inArray } from "drizzle-orm";
-import {
-  lot,
-  operationType,
-  operationTypePort,
-} from "~/server/db/schema";
+import { item, operationType, operationTypePort } from "~/server/db/schema";
 import type { db as dbInstance } from "~/server/db";
 
 type Db = typeof dbInstance;
@@ -67,12 +63,12 @@ export async function suggestOperations(
   // 1. Load the scanned lots
   const lots = await db
     .select({
-      id: lot.id,
-      itemTypeId: lot.itemTypeId,
-      status: lot.status,
+      id: item.id,
+      itemTypeId: item.itemTypeId,
+      status: item.status,
     })
-    .from(lot)
-    .where(inArray(lot.id, lotIds));
+    .from(item)
+    .where(inArray(item.id, lotIds));
 
   if (lots.length === 0) return [];
 
@@ -95,7 +91,7 @@ export async function suggestOperations(
     .from(operationTypePort)
     .where(eq(operationTypePort.direction, "input"));
 
-  const portsByOpType = new Map<string, (typeof allPorts)>();
+  const portsByOpType = new Map<string, typeof allPorts>();
   for (const port of allPorts) {
     const arr = portsByOpType.get(port.operationTypeId) ?? [];
     arr.push(port);
@@ -132,9 +128,7 @@ export async function suggestOperations(
         candidates.length > 0 && fullyMatched.length < candidates.length;
 
       // Apply qty constraints to select which lots actually fill this port
-      const matched = qtyMax
-        ? fullyMatched.slice(0, qtyMax)
-        : fullyMatched;
+      const matched = qtyMax ? fullyMatched.slice(0, qtyMax) : fullyMatched;
 
       const satisfied = matched.length >= qtyMin && matched.length > 0;
 

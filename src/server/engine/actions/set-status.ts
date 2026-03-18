@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { lot, lotEvent } from "~/server/db/schema";
+import { item, itemEvent } from "~/server/db/schema";
 import { describeItems, getTargetItems, resolveRef } from "../context";
 import type { ActionHandler } from "../types";
 
@@ -19,11 +19,11 @@ export const setStatus: ActionHandler = async (tx, step, config, ctx) => {
   for (const targetLot of targetLots) {
     const oldStatus = targetLot.status;
     await tx
-      .update(lot)
+      .update(item)
       .set({ status: newStatus, updatedAt: new Date() })
-      .where(eq(lot.id, targetLot.id));
+      .where(eq(item.id, targetLot.id));
 
-    await tx.insert(lotEvent).values({
+    await tx.insert(itemEvent).values({
       lotId: targetLot.id,
       eventType: step.eventType ?? "status_change",
       operationId: ctx.operationId,
