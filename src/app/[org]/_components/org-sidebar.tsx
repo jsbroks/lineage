@@ -36,7 +36,7 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
 
   const mainNav = [
     { label: "Home", href: `/${org}`, icon: Home },
-    { label: "Inventory", href: `/${org}/items/new`, icon: Package2 },
+    { label: "Inventory", href: `/${org}/inventory`, icon: Package2 },
     {
       label: "Record Task",
       href: `/${org}/operations`,
@@ -51,7 +51,11 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
       href: `/${org}/settings/operations`,
       icon: Settings2,
     },
-    { label: "Rooms & Areas", href: `/${org}/settings/locations`, icon: MapPin },
+    {
+      label: "Rooms & Areas",
+      href: `/${org}/settings/locations`,
+      icon: MapPin,
+    },
   ];
 
   const isSetupActive = pathname.startsWith(`/${org}/settings`);
