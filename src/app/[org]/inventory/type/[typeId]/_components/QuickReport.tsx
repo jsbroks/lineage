@@ -22,7 +22,24 @@ import {
 } from "~/components/ui/table";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
-import type { AttrDef, LocationDef, StatusDef, VariantDef } from "./types";
+import type { AttrDef, LocationDef, StatusDef, VariantDef } from "./Types";
+
+function formatCentsCurrency(
+  cents: number,
+  currency: string | null,
+): string {
+  const amount = cents / 100;
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: currency ?? "USD",
+      minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${currency ?? "$"}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+}
 
 const DATE_PRESETS = [
   { label: "All time", value: "all" },
@@ -168,6 +185,7 @@ export const QuickReport: React.FC<QuickReportProps> = ({
   const metricFieldOptions = useMemo(() => {
     const opts: { value: string; label: string }[] = [
       { value: "quantity", label: quantityName || "Quantity" },
+      { value: "value", label: "Value" },
     ];
     for (const d of attrDefs) {
       opts.push({
@@ -605,14 +623,28 @@ export const QuickReport: React.FC<QuickReportProps> = ({
                 <TableBody>
                   {reportData.rows.map((row, i) => (
                     <TableRow key={i}>
-                      {reportData.columns.map((col) => (
-                        <TableCell
-                          key={col.key}
-                          className="text-xs tabular-nums"
-                        >
-                          {row[col.key] ?? "—"}
-                        </TableCell>
-                      ))}
+                      {reportData.columns.map((col) => {
+                        const raw = row[col.key];
+                        let display: React.ReactNode = raw ?? "—";
+                        if (
+                          "isCurrency" in col &&
+                          col.isCurrency &&
+                          raw != null
+                        ) {
+                          display = formatCentsCurrency(
+                            Number(raw),
+                            reportData.valueCurrency ?? null,
+                          );
+                        }
+                        return (
+                          <TableCell
+                            key={col.key}
+                            className="text-xs tabular-nums"
+                          >
+                            {display}
+                          </TableCell>
+                        );
+                      })}
                     </TableRow>
                   ))}
                 </TableBody>

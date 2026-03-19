@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import type { VariantDef } from "./types";
+import type { VariantDef } from "./Types";
 
 interface BulkVariantDialogProps {
   open: boolean;

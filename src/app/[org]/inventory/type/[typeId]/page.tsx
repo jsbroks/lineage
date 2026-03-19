@@ -25,6 +25,7 @@ import { ItemsTable } from "./_components/ItemsTable";
 import { BulkStatusDialog } from "./_components/BulkStatusDialog";
 import { BulkDeleteDialog } from "./_components/BulkDeleteDialog";
 import { BulkVariantDialog } from "./_components/BulkVariantDialog";
+import { BulkAttributeDialog } from "./_components/BulkAttributeDialog";
 import { CreateItemsDialog } from "./_components/CreateItemsDialog";
 
 export default function ItemTypeDetailPage() {
@@ -42,6 +43,7 @@ export default function ItemTypeDetailPage() {
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
   const [bulkVariantOpen, setBulkVariantOpen] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkAttributeOpen, setBulkAttributeOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
 
   const utils = api.useUtils();
@@ -76,6 +78,14 @@ export default function ItemTypeDetailPage() {
       void utils.itemType.inventoryOverview.invalidate();
       setSelected(new Set());
       setBulkVariantOpen(false);
+    },
+  });
+
+  const bulkSetAttributes = api.item.bulkSetAttributes.useMutation({
+    onSuccess: () => {
+      void utils.item.listByType.invalidate();
+      setSelected(new Set());
+      setBulkAttributeOpen(false);
     },
   });
 
@@ -243,12 +253,14 @@ export default function ItemTypeDetailPage() {
             onVariantFilterChange={setVariantFilter}
             statuses={statuses}
             variants={variants}
+            attrDefs={attrDefs}
             statusMap={statusMap}
             selected={selected}
             onSelectedChange={setSelected}
             onBulkStatusOpen={() => setBulkStatusOpen(true)}
             onBulkVariantOpen={() => setBulkVariantOpen(true)}
             onBulkDeleteOpen={() => setBulkDeleteOpen(true)}
+            onBulkAttributeOpen={() => setBulkAttributeOpen(true)}
             org={params.org}
             quantityName={it.quantityName}
             quantityUnit={it.quantityDefaultUnit}
@@ -292,6 +304,20 @@ export default function ItemTypeDetailPage() {
           })
         }
         isPending={bulkSetVariant.isPending}
+      />
+
+      <BulkAttributeDialog
+        open={bulkAttributeOpen}
+        onOpenChange={setBulkAttributeOpen}
+        selectedCount={selected.size}
+        attrDefs={attrDefs}
+        onConfirm={(attributes) =>
+          bulkSetAttributes.mutate({
+            itemIds: Array.from(selected),
+            attributes,
+          })
+        }
+        isPending={bulkSetAttributes.isPending}
       />
 
       <CreateItemsDialog

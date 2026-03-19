@@ -703,6 +703,34 @@ export const itemRouter = createTRPCRouter({
       return { updated: updated.length };
     }),
 
+  bulkSetAttributes: publicProcedure
+    .input(
+      z.object({
+        itemIds: z.array(z.uuid()).min(1).max(1000),
+        attributes: z.record(z.string(), z.unknown()),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const items = await ctx.db
+        .select({ id: item.id, attributes: item.attributes })
+        .from(item)
+        .where(inArray(item.id, input.itemIds));
+
+      let updatedCount = 0;
+      for (const existing of items) {
+        const oldAttrs =
+          (existing.attributes as Record<string, unknown>) ?? {};
+        const merged = { ...oldAttrs, ...input.attributes };
+        await ctx.db
+          .update(item)
+          .set({ attributes: merged, updatedAt: new Date() })
+          .where(eq(item.id, existing.id));
+        updatedCount++;
+      }
+
+      return { updated: updatedCount };
+    }),
+
   bulkDelete: publicProcedure
     .input(z.object({ itemIds: z.array(z.uuid()).min(1).max(1000) }))
     .mutation(async ({ ctx, input }) => {
@@ -764,6 +792,7 @@ export const itemRouter = createTRPCRouter({
         "variant",
         "location",
         "quantity",
+        "value",
       ]);
 
       const attrDefs = await ctx.db
@@ -851,6 +880,9 @@ export const itemRouter = createTRPCRouter({
           switch (resolved.key) {
             case "quantity":
               valueExpr = sql`${item.quantity}::numeric`;
+              break;
+            case "value":
+              valueExpr = sql`${item.value}::numeric`;
               break;
             default:
               if (m.op === "count") {
@@ -990,13 +1022,42 @@ export const itemRouter = createTRPCRouter({
 
       const rows = await query;
 
+      const hasValueMetric = input.metrics.some((m) => m.field === "value");
+      let valueCurrency: string | null = null;
+      if (hasValueMetric) {
+        const [currencyRow] = await ctx.db
+          .select({ cur: sql<string>`${item.valueCurrency}` })
+          .from(item)
+          .where(
+            and(
+              eq(item.itemTypeId, input.itemTypeId),
+              sql`${item.valueCurrency} IS NOT NULL`,
+            ),
+          )
+          .groupBy(item.valueCurrency)
+          .orderBy(sql`COUNT(*) DESC`)
+          .limit(1);
+        valueCurrency = currencyRow?.cur ?? null;
+      }
+
+      const valueMetricKeys = new Set(
+        input.metrics
+          .filter((m) => m.field === "value" && m.op !== "count")
+          .map((m) => `${m.op}_${m.field}`),
+      );
+
       const columns = [
         ...groupByExprs.map((g) => ({ key: g.field, label: g.label })),
-        ...metricExprs.map((m) => ({ key: m.field, label: m.label })),
+        ...metricExprs.map((m) => ({
+          key: m.field,
+          label: m.label,
+          isCurrency: valueMetricKeys.has(m.field),
+        })),
       ];
 
       return {
         columns,
+        valueCurrency,
         rows: rows.map((row) => {
           const out: Record<string, string | number> = {};
           for (const col of columns) {

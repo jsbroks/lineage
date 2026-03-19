@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
-import type { ItemRow, StatusDef, VariantDef } from "./types";
+import type { AttrDef, ItemRow, StatusDef, VariantDef } from "./Types";
 
 interface ItemsTableProps {
   items: ItemRow[];
@@ -35,6 +35,7 @@ interface ItemsTableProps {
   onVariantFilterChange: (value: string) => void;
   statuses: StatusDef[];
   variants: VariantDef[];
+  attrDefs: AttrDef[];
   statusMap: Map<
     string,
     {
@@ -49,6 +50,7 @@ interface ItemsTableProps {
   onBulkStatusOpen: () => void;
   onBulkVariantOpen: () => void;
   onBulkDeleteOpen: () => void;
+  onBulkAttributeOpen: () => void;
   org: string;
   quantityName: string | null;
   quantityUnit: string;
@@ -65,12 +67,14 @@ export const ItemsTable: React.FC<ItemsTableProps> = ({
   onVariantFilterChange,
   statuses,
   variants,
+  attrDefs,
   statusMap,
   selected,
   onSelectedChange,
   onBulkStatusOpen,
   onBulkVariantOpen,
   onBulkDeleteOpen,
+  onBulkAttributeOpen,
   org,
   quantityName,
   quantityUnit,
@@ -161,6 +165,16 @@ export const ItemsTable: React.FC<ItemsTableProps> = ({
                 onClick={onBulkVariantOpen}
               >
                 Set variant
+              </Button>
+            )}
+            {attrDefs.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={onBulkAttributeOpen}
+              >
+                Set attributes
               </Button>
             )}
             <Button

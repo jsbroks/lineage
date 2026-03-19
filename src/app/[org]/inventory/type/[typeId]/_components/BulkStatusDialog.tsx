@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import type { StatusDef } from "./types";
+import type { StatusDef } from "./Types";
 
 interface BulkStatusDialogProps {
   open: boolean;

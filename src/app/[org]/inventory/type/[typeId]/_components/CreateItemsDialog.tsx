@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import type { StatusDef, VariantDef } from "./types";
+import type { StatusDef, VariantDef } from "./Types";
 
 interface CreateItemsDialogProps {
   open: boolean;
