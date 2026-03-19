@@ -10,7 +10,7 @@ import { api } from "~/trpc/react";
 import {
   ItemTypeForm,
   type ItemTypeFormData,
-} from "../../_components/item-type-form";
+} from "../../_components/ItemTypeForm";
 import { useItemTypeMutations } from "../../_hooks/use-item-type-mutations";
 
 export default function NewItemTypePage() {

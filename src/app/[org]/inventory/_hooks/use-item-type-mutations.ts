@@ -1,7 +1,7 @@
 "use client";
 
 import { api } from "~/trpc/react";
-import { type ItemTypeFormData } from "../_components/item-type-form";
+import { type ItemTypeFormData } from "../_components/ItemTypeForm";
 
 function buildBasePayload(base: ItemTypeFormData["base"]) {
   return {

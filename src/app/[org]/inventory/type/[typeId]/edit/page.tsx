@@ -17,7 +17,7 @@ import { api } from "~/trpc/react";
 import {
   ItemTypeForm,
   type ItemTypeFormData,
-} from "../../../_components/item-type-form";
+} from "../../../_components/ItemTypeForm";
 import { useItemTypeMutations } from "../../../_hooks/use-item-type-mutations";
 import { Icon } from "~/app/_components/IconPicker";
 
@@ -68,8 +68,7 @@ export default function EditItemTypePage() {
         name: v.name,
         isDefault: v.isDefault,
         isActive: v.isActive,
-        defaultValue:
-          v.defaultValue != null ? String(v.defaultValue) : "",
+        defaultValue: v.defaultValue != null ? String(v.defaultValue) : "",
         defaultValueCurrency: v.defaultValueCurrency ?? "",
         defaultQuantity: v.defaultQuantity ?? "",
         defaultQuantityUnit: v.defaultQuantityUnit ?? "",
@@ -90,7 +89,12 @@ export default function EditItemTypePage() {
       attributeDefinitions: (data.attributeDefinitions ?? []).map((d) => ({
         id: d.id,
         attrKey: d.attrKey,
-        dataType: d.dataType as "text" | "number" | "boolean" | "date" | "select",
+        dataType: d.dataType as
+          | "text"
+          | "number"
+          | "boolean"
+          | "date"
+          | "select",
         isRequired: d.isRequired,
         unit: d.unit ?? "",
       })),
