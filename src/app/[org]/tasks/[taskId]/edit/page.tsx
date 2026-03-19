@@ -55,7 +55,6 @@ export default function EditTaskTypePage() {
         referenceKey: p.referenceKey,
         qtyMin: p.qtyMin ?? "0",
         qtyMax: p.qtyMax ?? "",
-        required: p.required,
         preconditionsStatuses: (p.preconditionsStatuses as string[]) ?? [],
       })),
       inputFields: data.fields.map((f) => ({

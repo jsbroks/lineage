@@ -100,7 +100,8 @@ export function describeItems(
   ctx: ExecCtx,
 ): string {
   if (items.length === 0) return "0 items";
-  const name = ctx.itemTypeNames.get(items[0]!.itemTypeId) ?? "item";
+  const it = ctx.itemTypes.get(items[0]!.itemTypeId);
+  const name = it?.name ?? "item";
   const plural = items.length === 1 ? name : `${name}s`;
   return `${items.length} ${plural}`;
 }

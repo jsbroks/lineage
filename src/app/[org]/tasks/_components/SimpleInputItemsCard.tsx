@@ -20,7 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { Checkbox } from "~/components/ui/checkbox";
 import { api } from "~/trpc/react";
 import type { InputItemRow } from "./OperationTypeForm";
 
@@ -184,15 +183,6 @@ export function SimpleInputItemsCard({
                       className="h-8 text-xs"
                     />
                   </div>
-                  <label className="mt-5 flex items-center gap-1.5 text-xs whitespace-nowrap">
-                    <Checkbox
-                      checked={item.required}
-                      onCheckedChange={(val) =>
-                        onUpdate(idx, { required: val === true })
-                      }
-                    />
-                    Required
-                  </label>
                 </div>
               </div>
             );

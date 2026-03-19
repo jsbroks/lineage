@@ -27,7 +27,6 @@ export type InputItemRow = {
   referenceKey: string;
   qtyMin: string;
   qtyMax: string;
-  required: boolean;
   preconditionsStatuses: string[];
 };
 
@@ -121,7 +120,6 @@ export function OperationTypeForm({
         referenceKey: "",
         qtyMin: "1",
         qtyMax: "",
-        required: true,
         preconditionsStatuses: [],
       },
     ]);

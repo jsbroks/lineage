@@ -48,7 +48,6 @@ const addOperationTypePortInput = z.object({
   referenceKey: z.string().min(1),
   qtyMin: z.string().nullable().optional(),
   qtyMax: z.string().nullable().optional(),
-  required: z.boolean().optional(),
   preconditionsStatuses: z.array(z.string()).nullable().optional(),
 });
 
@@ -58,7 +57,6 @@ const updateOperationTypePortInput = z.object({
   referenceKey: z.string().min(1).optional(),
   qtyMin: z.string().nullable().optional(),
   qtyMax: z.string().nullable().optional(),
-  required: z.boolean().optional(),
   preconditionsStatuses: z.array(z.string()).nullable().optional(),
 });
 
@@ -190,7 +188,6 @@ export const operationTypeRouter = createTRPCRouter({
           referenceKey: input.referenceKey,
           qtyMin: input.qtyMin,
           qtyMax: input.qtyMax,
-          required: input.required,
           preconditionsStatuses: input.preconditionsStatuses,
         })
         .returning();
@@ -402,7 +399,6 @@ export const operationTypeRouter = createTRPCRouter({
             referenceKey: z.string().min(1),
             qtyMin: z.string().nullable().optional(),
             qtyMax: z.string().nullable().optional(),
-            required: z.boolean().optional(),
             preconditionsStatuses: z.array(z.string()).nullable().optional(),
           }),
         ),
@@ -433,7 +429,6 @@ export const operationTypeRouter = createTRPCRouter({
                 referenceKey: p.referenceKey,
                 qtyMin: p.qtyMin ?? null,
                 qtyMax: p.qtyMax ?? null,
-                required: p.required ?? false,
                 preconditionsStatuses: p.preconditionsStatuses ?? null,
               })
               .where(eq(operationTypeInputItem.id, p.id));
@@ -444,7 +439,6 @@ export const operationTypeRouter = createTRPCRouter({
               referenceKey: p.referenceKey,
               qtyMin: p.qtyMin ?? null,
               qtyMax: p.qtyMax ?? null,
-              required: p.required ?? false,
               preconditionsStatuses: p.preconditionsStatuses ?? null,
             });
           }

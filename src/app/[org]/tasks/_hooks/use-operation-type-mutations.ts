@@ -42,7 +42,6 @@ export function useOperationTypeMutations() {
           referenceKey: p.referenceKey.trim(),
           qtyMin: p.qtyMin.trim() || null,
           qtyMax: p.qtyMax.trim() || null,
-          required: p.required,
           preconditionsStatuses:
             p.preconditionsStatuses.length > 0
               ? p.preconditionsStatuses

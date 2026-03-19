@@ -10,7 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
@@ -127,15 +126,6 @@ export function InputItemsCard({
                     className="h-8 text-xs"
                   />
                 </div>
-                <label className="mt-5 flex items-center gap-1.5 text-xs whitespace-nowrap">
-                  <Checkbox
-                    checked={item.required}
-                    onCheckedChange={(val) =>
-                      onUpdate(idx, { required: val === true })
-                    }
-                  />
-                  Required
-                </label>
                 <div className="min-w-[160px] flex-1 space-y-1">
                   <Label className="text-xs">Precondition Statuses</Label>
                   <Input

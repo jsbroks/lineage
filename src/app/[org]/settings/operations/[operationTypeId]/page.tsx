@@ -245,7 +245,6 @@ type PortsSectionProps = {
     referenceKey: string;
     qtyMin: string | null;
     qtyMax: string | null;
-    required: boolean;
     preconditionsStatuses: string[] | null;
   }[];
   itemTypes: { id: string; name: string }[];
@@ -339,7 +338,7 @@ function PortsSection({
                     {itemTypes.find((it) => it.id === port.itemTypeId)?.name ??
                       "Unknown"}
                   </Badge>
-                  {port.required ? (
+                  {port.qtyMin && Number(port.qtyMin) > 0 ? (
                     <Badge
                       variant="ghost"
                       className="bg-blue-300/20 text-xs text-blue-600"
@@ -411,7 +410,6 @@ type PortFormData = {
   referenceKey: string;
   qtyMin: string | null;
   qtyMax: string | null;
-  required: boolean;
   preconditionsStatuses: string[] | null;
 };
 
@@ -434,7 +432,6 @@ function PortForm({
   );
   const [qtyMin, setQtyMin] = useState(initial?.qtyMin ?? "");
   const [qtyMax, setQtyMax] = useState(initial?.qtyMax ?? "");
-  const [required, setRequired] = useState(initial?.required ?? true);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(
     initial?.preconditionsStatuses ?? [],
   );
@@ -459,7 +456,6 @@ function PortForm({
       referenceKey: referenceKey.trim(),
       qtyMin: qtyMin.trim() || null,
       qtyMax: qtyMax.trim() || null,
-      required,
       preconditionsStatuses:
         selectedStatuses.length > 0 ? selectedStatuses : null,
     });
@@ -527,15 +523,6 @@ function PortForm({
             />
           </div>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={required}
-            onChange={(e) => setRequired(e.target.checked)}
-            className="size-4 rounded"
-          />
-          Required
-        </label>
       </div>
 
       <div className="mt-3 space-y-1 sm:col-span-2">
