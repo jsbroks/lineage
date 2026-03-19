@@ -481,7 +481,7 @@ export const itemRouter = createTRPCRouter({
         .leftJoin(itemTypeVariant, eq(item.variantId, itemTypeVariant.id))
         .leftJoin(location, eq(item.locationId, location.id))
         .where(and(...conditions))
-        .orderBy(desc(item.createdAt))
+        .orderBy(desc(item.createdAt), desc(item.code))
         .limit(500);
 
       return items;

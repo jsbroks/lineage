@@ -58,6 +58,7 @@ function datePresetToIso(preset: string): string | null {
 
 interface QuickReportProps {
   typeId: string;
+  quantityName: string | null;
   statusFilter: string;
   setStatusFilter: (value: string) => void;
   variantFilter: string;
@@ -70,6 +71,7 @@ interface QuickReportProps {
 
 export const QuickReport: React.FC<QuickReportProps> = ({
   typeId,
+  quantityName,
   statusFilter,
   setStatusFilter,
   variantFilter,
@@ -165,7 +167,7 @@ export const QuickReport: React.FC<QuickReportProps> = ({
 
   const metricFieldOptions = useMemo(() => {
     const opts: { value: string; label: string }[] = [
-      { value: "quantity", label: "Quantity" },
+      { value: "quantity", label: quantityName || "Quantity" },
     ];
     for (const d of attrDefs) {
       opts.push({
@@ -593,7 +595,9 @@ export const QuickReport: React.FC<QuickReportProps> = ({
                   <TableRow>
                     {reportData.columns.map((col) => (
                       <TableHead key={col.key} className="text-xs">
-                        {col.label}
+                        {quantityName
+                          ? col.label.replace("quantity", quantityName.toLowerCase())
+                          : col.label}
                       </TableHead>
                     ))}
                   </TableRow>

@@ -221,6 +221,7 @@ export default function ItemTypeDetailPage() {
 
           <QuickReport
             typeId={typeId}
+            quantityName={it.quantityName}
             statusFilter={statusFilter}
             setStatusFilter={setStatusFilter}
             variantFilter={variantFilter}
@@ -249,6 +250,8 @@ export default function ItemTypeDetailPage() {
             onBulkVariantOpen={() => setBulkVariantOpen(true)}
             onBulkDeleteOpen={() => setBulkDeleteOpen(true)}
             org={params.org}
+            quantityName={it.quantityName}
+            quantityUnit={it.quantityDefaultUnit}
           />
         </div>
       </div>

@@ -50,6 +50,8 @@ interface ItemsTableProps {
   onBulkVariantOpen: () => void;
   onBulkDeleteOpen: () => void;
   org: string;
+  quantityName: string | null;
+  quantityUnit: string;
 }
 
 export const ItemsTable: React.FC<ItemsTableProps> = ({
@@ -70,6 +72,8 @@ export const ItemsTable: React.FC<ItemsTableProps> = ({
   onBulkVariantOpen,
   onBulkDeleteOpen,
   org,
+  quantityName,
+  quantityUnit,
 }) => {
   const allIds = items.map((i) => i.id);
   const allSelected =
@@ -207,7 +211,7 @@ export const ItemsTable: React.FC<ItemsTableProps> = ({
                   <TableHead>Status</TableHead>
                   {variants.length > 0 && <TableHead>Variant</TableHead>}
                   <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
+                  <TableHead className="text-right">{quantityName || "Qty"}</TableHead>
                   <TableHead>Created</TableHead>
                 </TableRow>
               </TableHeader>
@@ -264,7 +268,7 @@ export const ItemsTable: React.FC<ItemsTableProps> = ({
                         )}
                       </TableCell>
                       <TableCell className="text-right text-sm tabular-nums">
-                        {row.quantity} {row.quantityUom}
+                        {row.quantity} {row.quantityUom ?? quantityUnit}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs">
                         {new Date(row.createdAt).toLocaleDateString()}
