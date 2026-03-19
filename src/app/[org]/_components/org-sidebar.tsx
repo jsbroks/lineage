@@ -9,6 +9,7 @@ import {
   Home,
   MapPin,
   Package2,
+  Printer,
   Settings2,
 } from "lucide-react";
 
@@ -36,11 +37,18 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
 
   const mainNav = [
     { label: "Home", href: `/${org}`, icon: Home },
-    { label: "Inventory", href: `/${org}/inventory`, icon: Package2 },
     {
       label: "Record Task",
       href: `/${org}/operations`,
       icon: ClipboardList,
+    },
+  ];
+
+  const inventorySubItems = [
+    {
+      label: "Print Labels",
+      href: `/${org}/inventory/print`,
+      icon: Printer,
     },
   ];
 
@@ -58,6 +66,7 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
     },
   ];
 
+  const isInventoryActive = pathname.startsWith(`/${org}/inventory`);
   const isSetupActive = pathname.startsWith(`/${org}/settings`);
 
   return (
@@ -79,6 +88,35 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={pathname === `/${org}/inventory`}
+                tooltip="Inventory"
+              >
+                <Link href={`/${org}/inventory`}>
+                  <Package2 />
+                  <span>Inventory</span>
+                </Link>
+              </SidebarMenuButton>
+              {isInventoryActive && (
+                <SidebarMenuSub>
+                  {inventorySubItems.map((item) => (
+                    <SidebarMenuSubItem key={item.href}>
+                      <SidebarMenuSubButton
+                        asChild
+                        isActive={pathname.startsWith(item.href)}
+                      >
+                        <Link href={item.href}>
+                          <item.icon />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  ))}
+                </SidebarMenuSub>
+              )}
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
 

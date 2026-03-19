@@ -487,6 +487,28 @@ export const itemRouter = createTRPCRouter({
       return items;
     }),
 
+  listForPrint: publicProcedure
+    .input(
+      z.object({
+        itemIds: z.array(z.uuid()).min(1).max(500),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const rows = await ctx.db
+        .select({
+          id: item.id,
+          code: item.code,
+          typeName: itemType.name,
+          variantName: itemTypeVariant.name,
+        })
+        .from(item)
+        .innerJoin(itemType, eq(item.itemTypeId, itemType.id))
+        .leftJoin(itemTypeVariant, eq(item.variantId, itemTypeVariant.id))
+        .where(inArray(item.id, input.itemIds));
+
+      return rows;
+    }),
+
   statusCountsByType: publicProcedure
     .input(z.object({ itemTypeId: z.uuid() }))
     .query(async ({ ctx, input }) => {

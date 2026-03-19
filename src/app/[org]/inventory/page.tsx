@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Printer } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -33,6 +33,11 @@ export default function InventoryPage() {
           <h1 className="text-lg font-semibold">Inventory</h1>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/${params.org}/inventory/print`}>
+              <Printer className="mr-1 size-3.5" /> Print Labels
+            </Link>
+          </Button>
           <Button size="sm" asChild>
             <Link href={`/${params.org}/inventory/type/new`}>
               <Plus className="mr-1 size-3.5" /> New type
