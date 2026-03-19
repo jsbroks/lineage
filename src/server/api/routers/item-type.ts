@@ -35,6 +35,33 @@ export const itemTypeRouter = createTRPCRouter({
     return ctx.db.select().from(itemType).orderBy(asc(itemType.name));
   }),
 
+  listWithStatuses: publicProcedure.query(async ({ ctx }) => {
+    const types = await ctx.db
+      .select()
+      .from(itemType)
+      .orderBy(asc(itemType.name));
+    const statuses = await ctx.db
+      .select()
+      .from(itemTypeStatusDefinition)
+      .orderBy(asc(itemTypeStatusDefinition.ordinal));
+
+    const statusesByType = new Map<
+      string,
+      (typeof statuses)[number][]
+    >();
+    for (const s of statuses) {
+      if (!statusesByType.has(s.itemTypeId)) {
+        statusesByType.set(s.itemTypeId, []);
+      }
+      statusesByType.get(s.itemTypeId)!.push(s);
+    }
+
+    return types.map((t) => ({
+      ...t,
+      statuses: statusesByType.get(t.id) ?? [],
+    }));
+  }),
+
   create: publicProcedure
     .input(itemTypeCreateInput)
     .mutation(async ({ ctx, input }) => {

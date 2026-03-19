@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { GeneralCard } from "./GeneralCard";
-import { InputItemsCard } from "./InputItemsCard";
-import { InputFieldsCard } from "./InputFieldsCard";
-import { StepsCard } from "./StepsCard";
+import { SimpleInputItemsCard } from "./SimpleInputItemsCard";
+import { SimpleInputFieldsCard } from "./SimpleInputFieldsCard";
+import { SimpleStepsCard } from "./SimpleStepsCard";
+import {
+  simpleStepsToStepRows,
+  stepRowsToSimpleSteps,
+  type SimpleStepRow,
+} from "~/lib/simple-steps";
 
 export type OperationTypeBaseValues = {
   name: string;
@@ -71,6 +76,12 @@ export function OperationTypeForm({
   isSubmitting,
   submitLabel,
 }: Props) {
+  const initialConversion = useMemo(() => {
+    if (!initialData?.steps.length)
+      return { steps: [], isFullyConvertible: true };
+    return stepRowsToSimpleSteps(initialData.steps);
+  }, [initialData]);
+
   const [base, setBase] = useState<OperationTypeBaseValues>(
     initialData?.base ?? EMPTY_BASE,
   );
@@ -80,20 +91,27 @@ export function OperationTypeForm({
   const [inputFields, setInputFields] = useState<InputFieldRow[]>(
     initialData?.inputFields ?? [],
   );
-  const [steps, setSteps] = useState<StepRow[]>(initialData?.steps ?? []);
+  const [simpleSteps, setSimpleSteps] = useState<SimpleStepRow[]>(
+    initialConversion.steps,
+  );
 
   useEffect(() => {
     if (!initialData) return;
     setBase(initialData.base);
     setInputItems(initialData.inputItems);
     setInputFields(initialData.inputFields);
-    setSteps(initialData.steps);
+
+    const conversion = stepRowsToSimpleSteps(initialData.steps);
+    setSimpleSteps(conversion.steps);
   }, [initialData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const steps = simpleStepsToStepRows(simpleSteps);
     await onSubmit({ base, inputItems, inputFields, steps });
   };
+
+  // ── Input items CRUD ───────────────────────────────────────────────
 
   const addInputItem = () =>
     setInputItems((prev) => [
@@ -101,9 +119,9 @@ export function OperationTypeForm({
       {
         itemTypeId: "",
         referenceKey: "",
-        qtyMin: "0",
+        qtyMin: "1",
         qtyMax: "",
-        required: false,
+        required: true,
         preconditionsStatuses: [],
       },
     ]);
@@ -115,6 +133,8 @@ export function OperationTypeForm({
     setInputItems((prev) =>
       prev.map((item, i) => (i === idx ? { ...item, ...patch } : item)),
     );
+
+  // ── Input fields CRUD ──────────────────────────────────────────────
 
   const addInputField = () =>
     setInputFields((prev) => [
@@ -136,44 +156,29 @@ export function OperationTypeForm({
       prev.map((field, i) => (i === idx ? { ...field, ...patch } : field)),
     );
 
-  const addStep = () =>
-    setSteps((prev) => [
-      ...prev,
-      { name: "", action: "set-item", target: "", value: "{}" },
-    ]);
-
-  const removeStep = (idx: number) =>
-    setSteps((prev) => prev.filter((_, i) => i !== idx));
-
-  const updateStep = (idx: number, patch: Partial<StepRow>) =>
-    setSteps((prev) =>
-      prev.map((step, i) => (i === idx ? { ...step, ...patch } : step)),
-    );
-
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <GeneralCard base={base} setBase={setBase} />
 
-      <InputItemsCard
+      <SimpleInputItemsCard
         inputItems={inputItems}
         onAdd={addInputItem}
         onRemove={removeInputItem}
         onUpdate={updateInputItem}
       />
 
-      <InputFieldsCard
+      <SimpleInputFieldsCard
         inputFields={inputFields}
         onAdd={addInputField}
         onRemove={removeInputField}
         onUpdate={updateInputField}
       />
 
-      <StepsCard
-        steps={steps}
+      <SimpleStepsCard
+        steps={simpleSteps}
         inputItems={inputItems}
-        onAdd={addStep}
-        onRemove={removeStep}
-        onUpdate={updateStep}
+        inputFields={inputFields}
+        onUpdate={setSimpleSteps}
       />
 
       <div className="flex items-center gap-2">
