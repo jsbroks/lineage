@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
-import { Printer, Search } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Circle, PackagePlus, Printer, Search } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
@@ -14,6 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "~/components/ui/accordion";
 import { Separator } from "~/components/ui/separator";
 import { api } from "~/trpc/react";
 
@@ -22,6 +28,8 @@ import {
   type LabelContent,
   type LabelTemplate,
 } from "../_lib/templates";
+
+type SourceMode = "existing" | "create";
 
 interface ConfigPanelProps {
   selectedTemplate: LabelTemplate;
@@ -43,15 +51,61 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
   onPrint,
 }) => {
   const [typeId, setTypeId] = useState<string>("");
+  const [sourceMode, setSourceMode] = useState<SourceMode>("create");
   const [search, setSearch] = useState("");
 
+  const [batchCount, setBatchCount] = useState("10");
+  const [batchVariant, setBatchVariant] = useState("none");
+  const [batchStatus, setBatchStatus] = useState("");
+  const [batchError, setBatchError] = useState<string | null>(null);
+  const [attrValues, setAttrValues] = useState<Record<string, unknown>>({});
+
+  const utils = api.useUtils();
+
   const { data: types = [] } = api.itemType.list.useQuery();
+
+  const { data: typeData } = api.itemType.getById.useQuery(
+    { id: typeId },
+    { enabled: !!typeId },
+  );
+  const statuses = typeData?.statuses ?? [];
+  const variants = typeData?.variants ?? [];
+  const attrDefs = typeData?.attributeDefinitions ?? [];
+
+  useEffect(() => {
+    if (!attrDefs.length) return;
+    const defaults: Record<string, unknown> = {};
+    for (const d of attrDefs) {
+      if (d.defaultValue != null && d.defaultValue !== "") {
+        if (d.dataType === "number")
+          defaults[d.attrKey] = Number(d.defaultValue);
+        else if (d.dataType === "boolean")
+          defaults[d.attrKey] = d.defaultValue === "true";
+        else defaults[d.attrKey] = d.defaultValue;
+      }
+    }
+    setAttrValues(defaults);
+  }, [attrDefs]);
 
   const { data: items = [], isLoading: itemsLoading } =
     api.item.listByType.useQuery(
       { itemTypeId: typeId, search: search.trim() || undefined },
-      { enabled: !!typeId },
+      { enabled: !!typeId && sourceMode === "existing" },
     );
+
+  const batchCreate = api.item.batchCreate.useMutation({
+    onSuccess: (data) => {
+      const newIds = new Set(data.items.map((i) => i.id));
+      onSelectedItemIdsChange(newIds);
+      void utils.item.listByType.invalidate();
+      void utils.itemType.getById.invalidate({ id: typeId });
+      setBatchError(null);
+      setSourceMode("existing");
+    },
+    onError: (err) => {
+      setBatchError(err.message);
+    },
+  });
 
   const thermalTemplates = useMemo(
     () => LABEL_TEMPLATES.filter((t) => t.category === "thermal"),
@@ -85,13 +139,32 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
     onContentChange({ ...content, [key]: !content[key] });
   }
 
+  function handleBatchCreate() {
+    const cnt = parseInt(batchCount, 10);
+    if (!cnt || cnt < 1 || !typeId) return;
+    const initialStatus = statuses.find((s) => s.isInitial);
+    const attributes: Record<string, unknown> = {};
+    for (const d of attrDefs) {
+      const v = attrValues[d.attrKey];
+      if (v !== undefined && v !== null && v !== "") {
+        attributes[d.attrKey] = v;
+      }
+    }
+    batchCreate.mutate({
+      itemTypeId: typeId,
+      useSequence: true,
+      count: cnt,
+      variantId: batchVariant === "none" ? null : batchVariant,
+      status: batchStatus || initialStatus?.slug || "created",
+      attributes: Object.keys(attributes).length > 0 ? attributes : undefined,
+    });
+  }
+
+  const parsedBatchCount = parseInt(batchCount, 10);
+  const codePrefix = typeData?.itemType?.codePrefix ?? null;
+
   return (
     <div className="flex h-full w-80 shrink-0 flex-col overflow-hidden border-r">
-      <div className="flex shrink-0 items-center gap-2 border-b px-4 py-3">
-        <Printer className="text-muted-foreground size-4" />
-        <h2 className="text-sm font-semibold">Print Labels</h2>
-      </div>
-
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
         {/* Item Type */}
         <div className="space-y-1.5">
@@ -101,6 +174,10 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
             onValueChange={(v) => {
               setTypeId(v);
               onSelectedItemIdsChange(new Set());
+              setBatchError(null);
+              setBatchStatus("");
+              setBatchVariant("none");
+              setAttrValues({});
             }}
           >
             <SelectTrigger className="h-8 text-xs">
@@ -116,8 +193,36 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
           </Select>
         </div>
 
-        {/* Item Selection */}
+        {/* Source mode toggle */}
         {typeId && (
+          <div className="flex gap-1 rounded-md border p-0.5">
+            <button
+              type="button"
+              onClick={() => setSourceMode("existing")}
+              className={`flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
+                sourceMode === "existing"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Existing Items
+            </button>
+            <button
+              type="button"
+              onClick={() => setSourceMode("create")}
+              className={`flex-1 rounded px-2 py-1 text-xs font-medium transition-colors ${
+                sourceMode === "create"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Create Batch
+            </button>
+          </div>
+        )}
+
+        {/* Existing item selection */}
+        {typeId && sourceMode === "existing" && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs">Items</Label>
@@ -183,110 +288,255 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
           </div>
         )}
 
-        <Separator />
+        {/* Batch creation form */}
+        {typeId && sourceMode === "create" && (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">How many?</Label>
+              <Input
+                type="number"
+                min={1}
+                max={1000}
+                className="h-8 text-xs"
+                value={batchCount}
+                onChange={(e) => setBatchCount(e.target.value)}
+                placeholder="10"
+              />
+              <p className="text-muted-foreground text-xs">
+                Max 1,000 per batch
+                {codePrefix ? ` \u00B7 ${codePrefix}-XXXXX` : ""}
+              </p>
+            </div>
 
-        {/* Template Selection */}
-        <div className="space-y-1.5">
-          <Label className="text-xs">Label Template</Label>
-          <Select
-            value={selectedTemplate.id}
-            onValueChange={(id) => {
-              const t = LABEL_TEMPLATES.find((t) => t.id === id);
-              if (t) onTemplateChange(t);
-            }}
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem disabled value="_thermal_header">
-                <span className="text-muted-foreground text-xs font-semibold uppercase">
-                  Thermal
-                </span>
-              </SelectItem>
-              {thermalTemplates.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name}
-                </SelectItem>
-              ))}
-              <SelectItem disabled value="_sheet_header">
-                <span className="text-muted-foreground text-xs font-semibold uppercase">
-                  Sheet
-                </span>
-              </SelectItem>
-              {sheetTemplates.map((t) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-muted-foreground text-xs">
-            {selectedTemplate.labelWidth}&quot; &times;{" "}
-            {selectedTemplate.labelHeight}&quot;
-            {selectedTemplate.category === "sheet" &&
-              ` \u00B7 ${selectedTemplate.columns * selectedTemplate.rows}/sheet`}
-          </p>
-        </div>
+            {variants.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Variant</Label>
+                <Select value={batchVariant} onValueChange={setBatchVariant}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Unassigned" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Unassigned</SelectItem>
+                    {variants.map((v) => (
+                      <SelectItem key={v.id} value={v.id}>
+                        {v.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-        <Separator />
+            {statuses.length > 0 && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Initial status</Label>
+                <Select
+                  value={
+                    batchStatus || statuses.find((s) => s.isInitial)?.slug || ""
+                  }
+                  onValueChange={setBatchStatus}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {statuses.map((s) => (
+                      <SelectItem key={s.slug} value={s.slug}>
+                        <div className="flex items-center gap-2">
+                          <Circle
+                            className="size-2"
+                            fill={s.color ?? "currentColor"}
+                            stroke={s.color ?? "currentColor"}
+                          />
+                          {s.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-        {/* Label Content */}
-        <div className="space-y-2">
-          <Label className="text-xs">Label Content</Label>
+            {attrDefs.length > 0 && (
+              <>
+                <Separator />
+                <div className="space-y-2.5">
+                  <Label className="text-muted-foreground text-xs tracking-wide uppercase">
+                    Attributes
+                  </Label>
+                  {attrDefs.map((d) => (
+                    <div key={d.id} className="space-y-1">
+                      <Label className="text-xs font-medium">
+                        {d.attrKey}
+                        {d.isRequired && (
+                          <span className="text-destructive ml-0.5">*</span>
+                        )}
+                        {d.unit && (
+                          <span className="text-muted-foreground ml-1 font-normal">
+                            ({d.unit})
+                          </span>
+                        )}
+                      </Label>
+                      <AttrInput
+                        def={d}
+                        value={attrValues[d.attrKey]}
+                        onChange={(v) =>
+                          setAttrValues((prev) => ({
+                            ...prev,
+                            [d.attrKey]: v,
+                          }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
 
-          <label className="flex cursor-pointer items-center gap-2">
-            <Checkbox
-              checked={content.showQrCode}
-              onCheckedChange={() => toggleContent("showQrCode")}
-            />
-            <span className="text-xs">QR Code</span>
-          </label>
+            {!codePrefix && (
+              <p className="text-destructive text-xs">
+                No code prefix configured. Edit this type to set one before
+                creating items.
+              </p>
+            )}
 
-          <label className="flex cursor-pointer items-center gap-2">
-            <Checkbox
-              checked={content.showBarcode}
-              onCheckedChange={() => toggleContent("showBarcode")}
-            />
-            <span className="text-xs">Barcode</span>
-          </label>
+            {batchError && (
+              <p className="text-destructive text-xs">{batchError}</p>
+            )}
 
-          <label className="flex cursor-pointer items-center gap-2">
-            <Checkbox
-              checked={content.showItemCode}
-              onCheckedChange={() => toggleContent("showItemCode")}
-            />
-            <span className="text-xs">Item Code</span>
-          </label>
-
-          <label className="flex cursor-pointer items-center gap-2">
-            <Checkbox
-              checked={content.showTypeName}
-              onCheckedChange={() => toggleContent("showTypeName")}
-            />
-            <span className="text-xs">Type Name</span>
-          </label>
-
-          <label className="flex cursor-pointer items-center gap-2">
-            <Checkbox
-              checked={content.showVariantName}
-              onCheckedChange={() => toggleContent("showVariantName")}
-            />
-            <span className="text-xs">Variant Name</span>
-          </label>
-
-          <div className="space-y-1">
-            <Label className="text-xs">Custom Text</Label>
-            <Input
-              className="h-7 text-xs"
-              placeholder="Optional text on every label"
-              value={content.customText}
-              onChange={(e) =>
-                onContentChange({ ...content, customText: e.target.value })
+            <Button
+              size="sm"
+              className="w-full"
+              disabled={
+                batchCreate.isPending ||
+                !codePrefix ||
+                !batchCount ||
+                parsedBatchCount < 1
               }
-            />
+              onClick={handleBatchCreate}
+            >
+              <PackagePlus className="mr-1.5 size-3.5" />
+              {batchCreate.isPending
+                ? "Creating..."
+                : `Create ${parsedBatchCount || 0} & add to print`}
+            </Button>
           </div>
-        </div>
+        )}
+
+        <Accordion type="multiple" className="-mx-4">
+          <AccordionItem value="template" className="border-b px-4">
+            <AccordionTrigger className="py-2 text-xs">
+              Label Template
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-1.5">
+                <Select
+                  value={selectedTemplate.id}
+                  onValueChange={(id) => {
+                    const t = LABEL_TEMPLATES.find((t) => t.id === id);
+                    if (t) onTemplateChange(t);
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem disabled value="_thermal_header">
+                      <span className="text-muted-foreground text-xs font-semibold uppercase">
+                        Thermal
+                      </span>
+                    </SelectItem>
+                    {thermalTemplates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                    <SelectItem disabled value="_sheet_header">
+                      <span className="text-muted-foreground text-xs font-semibold uppercase">
+                        Sheet
+                      </span>
+                    </SelectItem>
+                    {sheetTemplates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-muted-foreground text-xs">
+                  {selectedTemplate.labelWidth}&quot; &times;{" "}
+                  {selectedTemplate.labelHeight}&quot;
+                  {selectedTemplate.category === "sheet" &&
+                    ` \u00B7 ${selectedTemplate.columns * selectedTemplate.rows}/sheet`}
+                </p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="content" className="border-b-0 px-4">
+            <AccordionTrigger className="py-2 text-xs">
+              Label Content
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-2">
+                <label className="flex cursor-pointer items-center gap-2">
+                  <Checkbox
+                    checked={content.showQrCode}
+                    onCheckedChange={() => toggleContent("showQrCode")}
+                  />
+                  <span className="text-xs">QR Code</span>
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-2">
+                  <Checkbox
+                    checked={content.showBarcode}
+                    onCheckedChange={() => toggleContent("showBarcode")}
+                  />
+                  <span className="text-xs">Barcode</span>
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-2">
+                  <Checkbox
+                    checked={content.showItemCode}
+                    onCheckedChange={() => toggleContent("showItemCode")}
+                  />
+                  <span className="text-xs">Item Code</span>
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-2">
+                  <Checkbox
+                    checked={content.showTypeName}
+                    onCheckedChange={() => toggleContent("showTypeName")}
+                  />
+                  <span className="text-xs">Type Name</span>
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-2">
+                  <Checkbox
+                    checked={content.showVariantName}
+                    onCheckedChange={() => toggleContent("showVariantName")}
+                  />
+                  <span className="text-xs">Variant Name</span>
+                </label>
+
+                <div className="space-y-1">
+                  <Label className="text-xs">Custom Text</Label>
+                  <Input
+                    className="h-7 text-xs"
+                    placeholder="Optional text on every label"
+                    value={content.customText}
+                    onChange={(e) =>
+                      onContentChange({
+                        ...content,
+                        customText: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
 
       <div className="shrink-0 border-t px-4 py-3">
@@ -305,4 +555,90 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
       </div>
     </div>
   );
+};
+
+interface AttrDef {
+  attrKey: string;
+  dataType: string;
+  isRequired: boolean;
+  unit: string | null;
+  options: unknown;
+  defaultValue: string | null;
+}
+
+const AttrInput: React.FC<{
+  def: AttrDef;
+  value: unknown;
+  onChange: (value: unknown) => void;
+}> = ({ def, value, onChange }) => {
+  switch (def.dataType) {
+    case "boolean":
+      return (
+        <Select
+          value={value === true ? "true" : value === false ? "false" : ""}
+          onValueChange={(v) => onChange(v === "true")}
+        >
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="Select..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="true">Yes</SelectItem>
+            <SelectItem value="false">No</SelectItem>
+          </SelectContent>
+        </Select>
+      );
+
+    case "select":
+      return (
+        <Select
+          value={(value as string) ?? ""}
+          onValueChange={(v) => onChange(v)}
+        >
+          <SelectTrigger className="h-8 text-xs">
+            <SelectValue placeholder="Select..." />
+          </SelectTrigger>
+          <SelectContent>
+            {Array.isArray(def.options) &&
+              (def.options as string[]).map((opt) => (
+                <SelectItem key={opt} value={opt}>
+                  {opt}
+                </SelectItem>
+              ))}
+          </SelectContent>
+        </Select>
+      );
+
+    case "number":
+      return (
+        <Input
+          type="number"
+          className="h-8 text-xs"
+          value={(value as string) ?? ""}
+          onChange={(e) =>
+            onChange(e.target.value ? Number(e.target.value) : null)
+          }
+          placeholder="Enter value..."
+        />
+      );
+
+    case "date":
+      return (
+        <Input
+          type="date"
+          className="h-8 text-xs"
+          value={(value as string) ?? ""}
+          onChange={(e) => onChange(e.target.value || null)}
+        />
+      );
+
+    default:
+      return (
+        <Input
+          className="h-8 text-xs"
+          value={(value as string) ?? ""}
+          onChange={(e) => onChange(e.target.value || null)}
+          placeholder="Enter value..."
+        />
+      );
+  }
 };
