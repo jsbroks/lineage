@@ -1,0 +1,626 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { BarChart3, ChevronDown, Plus, X } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
+import { api } from "~/trpc/react";
+import { cn } from "~/lib/utils";
+import type { AttrDef, LocationDef, StatusDef, VariantDef } from "./types";
+
+const DATE_PRESETS = [
+  { label: "All time", value: "all" },
+  { label: "Today", value: "today" },
+  { label: "Last 7 days", value: "7d" },
+  { label: "Last 30 days", value: "30d" },
+  { label: "Last 90 days", value: "90d" },
+  { label: "This year", value: "ytd" },
+  { label: "Custom range", value: "custom" },
+] as const;
+
+function datePresetToIso(preset: string): string | null {
+  const now = new Date();
+  switch (preset) {
+    case "all":
+      return null;
+    case "today": {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      return d.toISOString();
+    }
+    case "7d":
+      return new Date(now.getTime() - 7 * 86_400_000).toISOString();
+    case "30d":
+      return new Date(now.getTime() - 30 * 86_400_000).toISOString();
+    case "90d":
+      return new Date(now.getTime() - 90 * 86_400_000).toISOString();
+    case "ytd":
+      return new Date(now.getFullYear(), 0, 1).toISOString();
+    default:
+      return null;
+  }
+}
+
+interface QuickReportProps {
+  typeId: string;
+  statusFilter: string;
+  setStatusFilter: (value: string) => void;
+  variantFilter: string;
+  setVariantFilter: (value: string) => void;
+  statuses: StatusDef[];
+  variants: VariantDef[];
+  locations: LocationDef[];
+  attrDefs: AttrDef[];
+}
+
+export const QuickReport: React.FC<QuickReportProps> = ({
+  typeId,
+  statusFilter,
+  setStatusFilter,
+  variantFilter,
+  setVariantFilter,
+  statuses,
+  variants,
+  locations,
+  attrDefs,
+}) => {
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportGroupBy, setReportGroupBy] = useState<string[]>([]);
+  const [reportMetrics, setReportMetrics] = useState<
+    { field: string; op: "count" | "sum" | "avg" | "min" | "max" }[]
+  >([{ field: "quantity", op: "count" }]);
+  const [reportLocationId, setReportLocationId] = useState<string>("all");
+  const [reportAttrFilters, setReportAttrFilters] = useState<
+    Record<string, string>
+  >({});
+  const [reportDatePresets, setReportDatePresets] = useState<
+    Record<string, string>
+  >({});
+  const [reportDateCustomFrom, setReportDateCustomFrom] = useState<
+    Record<string, string>
+  >({});
+  const [reportDateCustomTo, setReportDateCustomTo] = useState<
+    Record<string, string>
+  >({});
+  const [activeFilterKeys, setActiveFilterKeys] = useState<Set<string>>(
+    new Set(),
+  );
+
+  const computedAttrFilters = useMemo(() => {
+    const filters: { key: string; op: "eq" | "gte" | "lte"; value: string }[] =
+      [];
+    for (const [key, value] of Object.entries(reportAttrFilters)) {
+      if (value) filters.push({ key, op: "eq", value });
+    }
+    for (const [key, preset] of Object.entries(reportDatePresets)) {
+      if (preset === "custom") {
+        const from = reportDateCustomFrom[key];
+        const to = reportDateCustomTo[key];
+        if (from)
+          filters.push({ key, op: "gte", value: new Date(from).toISOString() });
+        if (to) {
+          const endOfDay = new Date(to);
+          endOfDay.setHours(23, 59, 59, 999);
+          filters.push({ key, op: "lte", value: endOfDay.toISOString() });
+        }
+      } else {
+        const iso = datePresetToIso(preset);
+        if (iso) filters.push({ key, op: "gte", value: iso });
+      }
+    }
+    return filters;
+  }, [
+    reportAttrFilters,
+    reportDatePresets,
+    reportDateCustomFrom,
+    reportDateCustomTo,
+  ]);
+
+  const reportEnabled =
+    reportOpen && reportGroupBy.length > 0 && reportMetrics.length > 0;
+
+  const { data: reportData, isLoading: reportLoading } =
+    api.item.aggregate.useQuery(
+      {
+        itemTypeId: typeId,
+        groupBy: reportGroupBy,
+        metrics: reportMetrics,
+        filters: {
+          status: statusFilter === "all" ? undefined : statusFilter,
+          variantId: variantFilter === "all" ? undefined : variantFilter,
+          locationId: reportLocationId === "all" ? undefined : reportLocationId,
+          attrFilters:
+            computedAttrFilters.length > 0 ? computedAttrFilters : undefined,
+        },
+      },
+      { enabled: reportEnabled },
+    );
+
+  const groupByOptions = useMemo(() => {
+    const opts: { value: string; label: string }[] = [
+      { value: "status", label: "Status" },
+      { value: "variant", label: "Variant" },
+      { value: "location", label: "Location" },
+    ];
+    for (const d of attrDefs) {
+      opts.push({ value: `attr:${d.attrKey}`, label: d.attrKey });
+    }
+    return opts;
+  }, [attrDefs]);
+
+  const metricFieldOptions = useMemo(() => {
+    const opts: { value: string; label: string }[] = [
+      { value: "quantity", label: "Quantity" },
+    ];
+    for (const d of attrDefs) {
+      opts.push({
+        value: `attr:${d.attrKey}`,
+        label: `${d.attrKey}${d.unit ? ` (${d.unit})` : ""}`,
+      });
+    }
+    return opts;
+  }, [attrDefs]);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between"
+          onClick={() => setReportOpen((prev) => !prev)}
+        >
+          <div className="flex items-center gap-2">
+            <BarChart3 className="text-muted-foreground size-4" />
+            <CardTitle className="text-sm font-medium">Quick Report</CardTitle>
+          </div>
+          <ChevronDown
+            className={cn(
+              "text-muted-foreground size-4 transition-transform",
+              reportOpen && "rotate-180",
+            )}
+          />
+        </button>
+      </CardHeader>
+      {reportOpen && (
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-end gap-3">
+            {/* Group by */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Group rows by</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {groupByOptions.map((opt) => {
+                  const active = reportGroupBy.includes(opt.value);
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        if (active) {
+                          setReportGroupBy((prev) =>
+                            prev.filter((v) => v !== opt.value),
+                          );
+                        } else if (reportGroupBy.length < 2) {
+                          setReportGroupBy((prev) => [...prev, opt.value]);
+                        }
+                      }}
+                      className={cn(
+                        "rounded-md border px-2.5 py-1 text-xs transition-colors",
+                        active
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "hover:bg-muted",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Metrics */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium">Show me the</Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select
+                  value={reportMetrics[0]?.op ?? "count"}
+                  onValueChange={(val) => {
+                    const op = val as "count" | "sum" | "avg" | "min" | "max";
+                    setReportMetrics((prev) =>
+                      prev.length > 0
+                        ? [{ ...prev[0]!, op }]
+                        : [{ field: "quantity", op }],
+                    );
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-24 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="count">Count</SelectItem>
+                    <SelectItem value="sum">Sum</SelectItem>
+                    <SelectItem value="avg">Average</SelectItem>
+                    <SelectItem value="min">Min</SelectItem>
+                    <SelectItem value="max">Max</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-muted-foreground text-xs">of</span>
+                <Select
+                  value={reportMetrics[0]?.field ?? "quantity"}
+                  onValueChange={(val) => {
+                    setReportMetrics((prev) =>
+                      prev.length > 0
+                        ? [{ ...prev[0]!, field: val }]
+                        : [{ field: val, op: "count" }],
+                    );
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-32 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {metricFieldOptions.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter to */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Filter to</Label>
+            <div className="flex flex-wrap items-start gap-3">
+              <div className="space-y-1">
+                <span className="text-muted-foreground text-[10px]">
+                  Status
+                </span>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="h-7 w-32 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    {statuses.map((s) => (
+                      <SelectItem key={s.slug} value={s.slug}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {variants.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-muted-foreground text-[10px]">
+                    Variant
+                  </span>
+                  <Select
+                    value={variantFilter}
+                    onValueChange={setVariantFilter}
+                  >
+                    <SelectTrigger className="h-7 w-32 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      {variants.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {locations.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-muted-foreground text-[10px]">
+                    Location
+                  </span>
+                  <Select
+                    value={reportLocationId}
+                    onValueChange={setReportLocationId}
+                  >
+                    <SelectTrigger className="h-7 w-32 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      {locations.map((l) => (
+                        <SelectItem key={l.id} value={l.id}>
+                          {l.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {attrDefs
+                .filter((d) => activeFilterKeys.has(d.attrKey))
+                .map((d) => {
+                  const removeFilter = () => {
+                    setActiveFilterKeys((prev) => {
+                      const next = new Set(prev);
+                      next.delete(d.attrKey);
+                      return next;
+                    });
+                    setReportAttrFilters((prev) => {
+                      const { [d.attrKey]: _, ...rest } = prev;
+                      return rest;
+                    });
+                    setReportDatePresets((prev) => {
+                      const { [d.attrKey]: _, ...rest } = prev;
+                      return rest;
+                    });
+                    setReportDateCustomFrom((prev) => {
+                      const { [d.attrKey]: _, ...rest } = prev;
+                      return rest;
+                    });
+                    setReportDateCustomTo((prev) => {
+                      const { [d.attrKey]: _, ...rest } = prev;
+                      return rest;
+                    });
+                  };
+
+                  if (d.dataType === "number") return null;
+
+                  const removeBtn = (
+                    <button
+                      type="button"
+                      onClick={removeFilter}
+                      className="text-muted-foreground hover:text-foreground rounded-sm p-0.5"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  );
+
+                  if (d.dataType === "date") {
+                    const preset = reportDatePresets[d.attrKey] ?? "all";
+                    return (
+                      <div key={d.id} className="space-y-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground text-[10px]">
+                            {d.attrKey}
+                          </span>
+                          {removeBtn}
+                        </div>
+                        <Select
+                          value={preset}
+                          onValueChange={(val) =>
+                            setReportDatePresets((prev) => ({
+                              ...prev,
+                              [d.attrKey]: val,
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="h-7 w-32 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {DATE_PRESETS.map((p) => (
+                              <SelectItem key={p.value} value={p.value}>
+                                {p.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {preset === "custom" && (
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              type="date"
+                              className="h-7 w-[120px] text-xs"
+                              value={reportDateCustomFrom[d.attrKey] ?? ""}
+                              onChange={(e) =>
+                                setReportDateCustomFrom((prev) => ({
+                                  ...prev,
+                                  [d.attrKey]: e.target.value,
+                                }))
+                              }
+                            />
+                            <span className="text-muted-foreground text-[10px]">
+                              to
+                            </span>
+                            <Input
+                              type="date"
+                              className="h-7 w-[120px] text-xs"
+                              value={reportDateCustomTo[d.attrKey] ?? ""}
+                              onChange={(e) =>
+                                setReportDateCustomTo((prev) => ({
+                                  ...prev,
+                                  [d.attrKey]: e.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  if (d.dataType === "select" && Array.isArray(d.options)) {
+                    return (
+                      <div key={d.id} className="space-y-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground text-[10px]">
+                            {d.attrKey}
+                          </span>
+                          {removeBtn}
+                        </div>
+                        <Select
+                          value={reportAttrFilters[d.attrKey] ?? "all"}
+                          onValueChange={(val) =>
+                            setReportAttrFilters((prev) => ({
+                              ...prev,
+                              [d.attrKey]: val === "all" ? "" : val,
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="h-7 w-32 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All</SelectItem>
+                            {(d.options as string[]).map((opt) => (
+                              <SelectItem key={opt} value={opt}>
+                                {opt}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  }
+
+                  if (d.dataType === "boolean") {
+                    return (
+                      <div key={d.id} className="space-y-1">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground text-[10px]">
+                            {d.attrKey}
+                          </span>
+                          {removeBtn}
+                        </div>
+                        <Select
+                          value={reportAttrFilters[d.attrKey] ?? "all"}
+                          onValueChange={(val) =>
+                            setReportAttrFilters((prev) => ({
+                              ...prev,
+                              [d.attrKey]: val === "all" ? "" : val,
+                            }))
+                          }
+                        >
+                          <SelectTrigger className="h-7 w-24 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All</SelectItem>
+                            <SelectItem value="true">Yes</SelectItem>
+                            <SelectItem value="false">No</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={d.id} className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-muted-foreground text-[10px]">
+                          {d.attrKey}
+                        </span>
+                        {removeBtn}
+                      </div>
+                      <Input
+                        className="h-7 w-32 text-xs"
+                        placeholder="Any"
+                        value={reportAttrFilters[d.attrKey] ?? ""}
+                        onChange={(e) =>
+                          setReportAttrFilters((prev) => ({
+                            ...prev,
+                            [d.attrKey]: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  );
+                })}
+
+              {(() => {
+                const available = attrDefs.filter(
+                  (d) =>
+                    d.dataType !== "number" && !activeFilterKeys.has(d.attrKey),
+                );
+                if (available.length === 0) return null;
+                return (
+                  <div className="space-y-1">
+                    <span className="text-[10px]">&nbsp;</span>
+                    <Select
+                      key={[...activeFilterKeys].sort().join(",")}
+                      onValueChange={(key) => {
+                        setActiveFilterKeys((prev) => new Set(prev).add(key));
+                      }}
+                    >
+                      <SelectTrigger className="h-7 w-auto gap-1 border-dashed text-xs">
+                        <Plus className="size-3" />
+                        <span>Add filter</span>
+                      </SelectTrigger>
+                      <SelectContent position="popper" className="max-h-60">
+                        {available.map((d) => (
+                          <SelectItem key={d.attrKey} value={d.attrKey}>
+                            {d.attrKey}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
+          {/* Results table */}
+          {reportGroupBy.length === 0 ? (
+            <p className="text-muted-foreground text-xs">
+              Select at least one &ldquo;Group by&rdquo; field to generate a
+              report.
+            </p>
+          ) : reportLoading ? (
+            <p className="text-muted-foreground text-xs">Loading...</p>
+          ) : reportData && reportData.rows.length > 0 ? (
+            <div className="overflow-auto rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {reportData.columns.map((col) => (
+                      <TableHead key={col.key} className="text-xs">
+                        {col.label}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reportData.rows.map((row, i) => (
+                    <TableRow key={i}>
+                      {reportData.columns.map((col) => (
+                        <TableCell
+                          key={col.key}
+                          className="text-xs tabular-nums"
+                        >
+                          {row[col.key] ?? "—"}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : reportData ? (
+            <p className="text-muted-foreground text-xs">
+              No data matches the current filters.
+            </p>
+          ) : null}
+        </CardContent>
+      )}
+    </Card>
+  );
+};
