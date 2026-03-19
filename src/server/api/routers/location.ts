@@ -1,4 +1,4 @@
-import { asc, ilike } from "drizzle-orm";
+import { asc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
@@ -26,6 +26,23 @@ export const locationRouter = createTRPCRouter({
         .limit(1);
 
       return match ?? null;
+    }),
+
+  setParent: publicProcedure
+    .input(
+      z.object({
+        childId: z.uuid(),
+        parentId: z.uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [updated] = await ctx.db
+        .update(location)
+        .set({ parentId: input.parentId, updatedAt: new Date() })
+        .where(eq(location.id, input.childId))
+        .returning();
+
+      return updated ?? null;
     }),
 
   create: publicProcedure

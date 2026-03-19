@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   AlertCircle,
+  ArrowDownUp,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -19,12 +20,7 @@ import {
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import {
   Select,
@@ -50,6 +46,9 @@ type BuiltInOperation = {
 };
 
 const BUILTIN_MOVE_TO_LOCATION = "builtin:move-to-location";
+const BUILTIN_SET_PARENT_LOCATION = "builtin:set-parent-location";
+
+type NonNullLocation = NonNullable<ScannedLocation>;
 
 export default function ScanPage() {
   const params = useParams<{ org: string }>();
@@ -57,7 +56,9 @@ export default function ScanPage() {
 
   // Scanned items stored with their item type info
   const [scannedItems, setScannedItems] = useState<ItemWithType[]>([]);
-  const [scannedLocation, setScannedLocation] = useState<ScannedLocation>(null);
+  const [scannedLocations, setScannedLocations] = useState<NonNullLocation[]>(
+    [],
+  );
   const [scanInput, setScanInput] = useState("");
   const [scanError, setScanError] = useState<string | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
@@ -68,6 +69,9 @@ export default function ScanPage() {
   const [fieldValues, setFieldValues] = useState<Record<string, unknown>>({});
   const [result, setResult] = useState<ExecuteResult | null>(null);
   const [executeError, setExecuteError] = useState<string | null>(null);
+
+  // For "Set Parent Location" — which location is the parent (index into scannedLocations)
+  const [parentLocationIdx, setParentLocationIdx] = useState(0);
 
   // Collapsed groups
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
@@ -88,15 +92,27 @@ export default function ScanPage() {
 
   const executeMutation = api.operation.execute.useMutation();
   const moveToLocationMutation = api.item.bulkSetLocation.useMutation();
+  const setParentMutation = api.location.setParent.useMutation();
   const utils = api.useUtils();
 
   // Built-in operations derived from scan context
   const builtInOps: BuiltInOperation[] = [];
-  if (scannedLocation && scannedItems.length > 0) {
+  if (scannedLocations.length >= 1 && scannedItems.length > 0) {
     builtInOps.push({
       id: BUILTIN_MOVE_TO_LOCATION,
-      name: `Move to ${scannedLocation.name}`,
-      description: `Set location of ${scannedItems.length} item(s) to ${scannedLocation.name}`,
+      name: `Move to ${scannedLocations[0]!.name}`,
+      description: `Set location of ${scannedItems.length} item(s) to ${scannedLocations[0]!.name}`,
+      ready: true,
+    });
+  }
+  if (scannedLocations.length === 2) {
+    const parent = scannedLocations[parentLocationIdx] ?? scannedLocations[0]!;
+    const child =
+      scannedLocations[parentLocationIdx === 0 ? 1 : 0] ?? scannedLocations[1]!;
+    builtInOps.push({
+      id: BUILTIN_SET_PARENT_LOCATION,
+      name: `Nest ${child.name} under ${parent.name}`,
+      description: `Set "${parent.name}" as the parent of "${child.name}"`,
       ready: true,
     });
   }
@@ -140,7 +156,7 @@ export default function ScanPage() {
       setChosenBuiltIn(null);
       setFieldValues({});
     }
-  }, [suggestQuery.data, scannedLocation, scannedItems.length]);
+  }, [suggestQuery.data, scannedLocations.length, scannedItems.length]);
 
   const handleScan = useCallback(
     async (code: string) => {
@@ -178,9 +194,13 @@ export default function ScanPage() {
       try {
         const loc = await utils.location.getByName.fetch({ name: trimmed });
         if (loc) {
-          setScannedLocation(loc);
-          setResult(null);
-          setExecuteError(null);
+          if (scannedLocations.some((l) => l.id === loc.id)) {
+            setScanError(`"${loc.name}" is already scanned`);
+          } else {
+            setScannedLocations((prev) => [...prev, loc]);
+            setResult(null);
+            setExecuteError(null);
+          }
         } else {
           setScanError(`No item or location found for "${trimmed}"`);
         }
@@ -192,7 +212,12 @@ export default function ScanPage() {
         inputRef.current?.focus();
       }
     },
-    [scannedItems, utils.item.getByCode, utils.location.getByName],
+    [
+      scannedItems,
+      scannedLocations,
+      utils.item.getByCode,
+      utils.location.getByName,
+    ],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -245,21 +270,70 @@ export default function ScanPage() {
     setExecuteError(null);
 
     // Built-in: Move to Location
-    if (chosenBuiltIn === BUILTIN_MOVE_TO_LOCATION && scannedLocation) {
+    if (
+      chosenBuiltIn === BUILTIN_MOVE_TO_LOCATION &&
+      scannedLocations.length > 0
+    ) {
       try {
         const res = await moveToLocationMutation.mutateAsync({
           itemIds: scannedItemIds,
-          locationId: scannedLocation.id,
+          locationId: scannedLocations[0]!.id,
         });
         setResult({
           operationId: "",
-          steps: [{ stepName: "Move to Location", action: "set_location", skipped: false, success: true }],
+          steps: [
+            {
+              stepName: "Move to Location",
+              action: "set_location",
+              skipped: false,
+              success: true,
+            },
+          ],
           itemsCreated: [],
           itemsUpdated: scannedItemIds.slice(0, res.updated),
           lineageCreated: 0,
         });
       } catch (e: unknown) {
-        setExecuteError(e instanceof Error ? e.message : "Failed to move items");
+        setExecuteError(
+          e instanceof Error ? e.message : "Failed to move items",
+        );
+      }
+      return;
+    }
+
+    // Built-in: Set Parent Location
+    if (
+      chosenBuiltIn === BUILTIN_SET_PARENT_LOCATION &&
+      scannedLocations.length === 2
+    ) {
+      const parent =
+        scannedLocations[parentLocationIdx] ?? scannedLocations[0]!;
+      const child =
+        scannedLocations[parentLocationIdx === 0 ? 1 : 0] ??
+        scannedLocations[1]!;
+      try {
+        await setParentMutation.mutateAsync({
+          childId: child.id,
+          parentId: parent.id,
+        });
+        setResult({
+          operationId: "",
+          steps: [
+            {
+              stepName: `Set "${parent.name}" as parent of "${child.name}"`,
+              action: "set_parent",
+              skipped: false,
+              success: true,
+            },
+          ],
+          itemsCreated: [],
+          itemsUpdated: [],
+          lineageCreated: 0,
+        });
+      } catch (e: unknown) {
+        setExecuteError(
+          e instanceof Error ? e.message : "Failed to set parent location",
+        );
       }
       return;
     }
@@ -267,10 +341,22 @@ export default function ScanPage() {
     // DB-sourced operation
     if (!chosenOp) return;
 
+    // Match scanned items to ports by itemTypeId rather than using the
+    // suggestion engine's pre-filtered matchedItemIds (which excludes
+    // items that don't meet status preconditions). The execute engine
+    // does its own validation and gives clearer error messages.
+    const itemsByType = new Map<string, string[]>();
+    for (const s of scannedItems) {
+      const arr = itemsByType.get(s.item.itemTypeId) ?? [];
+      arr.push(s.item.id);
+      itemsByType.set(s.item.itemTypeId, arr);
+    }
+
     const itemsMap: Record<string, string[]> = {};
     for (const port of chosenOp.ports) {
-      if (port.matchedItemIds.length > 0) {
-        itemsMap[port.referenceKey] = port.matchedItemIds;
+      const ids = itemsByType.get(port.itemTypeId) ?? [];
+      if (ids.length > 0) {
+        itemsMap[port.referenceKey] = ids;
       }
     }
 
@@ -279,7 +365,7 @@ export default function ScanPage() {
         operationTypeId: chosenOp.operationType.id,
         items: itemsMap,
         fields: fieldValues,
-        locationId: scannedLocation?.id,
+        locationId: scannedLocations[0]?.id,
       });
       setResult(res);
     } catch (e: unknown) {
@@ -289,7 +375,8 @@ export default function ScanPage() {
 
   const reset = () => {
     setScannedItems([]);
-    setScannedLocation(null);
+    setScannedLocations([]);
+    setParentLocationIdx(0);
     setChosenOp(null);
     setChosenBuiltIn(null);
     setFieldValues({});
@@ -302,7 +389,10 @@ export default function ScanPage() {
 
   // Group scanned items by item type
   const groupedItems = scannedItems.reduce<
-    Map<string, { typeName: string; typeIcon: string | null; items: ItemWithType[] }>
+    Map<
+      string,
+      { typeName: string; typeIcon: string | null; items: ItemWithType[] }
+    >
   >((map, entry) => {
     const typeId = entry.item.itemTypeId;
     const existing = map.get(typeId);
@@ -327,14 +417,17 @@ export default function ScanPage() {
   }
 
   const hasItems = scannedItems.length > 0;
-  const hasAnything = hasItems || !!scannedLocation;
-  const isExecuting = executeMutation.isPending || moveToLocationMutation.isPending;
+  const hasAnything = hasItems || scannedLocations.length > 0;
+  const isExecuting =
+    executeMutation.isPending ||
+    moveToLocationMutation.isPending ||
+    setParentMutation.isPending;
   const activeOpName = chosenBuiltIn
-    ? builtInOps.find((b) => b.id === chosenBuiltIn)?.name ?? "Operation"
-    : chosenOp?.operationType.name ?? "Operation";
+    ? (builtInOps.find((b) => b.id === chosenBuiltIn)?.name ?? "Operation")
+    : (chosenOp?.operationType.name ?? "Operation");
   const isReady = chosenBuiltIn
-    ? builtInOps.find((b) => b.id === chosenBuiltIn)?.ready ?? false
-    : chosenOp?.ready ?? false;
+    ? (builtInOps.find((b) => b.id === chosenBuiltIn)?.ready ?? false)
+    : (chosenOp?.ready ?? false);
 
   return (
     <div className="flex h-full flex-col">
@@ -399,24 +492,45 @@ export default function ScanPage() {
             )}
 
             <div className="space-y-3">
-              {/* Scanned location */}
-              {scannedLocation && (
+              {/* Scanned locations */}
+              {scannedLocations.length > 0 && (
                 <div className="border-border overflow-hidden rounded-lg border">
                   <div className="flex items-center gap-2 px-3 py-2">
                     <MapPin className="text-primary size-4 shrink-0" />
                     <span className="flex-1 text-sm font-medium">
-                      {scannedLocation.name}
+                      Locations
                     </span>
-                    <Badge variant="secondary" className="text-[10px]">
-                      Location
+                    <Badge variant="secondary" className="text-xs">
+                      {scannedLocations.length}
                     </Badge>
-                    <button
-                      type="button"
-                      onClick={() => setScannedLocation(null)}
-                      className="text-muted-foreground hover:text-foreground rounded p-0.5 transition-colors"
-                    >
-                      <X className="size-3.5" />
-                    </button>
+                  </div>
+                  <div className="border-border divide-border divide-y border-t">
+                    {scannedLocations.map((loc) => (
+                      <div
+                        key={loc.id}
+                        className="hover:bg-muted/30 flex items-center gap-2 px-3 py-1.5 text-sm transition-colors"
+                      >
+                        <MapPin className="text-muted-foreground size-3.5 shrink-0" />
+                        <span className="flex-1 text-xs font-medium">
+                          {loc.name}
+                        </span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {loc.type}
+                        </Badge>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setScannedLocations((prev) =>
+                              prev.filter((l) => l.id !== loc.id),
+                            );
+                            setParentLocationIdx(0);
+                          }}
+                          className="text-muted-foreground hover:text-foreground shrink-0 rounded p-0.5 transition-colors"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -471,9 +585,7 @@ export default function ScanPage() {
         <div className="flex w-1/2 flex-col">
           {!hasAnything && (
             <div className="text-muted-foreground flex flex-1 items-center justify-center p-8 text-center">
-              <p className="text-sm">
-                Scan items to see suggested operations.
-              </p>
+              <p className="text-sm">Scan items to see suggested operations.</p>
             </div>
           )}
 
@@ -481,7 +593,7 @@ export default function ScanPage() {
             <div className="flex flex-1 flex-col overflow-y-auto p-4">
               {/* Operation selector */}
               <div className="mb-4">
-                <label className="text-muted-foreground mb-1.5 block text-xs font-medium uppercase tracking-wide">
+                <label className="text-muted-foreground mb-1.5 block text-xs font-medium tracking-wide uppercase">
                   Operation
                 </label>
 
@@ -586,10 +698,58 @@ export default function ScanPage() {
                   )}
               </div>
 
+              {/* Swap parent/child for Set Parent Location */}
+              {chosenBuiltIn === BUILTIN_SET_PARENT_LOCATION &&
+                scannedLocations.length === 2 && (
+                  <div className="mb-4">
+                    <label className="text-muted-foreground mb-1.5 block text-xs font-medium tracking-wide uppercase">
+                      Relationship
+                    </label>
+                    <div className="border-border rounded-lg border p-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground text-[10px] font-medium uppercase">
+                              Parent
+                            </span>
+                            <span className="text-sm font-medium">
+                              {scannedLocations[parentLocationIdx]?.name}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground text-[10px] font-medium uppercase">
+                              Child
+                            </span>
+                            <span className="text-sm font-medium">
+                              {
+                                scannedLocations[
+                                  parentLocationIdx === 0 ? 1 : 0
+                                ]?.name
+                              }
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() =>
+                            setParentLocationIdx((prev) => (prev === 0 ? 1 : 0))
+                          }
+                        >
+                          <ArrowDownUp className="size-3.5" />
+                          Swap
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
               {/* Field inputs for DB operations */}
               {chosenOp && !chosenBuiltIn && (
                 <div className="flex-1">
-                  <label className="text-muted-foreground mb-1.5 block text-xs font-medium uppercase tracking-wide">
+                  <label className="text-muted-foreground mb-1.5 block text-xs font-medium tracking-wide uppercase">
                     Details
                   </label>
                   <FieldInputs
@@ -631,8 +791,8 @@ export default function ScanPage() {
               </Button>
               {!isReady && (
                 <p className="text-muted-foreground mt-2 text-center text-xs">
-                  Not all required items are present. Scan more items or choose a
-                  different operation.
+                  Not all required items are present. Scan more items or choose
+                  a different operation.
                 </p>
               )}
             </div>
@@ -695,8 +855,7 @@ function ScannedItemRow({
         <div className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
           {attrEntries.map(([key, value]) => (
             <span key={key}>
-              <span className="opacity-60">{key}:</span>{" "}
-              {String(value)}
+              <span className="opacity-60">{key}:</span> {String(value)}
             </span>
           ))}
         </div>
@@ -714,9 +873,7 @@ function FieldInputs({
   opTypeData: RouterOutputs["operationType"]["getById"] | undefined;
   isLoading: boolean;
   fieldValues: Record<string, unknown>;
-  setFieldValues: React.Dispatch<
-    React.SetStateAction<Record<string, unknown>>
-  >;
+  setFieldValues: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
 }) {
   if (isLoading) {
     return (
@@ -755,9 +912,7 @@ function FieldInputs({
             )}
           </label>
           {field.description && (
-            <p className="text-muted-foreground text-xs">
-              {field.description}
-            </p>
+            <p className="text-muted-foreground text-xs">{field.description}</p>
           )}
 
           {field.type === "select" && enumOpts(field) ? (

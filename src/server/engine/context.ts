@@ -3,37 +3,8 @@
  */
 
 import type { ExecCtx, Step } from "./types";
-import { operationTypeStep } from "~/server/db/schema";
 
-// ---------------------------------------------------------------------------
-// Value resolution
-// ---------------------------------------------------------------------------
-
-export function resolveRef(ref: unknown, ctx: ExecCtx): unknown {
-  if (ref === null || ref === undefined) return ref;
-
-  if (typeof ref === "object" && ref !== null && !Array.isArray(ref)) {
-    const obj = ref as Record<string, unknown>;
-
-    if (typeof obj.from === "string") {
-      return resolvePath(obj.from, ctx);
-    }
-
-    if (typeof obj.ref === "string") {
-      const items = ctx.items[obj.ref];
-      if (!items || items.length === 0) return null;
-      return items.length === 1 ? items[0]!.id : items.map((l) => l.id);
-    }
-
-    const resolved: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(obj)) {
-      resolved[k] = resolveRef(v, ctx);
-    }
-    return resolved;
-  }
-
-  return ref;
-}
+// ── Value resolution ─────────────────────────────────────────────────
 
 export function resolvePath(path: string, ctx: ExecCtx): unknown {
   const parts = path.split(".");
@@ -55,9 +26,7 @@ export function resolvePath(path: string, ctx: ExecCtx): unknown {
   return undefined;
 }
 
-// ---------------------------------------------------------------------------
-// Condition evaluation
-// ---------------------------------------------------------------------------
+// ── Condition evaluation ─────────────────────────────────────────────
 
 export function evaluateCondition(cond: unknown, ctx: ExecCtx): boolean {
   if (cond === null || cond === undefined) return true;
@@ -94,9 +63,7 @@ export function evaluateCondition(cond: unknown, ctx: ExecCtx): boolean {
   return true;
 }
 
-// ---------------------------------------------------------------------------
-// Step config extraction
-// ---------------------------------------------------------------------------
+// ── Step config extraction ───────────────────────────────────────────
 
 export function getStepConfig(step: Step): {
   condition: unknown;
@@ -116,6 +83,8 @@ export function getStepConfig(step: Step): {
   const { condition, ...rest } = obj;
   return { condition: condition ?? null, config: rest };
 }
+
+// ── Helpers ──────────────────────────────────────────────────────────
 
 export function getTargetItems(target: string | null, ctx: ExecCtx) {
   if (!target) return [];

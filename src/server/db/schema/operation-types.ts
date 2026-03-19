@@ -47,8 +47,6 @@ export const operationTypeInputItem = pgTable(
     qtyMin: numeric("qty_min").default("0"),
     qtyMax: numeric("qty_max"),
 
-    required: boolean("required").notNull().default(false),
-
     preconditionsStatuses: jsonb("preconditions_statuses").$type<string[]>(),
   },
   (t) => [uniqueIndex().on(t.operationTypeId, t.referenceKey)],

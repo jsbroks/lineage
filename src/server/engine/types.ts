@@ -1,3 +1,4 @@
+import type { ZodSchema } from "zod";
 import type { db as dbInstance } from "~/server/db";
 import type { item, operationTypeStep } from "~/server/db/schema";
 
@@ -63,14 +64,6 @@ export class ActionRegistry {
 
   register(action: string, handler: ActionHandler): this {
     this.handlers.set(action, handler);
-    return this;
-  }
-
-  /** Register the same handler under multiple action names. */
-  registerAlias(aliases: string[], handler: ActionHandler): this {
-    for (const alias of aliases) {
-      this.handlers.set(alias, handler);
-    }
     return this;
   }
 

@@ -16,9 +16,10 @@
  * Operations with score <= 0 are excluded from results.
  */
 
-import { asc, eq, inArray } from "drizzle-orm";
+import { asc, inArray } from "drizzle-orm";
 import {
   item,
+  itemTypeStatusDefinition,
   operationType,
   operationTypeInputItem,
 } from "~/server/db/schema";
@@ -35,7 +36,6 @@ type ItemSummary = {
 export type PortMatch = {
   referenceKey: string;
   itemTypeId: string;
-  required: boolean;
   preconditionsStatuses: string[] | null;
   qtyMin: number;
   qtyMax: number | null;
@@ -85,15 +85,39 @@ export async function suggestOperations(
     .from(operationType)
     .orderBy(asc(operationType.name));
 
-  const allPorts = await db
-    .select()
-    .from(operationTypeInputItem);
+  const allPorts = await db.select().from(operationTypeInputItem);
 
   const portsByOpType = new Map<string, typeof allPorts>();
   for (const port of allPorts) {
     const arr = portsByOpType.get(port.operationTypeId) ?? [];
     arr.push(port);
     portsByOpType.set(port.operationTypeId, arr);
+  }
+
+  // Pre-load status definitions for all item types that appear in ports
+  // so we can resolve precondition status names to UUIDs.
+  const portItemTypeIds = [...new Set(allPorts.map((p) => p.itemTypeId))];
+  const statusDefsForTypes =
+    portItemTypeIds.length > 0
+      ? await db
+          .select({
+            id: itemTypeStatusDefinition.id,
+            name: itemTypeStatusDefinition.name,
+            itemTypeId: itemTypeStatusDefinition.itemTypeId,
+          })
+          .from(itemTypeStatusDefinition)
+          .where(inArray(itemTypeStatusDefinition.itemTypeId, portItemTypeIds))
+      : [];
+
+  // Map: itemTypeId → (statusName → statusId)
+  const statusNameToId = new Map<string, Map<string, string>>();
+  for (const sd of statusDefsForTypes) {
+    let inner = statusNameToId.get(sd.itemTypeId);
+    if (!inner) {
+      inner = new Map();
+      statusNameToId.set(sd.itemTypeId, inner);
+    }
+    inner.set(sd.name, sd.id);
   }
 
   const results: SuggestedOperation[] = [];
@@ -111,10 +135,15 @@ export async function suggestOperations(
       const qtyMin = Number(port.qtyMin ?? 0);
       const qtyMax = port.qtyMax ? Number(port.qtyMax) : null;
 
-      const statusOk =
-        port.preconditionsStatuses && port.preconditionsStatuses.length > 0
-          ? new Set(port.preconditionsStatuses)
-          : null;
+      // Resolve precondition status names to UUIDs
+      let statusOk: Set<string> | null = null;
+      if (port.preconditionsStatuses && port.preconditionsStatuses.length > 0) {
+        const lookup = statusNameToId.get(port.itemTypeId);
+        const resolvedIds = port.preconditionsStatuses
+          .map((name) => lookup?.get(name))
+          .filter((id): id is string => !!id);
+        statusOk = resolvedIds.length > 0 ? new Set(resolvedIds) : null;
+      }
 
       const fullyMatched = statusOk
         ? candidates.filter((c) => statusOk.has(c.statusId))
@@ -127,24 +156,9 @@ export async function suggestOperations(
 
       const satisfied = matched.length >= qtyMin && matched.length > 0;
 
-      if (port.required) {
-        if (satisfied) {
-          score += 3;
-        } else if (candidates.length > 0) {
-          score += 1;
-          allRequiredSatisfied = false;
-        } else {
-          score -= 10;
-          allRequiredSatisfied = false;
-        }
-      } else {
-        if (satisfied) score += 1;
-      }
-
       portMatches.push({
         referenceKey: port.referenceKey,
         itemTypeId: port.itemTypeId,
-        required: port.required,
         preconditionsStatuses: port.preconditionsStatuses,
         qtyMin,
         qtyMax,

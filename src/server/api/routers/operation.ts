@@ -28,6 +28,7 @@ export const operationRouter = createTRPCRouter({
   execute: publicProcedure
     .input(executeInput)
     .mutation(async ({ ctx, input }) => {
+      console.log(input);
       return ctx.db.transaction(async (tx) => {
         return executeOperation(tx, {
           operationTypeId: input.operationTypeId,
