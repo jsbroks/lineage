@@ -14,6 +14,7 @@ import { itemType, itemTypeVariant } from "./item-types";
 import { location } from "./location";
 import { user } from "./auth";
 import { operation } from "./operation";
+import { itemTypeStatusDefinition } from "./item-type-status";
 
 export const item = pgTable(
   "item",
@@ -31,7 +32,9 @@ export const item = pgTable(
       onDelete: "set null",
     }),
     code: text("code").notNull(),
-    status: text().notNull().default("created"),
+    statusId: uuid("status_id")
+      .notNull()
+      .references(() => itemTypeStatusDefinition.id),
 
     notes: text(),
 
@@ -52,7 +55,7 @@ export const item = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [],
+  (t) => [uniqueIndex().on(t.itemTypeId, t.code)],
 );
 
 export const itemIdentifier = pgTable(

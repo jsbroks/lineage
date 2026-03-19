@@ -20,9 +20,10 @@ type GeneralCardProps = {
   base: ItemTypeFormValues;
   setBase: React.Dispatch<React.SetStateAction<ItemTypeFormValues>>;
   onNameChange: (value: string) => void;
+  onCodePrefixChange: (value: string) => void;
 };
 
-export function GeneralCard({ base, setBase, onNameChange }: GeneralCardProps) {
+export function GeneralCard({ base, setBase, onNameChange, onCodePrefixChange }: GeneralCardProps) {
   return (
     <Card>
       <CardHeader>
@@ -41,16 +42,6 @@ export function GeneralCard({ base, setBase, onNameChange }: GeneralCardProps) {
               onChange={(e) => onNameChange(e.target.value)}
               required
               placeholder="Fruiting Block"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="it-slug">Slug</Label>
-            <Input
-              id="it-slug"
-              value={base.slug}
-              onChange={(e) => setBase((p) => ({ ...p, slug: e.target.value }))}
-              required
-              placeholder="fruiting-block"
             />
           </div>
         </div>
@@ -135,23 +126,8 @@ export function GeneralCard({ base, setBase, onNameChange }: GeneralCardProps) {
             <Input
               id="it-prefix"
               value={base.codePrefix}
-              onChange={(e) =>
-                setBase((p) => ({ ...p, codePrefix: e.target.value }))
-              }
+              onChange={(e) => onCodePrefixChange(e.target.value)}
               placeholder="BLK"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="it-next">Next Number</Label>
-            <Input
-              id="it-next"
-              type="number"
-              min={1}
-              value={base.codeNextNumber}
-              onChange={(e) =>
-                setBase((p) => ({ ...p, codeNextNumber: e.target.value }))
-              }
-              placeholder="1"
             />
           </div>
         </div>

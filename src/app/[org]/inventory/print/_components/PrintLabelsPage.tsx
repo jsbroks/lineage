@@ -30,9 +30,10 @@ import { LabelPreview } from "./LabelPreview";
 
 interface PrintLabelsPageProps {
   org: string;
+  initialTypeId?: string;
 }
 
-export const PrintLabelsPage: React.FC<PrintLabelsPageProps> = ({ org }) => {
+export const PrintLabelsPage: React.FC<PrintLabelsPageProps> = ({ org, initialTypeId }) => {
   const [template, setTemplate] = useState<LabelTemplate>(() => {
     const savedId = loadSavedTemplate();
     return (savedId && LABEL_TEMPLATES.find((t) => t.id === savedId)) || LABEL_TEMPLATES[0]!;
@@ -148,6 +149,7 @@ export const PrintLabelsPage: React.FC<PrintLabelsPageProps> = ({ org }) => {
                 selectedItemIds={selectedItemIds}
                 onSelectedItemIdsChange={setSelectedItemIds}
                 onPrint={handlePrint}
+                initialTypeId={initialTypeId}
               />
             </div>
 

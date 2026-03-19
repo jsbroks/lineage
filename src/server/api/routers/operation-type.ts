@@ -5,8 +5,8 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import {
   operationType,
-  operationTypeField,
-  operationTypePort,
+  operationTypeInputField,
+  operationTypeInputItem,
   operationTypeStep,
   statusDefinition,
 } from "~/server/db/schema";
@@ -138,14 +138,14 @@ export const operationTypeRouter = createTRPCRouter({
       const [ports, fields, steps] = await Promise.all([
         ctx.db
           .select()
-          .from(operationTypePort)
-          .where(eq(operationTypePort.operationTypeId, input.id))
-          .orderBy(asc(operationTypePort.portRole)),
+          .from(operationTypeInputItem)
+          .where(eq(operationTypeInputItem.operationTypeId, input.id))
+          .orderBy(asc(operationTypeInputItem.portRole)),
         ctx.db
           .select()
-          .from(operationTypeField)
-          .where(eq(operationTypeField.operationTypeId, input.id))
-          .orderBy(asc(operationTypeField.sortOrder)),
+          .from(operationTypeInputField)
+          .where(eq(operationTypeInputField.operationTypeId, input.id))
+          .orderBy(asc(operationTypeInputField.sortOrder)),
         ctx.db
           .select()
           .from(operationTypeStep)
@@ -159,8 +159,8 @@ export const operationTypeRouter = createTRPCRouter({
   listPorts: publicProcedure.query(async ({ ctx }) => {
     return ctx.db
       .select()
-      .from(operationTypePort)
-      .orderBy(asc(operationTypePort.portRole));
+      .from(operationTypeInputItem)
+      .orderBy(asc(operationTypeInputItem.portRole));
   }),
 
   create: publicProcedure
@@ -203,7 +203,7 @@ export const operationTypeRouter = createTRPCRouter({
     .input(addOperationTypePortInput)
     .mutation(async ({ ctx, input }) => {
       const [createdPort] = await ctx.db
-        .insert(operationTypePort)
+        .insert(operationTypeInputItem)
         .values({
           operationTypeId: input.operationTypeId,
           direction: input.direction,
@@ -226,9 +226,9 @@ export const operationTypeRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
       const [updated] = await ctx.db
-        .update(operationTypePort)
+        .update(operationTypeInputItem)
         .set(data)
-        .where(eq(operationTypePort.id, id))
+        .where(eq(operationTypeInputItem.id, id))
         .returning();
 
       if (!updated) {
@@ -246,16 +246,18 @@ export const operationTypeRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       return ctx.db
         .select()
-        .from(operationTypeField)
-        .where(eq(operationTypeField.operationTypeId, input.operationTypeId))
-        .orderBy(asc(operationTypeField.sortOrder));
+        .from(operationTypeInputField)
+        .where(
+          eq(operationTypeInputField.operationTypeId, input.operationTypeId),
+        )
+        .orderBy(asc(operationTypeInputField.sortOrder));
     }),
 
   addField: publicProcedure
     .input(addOperationTypeFieldInput)
     .mutation(async ({ ctx, input }) => {
       const [createdField] = await ctx.db
-        .insert(operationTypeField)
+        .insert(operationTypeInputField)
         .values({
           operationTypeId: input.operationTypeId,
           key: input.key,
@@ -279,9 +281,9 @@ export const operationTypeRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
       const [updated] = await ctx.db
-        .update(operationTypeField)
+        .update(operationTypeInputField)
         .set(data)
-        .where(eq(operationTypeField.id, id))
+        .where(eq(operationTypeInputField.id, id))
         .returning();
 
       if (!updated) {
@@ -298,9 +300,9 @@ export const operationTypeRouter = createTRPCRouter({
     .input(z.object({ id: z.uuid() }))
     .mutation(async ({ ctx, input }) => {
       const [deletedField] = await ctx.db
-        .delete(operationTypeField)
-        .where(eq(operationTypeField.id, input.id))
-        .returning({ id: operationTypeField.id });
+        .delete(operationTypeInputField)
+        .where(eq(operationTypeInputField.id, input.id))
+        .returning({ id: operationTypeInputField.id });
 
       if (!deletedField) {
         throw new TRPCError({
@@ -402,9 +404,9 @@ export const operationTypeRouter = createTRPCRouter({
     .input(z.object({ id: z.uuid() }))
     .mutation(async ({ ctx, input }) => {
       const [deletedOperationTypePort] = await ctx.db
-        .delete(operationTypePort)
-        .where(eq(operationTypePort.id, input.id))
-        .returning({ id: operationTypePort.id });
+        .delete(operationTypeInputItem)
+        .where(eq(operationTypeInputItem.id, input.id))
+        .returning({ id: operationTypeInputItem.id });
 
       if (!deletedOperationTypePort) {
         throw new TRPCError({

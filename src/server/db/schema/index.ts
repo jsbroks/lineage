@@ -4,4 +4,4 @@ export * from "./operation";
 export * from "./item-types";
 export * from "./location";
 export * from "./item";
-export * from "./status";
+export * from "./item-type-status";

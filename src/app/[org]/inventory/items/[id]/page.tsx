@@ -19,15 +19,12 @@ import {
 } from "./_components";
 
 export default function ItemDetailPage() {
-  const params = useParams<{ org: string; code: string }>();
-  const code = decodeURIComponent(params.code);
+  const params = useParams<{ org: string; id: string }>();
+  const itemId = params.id;
 
-  const { data: lookup, isLoading: lookupLoading } =
-    api.item.getByCode.useQuery({ code }, { enabled: !!code });
-
-  const { data, isLoading: detailLoading } = api.item.getById.useQuery(
-    { itemId: lookup?.item.id ?? "" },
-    { enabled: !!lookup?.item.id },
+  const { data, isLoading } = api.item.getById.useQuery(
+    { itemId },
+    { enabled: !!itemId },
   );
 
   const { data: typeData } = api.itemType.getById.useQuery(
@@ -37,7 +34,6 @@ export default function ItemDetailPage() {
 
   const attrDefs = typeData?.attributeDefinitions ?? [];
   const currentAttrs = (data?.item.attributes as Record<string, unknown>) ?? {};
-  const isLoading = lookupLoading || detailLoading;
 
   if (isLoading) {
     return (
@@ -56,7 +52,7 @@ export default function ItemDetailPage() {
   if (!data) {
     return (
       <div className="flex min-h-full flex-col">
-        <ItemPageHeader org={params.org} code={code} />
+        <ItemPageHeader org={params.org} code={itemId} />
         <div className="text-destructive px-6 py-12 text-center text-sm">
           Item not found.
         </div>

@@ -10,19 +10,22 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-export const itemType = pgTable("item_type", {
-  id: uuid().primaryKey().defaultRandom(),
-  slug: text().notNull(),
-  name: text().notNull(),
-  description: text(),
-  category: text().notNull(),
-  quantityName: text("quantity_name"),
-  quantityDefaultUnit: text("default_unit").notNull().default("each"),
-  icon: text(),
-  color: text(),
-  codePrefix: text("code_prefix"),
-  codeNextNumber: integer("code_next_number").notNull().default(1),
-});
+export const itemType = pgTable(
+  "item_type",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    name: text().notNull(),
+    description: text(),
+    category: text().notNull(),
+    quantityName: text("quantity_name"),
+    quantityDefaultUnit: text("default_unit").notNull().default("each"),
+    icon: text(),
+    color: text(),
+    codePrefix: text("code_prefix"),
+    codeNextNumber: integer("code_next_number").notNull().default(1),
+  },
+  (t) => [uniqueIndex().on(t.codePrefix)],
+);
 
 export type ItemType = typeof itemType.$inferSelect;
 

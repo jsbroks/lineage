@@ -22,7 +22,7 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
-import type { AttrDef, ItemRow, StatusDef, VariantDef } from "./Types";
+import type { AttrDef, ItemRow, StatusDef, VariantDef } from "./types";
 
 interface ItemsTableProps {
   items: ItemRow[];
@@ -225,7 +225,9 @@ export const ItemsTable: React.FC<ItemsTableProps> = ({
                   <TableHead>Status</TableHead>
                   {variants.length > 0 && <TableHead>Variant</TableHead>}
                   <TableHead>Location</TableHead>
-                  <TableHead className="text-right">{quantityName || "Qty"}</TableHead>
+                  <TableHead className="text-right">
+                    {quantityName || "Qty"}
+                  </TableHead>
                   <TableHead>Created</TableHead>
                 </TableRow>
               </TableHeader>
@@ -245,7 +247,7 @@ export const ItemsTable: React.FC<ItemsTableProps> = ({
                       </TableCell>
                       <TableCell className="font-mono text-sm font-medium">
                         <Link
-                          href={`/${org}/inventory/item/${encodeURIComponent(row.code)}`}
+                          href={`/${org}/inventory/items/${row.id}`}
                           className="hover:text-primary underline-offset-4 hover:underline"
                         >
                           {row.code}

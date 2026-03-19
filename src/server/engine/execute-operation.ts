@@ -30,8 +30,8 @@ import {
   item,
   operation,
   operationType,
-  operationTypeField,
-  operationTypePort,
+  operationTypeInputField,
+  operationTypeInputItem,
   operationTypeStep,
 } from "~/server/db/schema";
 import { registry } from "./actions";
@@ -68,13 +68,13 @@ export async function executeOperation(
 
   const ports = await tx
     .select()
-    .from(operationTypePort)
-    .where(eq(operationTypePort.operationTypeId, opType.id));
+    .from(operationTypeInputItem)
+    .where(eq(operationTypeInputItem.operationTypeId, opType.id));
 
   const fields = await tx
     .select()
-    .from(operationTypeField)
-    .where(eq(operationTypeField.operationTypeId, opType.id));
+    .from(operationTypeInputField)
+    .where(eq(operationTypeInputField.operationTypeId, opType.id));
 
   const steps = await tx
     .select()

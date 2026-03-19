@@ -112,10 +112,83 @@ items:
         type: date
 
 operations:
-  - name: Harvest Mushroom Box
-    description: Harvest a mushroom box from a harvest room
+  - name: Harvested
+    description: Record a harvest event for one or more mushroom boxes
+
+    items:
+      mushroomBoxes:
+        itemType: Mushroom Box
+        min: 1
+        preconditions:
+          status: [Created]
+
     inputs:
-      items:
-        - key: mushroomBox
-          itemType: Mushroom Box
-          scan: barcode
+      Harvest By:
+        type: string
+        required: false
+        description: "Required if not already set on all boxes."
+      Harvest On:
+        type: date
+        required: false
+      Harvest Room:
+        type: location
+
+    steps:
+      - name: Harvest Mushroom Box
+        action: set-item
+        target: mushroomBoxs
+        value:
+          status: Approved
+          attributes:
+            Harvest By: { from: [inputs, Harvest By], keepExisting: true }
+            Harvest On:
+              from: [inputs, Harvest On, format: date]
+              keepExisting: true
+            Harvest Room:
+              from: [inputs, Harvest Room, name]
+              keepExisting: true
+
+      - name: Set Operation locations
+        action: set-operation
+        value:
+          location: { from: [inputs, Harvest Room] }
+
+  - name: Build Skid
+    description: Add boxes to a skid for shipment
+
+    items:
+      mushroomBoxes:
+        itemType: Mushroom Box
+        min: 1
+        preconditions:
+          status: [Approved]
+
+      skid:
+        itemType: Skid
+        min: 1
+        max: 1
+        preconditions:
+          status: [Ready]
+
+    inputs:
+      Customer:
+        type: string
+      Ship Date:
+        type: date
+
+    steps:
+      - name: Set Skid Status
+        action: set-item
+        target: skid
+        value:
+          status: Shipped
+          attributes:
+            Customer: { from: [inputs, Customer] }
+            Ship Date: { from: [inputs, Ship Date] }
+
+      - name: Link Mushroom Boxes to Skid
+        action: set-lineage
+        with:
+          from: mushroomBoxes
+          to: skid
+          relationship: On Skid

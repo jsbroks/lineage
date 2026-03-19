@@ -9,14 +9,15 @@ import {
 import { relations } from "drizzle-orm/relations";
 import { itemType } from "~/server/db/schema/item-types";
 
-export const statusDefinition = pgTable(
-  "status_definition",
+export const itemTypeStatusDefinition = pgTable(
+  "item_type_status_definition",
   {
     id: uuid().primaryKey().defaultRandom(),
     // orgId:      uuid("org_id").references(() => organizations.id, { onDelete: "cascade" }),
     // verticalId: uuid("vertical_id").notNull().references(() => verticals.id),
-    itemTypeId: uuid("item_type_id").references(() => itemType.id),
-    slug: text().notNull(),
+    itemTypeId: uuid("item_type_id")
+      .references(() => itemType.id)
+      .notNull(),
     name: text().notNull(),
     color: text(),
     isInitial: boolean("is_initial").notNull().default(false),
@@ -26,41 +27,41 @@ export const statusDefinition = pgTable(
   (t) => [],
 );
 
-export const statusDefinitionRelations = relations(
-  statusDefinition,
+export const itemTypeStatusDefinitionRelations = relations(
+  itemTypeStatusDefinition,
   ({ one }) => ({
     itemType: one(itemType, {
-      fields: [statusDefinition.itemTypeId],
+      fields: [itemTypeStatusDefinition.itemTypeId],
       references: [itemType.id],
     }),
   }),
 );
 
-export const statusTransition = pgTable(
-  "status_transition",
+export const itemTypeStatusTransition = pgTable(
+  "item_type_status_transition",
   {
     id: uuid().primaryKey().defaultRandom(),
     fromStatusId: uuid("from_status_id")
       .notNull()
-      .references(() => statusDefinition.id),
+      .references(() => itemTypeStatusDefinition.id),
     toStatusId: uuid("to_status_id")
       .notNull()
-      .references(() => statusDefinition.id),
+      .references(() => itemTypeStatusDefinition.id),
   },
   (t) => [uniqueIndex().on(t.fromStatusId, t.toStatusId)],
 );
 
-export const statusTransitionsRelations = relations(
-  statusTransition,
+export const itemTypeStatusTransitionRelations = relations(
+  itemTypeStatusTransition,
   ({ one }) => ({
-    fromStatus: one(statusDefinition, {
-      fields: [statusTransition.fromStatusId],
-      references: [statusDefinition.id],
+    fromStatus: one(itemTypeStatusDefinition, {
+      fields: [itemTypeStatusTransition.fromStatusId],
+      references: [itemTypeStatusDefinition.id],
       relationName: "fromTransitions",
     }),
-    toStatus: one(statusDefinition, {
-      fields: [statusTransition.toStatusId],
-      references: [statusDefinition.id],
+    toStatus: one(itemTypeStatusDefinition, {
+      fields: [itemTypeStatusTransition.toStatusId],
+      references: [itemTypeStatusDefinition.id],
       relationName: "toTransitions",
     }),
   }),

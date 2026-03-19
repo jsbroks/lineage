@@ -22,12 +22,9 @@ import {
 } from "~/components/ui/table";
 import { api } from "~/trpc/react";
 import { cn } from "~/lib/utils";
-import type { AttrDef, LocationDef, StatusDef, VariantDef } from "./Types";
+import type { AttrDef, LocationDef, StatusDef, VariantDef } from "./types";
 
-function formatCentsCurrency(
-  cents: number,
-  currency: string | null,
-): string {
+function formatCentsCurrency(cents: number, currency: string | null): string {
   const amount = cents / 100;
   try {
     return new Intl.NumberFormat(undefined, {
@@ -278,28 +275,32 @@ export const QuickReport: React.FC<QuickReportProps> = ({
                     <SelectItem value="max">Max</SelectItem>
                   </SelectContent>
                 </Select>
-                <span className="text-muted-foreground text-xs">of</span>
-                <Select
-                  value={reportMetrics[0]?.field ?? "quantity"}
-                  onValueChange={(val) => {
-                    setReportMetrics((prev) =>
-                      prev.length > 0
-                        ? [{ ...prev[0]!, field: val }]
-                        : [{ field: val, op: "count" }],
-                    );
-                  }}
-                >
-                  <SelectTrigger className="h-8 w-32 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {metricFieldOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {(reportMetrics[0]?.op ?? "count") !== "count" && (
+                  <>
+                    <span className="text-muted-foreground text-xs">of</span>
+                    <Select
+                      value={reportMetrics[0]?.field ?? "quantity"}
+                      onValueChange={(val) => {
+                        setReportMetrics((prev) =>
+                          prev.length > 0
+                            ? [{ ...prev[0]!, field: val }]
+                            : [{ field: val, op: "count" }],
+                        );
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-32 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {metricFieldOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -614,7 +615,10 @@ export const QuickReport: React.FC<QuickReportProps> = ({
                     {reportData.columns.map((col) => (
                       <TableHead key={col.key} className="text-xs">
                         {quantityName
-                          ? col.label.replace("quantity", quantityName.toLowerCase())
+                          ? col.label.replace(
+                              "quantity",
+                              quantityName.toLowerCase(),
+                            )
                           : col.label}
                       </TableHead>
                     ))}

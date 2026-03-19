@@ -39,6 +39,7 @@ interface ConfigPanelProps {
   selectedItemIds: Set<string>;
   onSelectedItemIdsChange: (ids: Set<string>) => void;
   onPrint: () => void;
+  initialTypeId?: string;
 }
 
 export const ConfigPanel: React.FC<ConfigPanelProps> = ({
@@ -49,8 +50,9 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
   selectedItemIds,
   onSelectedItemIdsChange,
   onPrint,
+  initialTypeId,
 }) => {
-  const [typeId, setTypeId] = useState<string>("");
+  const [typeId, setTypeId] = useState<string>(initialTypeId ?? "");
   const [sourceMode, setSourceMode] = useState<SourceMode>("create");
   const [search, setSearch] = useState("");
 
@@ -165,9 +167,9 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
 
   return (
     <div className="flex h-full w-80 shrink-0 flex-col overflow-hidden border-r">
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
         {/* Item Type */}
-        <div className="space-y-1.5">
+        <div className="m-4 space-y-1.5">
           <Label className="text-xs">Item Type</Label>
           <Select
             value={typeId}
@@ -195,7 +197,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
 
         {/* Source mode toggle */}
         {typeId && (
-          <div className="flex gap-1 rounded-md border p-0.5">
+          <div className="m-4 flex gap-1 rounded-md border p-0.5">
             <button
               type="button"
               onClick={() => setSourceMode("existing")}
@@ -223,7 +225,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
 
         {/* Existing item selection */}
         {typeId && sourceMode === "existing" && (
-          <div className="space-y-1.5">
+          <div className="m-4 space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs">Items</Label>
               {items.length > 0 && (
@@ -290,7 +292,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
 
         {/* Batch creation form */}
         {typeId && sourceMode === "create" && (
-          <div className="space-y-3">
+          <div className="m-4 space-y-3">
             <div className="space-y-1.5">
               <Label className="text-xs">How many?</Label>
               <Input
@@ -320,36 +322,6 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
                     {variants.map((v) => (
                       <SelectItem key={v.id} value={v.id}>
                         {v.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {statuses.length > 0 && (
-              <div className="space-y-1.5">
-                <Label className="text-xs">Initial status</Label>
-                <Select
-                  value={
-                    batchStatus || statuses.find((s) => s.isInitial)?.slug || ""
-                  }
-                  onValueChange={setBatchStatus}
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {statuses.map((s) => (
-                      <SelectItem key={s.slug} value={s.slug}>
-                        <div className="flex items-center gap-2">
-                          <Circle
-                            className="size-2"
-                            fill={s.color ?? "currentColor"}
-                            stroke={s.color ?? "currentColor"}
-                          />
-                          {s.name}
-                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -423,13 +395,13 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
           </div>
         )}
 
-        <Accordion type="multiple" className="-mx-4">
-          <AccordionItem value="template" className="border-b px-4">
-            <AccordionTrigger className="py-2 text-xs">
+        <Accordion type="multiple">
+          <AccordionItem value="template" className="border-t border-b">
+            <AccordionTrigger className="px-4 py-2 text-xs">
               Label Template
             </AccordionTrigger>
             <AccordionContent>
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 px-4">
                 <Select
                   value={selectedTemplate.id}
                   onValueChange={(id) => {
@@ -473,12 +445,12 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
             </AccordionContent>
           </AccordionItem>
 
-          <AccordionItem value="content" className="border-b-0 px-4">
-            <AccordionTrigger className="py-2 text-xs">
+          <AccordionItem value="content" className="border-b-0">
+            <AccordionTrigger className="px-4 py-2 text-xs">
               Label Content
             </AccordionTrigger>
             <AccordionContent>
-              <div className="space-y-2">
+              <div className="space-y-2 px-4">
                 <label className="flex cursor-pointer items-center gap-2">
                   <Checkbox
                     checked={content.showQrCode}

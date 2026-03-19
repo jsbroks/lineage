@@ -45,7 +45,6 @@ export default function EditItemTypePage() {
     return {
       base: {
         name: it.name,
-        slug: it.slug,
         category: it.category,
         defaultUom: it.quantityDefaultUnit ?? "each",
         quantityName: it.quantityName ?? "",

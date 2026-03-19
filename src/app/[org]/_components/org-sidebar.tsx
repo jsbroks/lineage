@@ -3,9 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Boxes,
   ClipboardList,
-  Cog,
   Home,
   MapPin,
   Package2,
@@ -22,9 +20,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
   SidebarRail,
 } from "~/components/ui/sidebar";
 
@@ -38,22 +33,23 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
   const mainNav = [
     { label: "Home", href: `/${org}`, icon: Home },
     {
+      label: "Inventory",
+      href: `/${org}/inventory`,
+      icon: Package2,
+    },
+    {
+      label: "Print Labels",
+      href: `/${org}/inventory/print`,
+      icon: Printer,
+    },
+    {
       label: "Record Task",
       href: `/${org}/operations`,
       icon: ClipboardList,
     },
   ];
 
-  const inventorySubItems = [
-    {
-      label: "Print Labels",
-      href: `/${org}/inventory/print`,
-      icon: Printer,
-    },
-  ];
-
-  const setupSubItems = [
-    { label: "Categories", href: `/${org}/settings/item-types`, icon: Boxes },
+  const settingsNav = [
     {
       label: "Task Types",
       href: `/${org}/settings/operations`,
@@ -66,9 +62,6 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
     },
   ];
 
-  const isInventoryActive = pathname.startsWith(`/${org}/inventory`);
-  const isSetupActive = pathname.startsWith(`/${org}/settings`);
-
   return (
     <Sidebar variant="inset" collapsible="icon">
       <SidebarHeader>
@@ -80,7 +73,18 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
           <SidebarMenu>
             {mainNav.map((item) => (
               <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton asChild isActive={pathname === item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={
+                    item.href === `/${org}/inventory`
+                      ? pathname === item.href ||
+                        (pathname.startsWith(item.href) &&
+                          !pathname.startsWith(`/${org}/inventory/print`))
+                      : pathname === item.href ||
+                        pathname.startsWith(item.href + "/")
+                  }
+                  tooltip={item.label}
+                >
                   <Link href={item.href}>
                     <item.icon />
                     <span>{item.label}</span>
@@ -88,70 +92,26 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === `/${org}/inventory`}
-                tooltip="Inventory"
-              >
-                <Link href={`/${org}/inventory`}>
-                  <Package2 />
-                  <span>Inventory</span>
-                </Link>
-              </SidebarMenuButton>
-              {isInventoryActive && (
-                <SidebarMenuSub>
-                  {inventorySubItems.map((item) => (
-                    <SidebarMenuSubItem key={item.href}>
-                      <SidebarMenuSubButton
-                        asChild
-                        isActive={pathname.startsWith(item.href)}
-                      >
-                        <Link href={item.href}>
-                          <item.icon />
-                          <span>{item.label}</span>
-                        </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  ))}
-                </SidebarMenuSub>
-              )}
-            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Setup</SidebarGroupLabel>
+          <SidebarGroupLabel>Settings</SidebarGroupLabel>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={pathname === `/${org}/settings`}
-                tooltip="Setup"
-              >
-                <Link href={`/${org}/settings`}>
-                  <Cog />
-                  <span>Setup</span>
-                </Link>
-              </SidebarMenuButton>
-              {isSetupActive && (
-                <SidebarMenuSub>
-                  {setupSubItems.map((item) => (
-                    <SidebarMenuSubItem key={item.href}>
-                      <SidebarMenuSubButton
-                        asChild
-                        isActive={pathname.startsWith(item.href)}
-                      >
-                        <Link href={item.href}>
-                          <item.icon />
-                          <span>{item.label}</span>
-                        </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  ))}
-                </SidebarMenuSub>
-              )}
-            </SidebarMenuItem>
+            {settingsNav.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(item.href)}
+                  tooltip={item.label}
+                >
+                  <Link href={item.href}>
+                    <item.icon />
+                    <span>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>

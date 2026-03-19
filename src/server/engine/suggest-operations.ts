@@ -17,7 +17,11 @@
  */
 
 import { asc, eq, inArray } from "drizzle-orm";
-import { item, operationType, operationTypePort } from "~/server/db/schema";
+import {
+  item,
+  operationType,
+  operationTypeInputItem,
+} from "~/server/db/schema";
 import type { db as dbInstance } from "~/server/db";
 
 type Db = typeof dbInstance;
@@ -88,8 +92,8 @@ export async function suggestOperations(
 
   const allPorts = await db
     .select()
-    .from(operationTypePort)
-    .where(eq(operationTypePort.direction, "input"));
+    .from(operationTypeInputItem)
+    .where(eq(operationTypeInputItem.direction, "input"));
 
   const portsByOpType = new Map<string, typeof allPorts>();
   for (const port of allPorts) {

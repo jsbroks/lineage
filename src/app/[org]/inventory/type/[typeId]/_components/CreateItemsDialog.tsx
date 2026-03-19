@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Separator } from "~/components/ui/separator";
-import type { AttrDef, StatusDef, VariantDef } from "./Types";
+import type { AttrDef, StatusDef, VariantDef } from "./types";
 
 interface CreateItemsDialogProps {
   open: boolean;

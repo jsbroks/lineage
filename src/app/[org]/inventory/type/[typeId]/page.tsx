@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Edit, Plus } from "lucide-react";
+import { Edit, Plus, Printer } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
 import {
@@ -210,6 +210,11 @@ export default function ItemTypeDetailPage() {
           <Button variant="outline" size="sm" asChild>
             <Link href={`/${params.org}/inventory/type/${typeId}/edit`}>
               <Edit className="mr-1 size-3.5" /> Edit type
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/${params.org}/inventory/print?typeId=${typeId}`}>
+              <Printer className="mr-1 size-3.5" /> Print Labels
             </Link>
           </Button>
           <Button size="sm" onClick={() => setCreateOpen(true)}>

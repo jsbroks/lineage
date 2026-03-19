@@ -24,13 +24,13 @@ export const LineageCard: React.FC<{
       ) : (
         <div className="space-y-2">
           {entries.map(({ link, item: lineageItem }) => {
-            const fallbackId =
+            const linkedId =
               direction === "parent" ? link.parentItemId : link.childItemId;
-            const code = lineageItem?.code ?? fallbackId;
+            const code = lineageItem?.code ?? linkedId;
             return (
               <Link
                 key={link.id}
-                href={`/${org}/inventory/item/${encodeURIComponent(code)}`}
+                href={`/${org}/inventory/items/${linkedId}`}
                 className="hover:bg-muted block rounded-md border p-2 text-sm transition-colors"
               >
                 <p className="font-mono font-medium">{code}</p>

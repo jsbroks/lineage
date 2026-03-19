@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import type { AttrDef } from "./Types";
+import type { AttrDef } from "./types";
 
 interface BulkAttributeDialogProps {
   open: boolean;
@@ -137,10 +137,7 @@ export const BulkAttributeDialog: React.FC<BulkAttributeDialogProps> = ({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            onClick={handleConfirm}
-            disabled={!hasSelection || isPending}
-          >
+          <Button onClick={handleConfirm} disabled={!hasSelection || isPending}>
             {isPending
               ? "Updating..."
               : `Update ${enabledKeys.size} attribute${enabledKeys.size !== 1 ? "s" : ""}`}

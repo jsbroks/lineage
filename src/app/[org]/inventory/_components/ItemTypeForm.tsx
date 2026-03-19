@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "~/components/ui/button";
+import { determineItemTypeCode } from "~/lib/item-type-code";
 import { GeneralCard } from "./GeneralCard";
 import { VariantsCard } from "./VariantsCard";
 import { GeneratedVariantsCard } from "./GeneratedVariantsCard";
@@ -30,7 +31,6 @@ function cartesian(sets: string[][]): string[][] {
 
 export type ItemTypeFormValues = {
   name: string;
-  slug: string;
   category: string;
   defaultUom: string;
   quantityName: string;
@@ -92,7 +92,6 @@ export type ItemTypeFormData = {
 
 const EMPTY_BASE: ItemTypeFormValues = {
   name: "",
-  slug: "",
   category: "",
   defaultUom: "each",
   quantityName: "",
@@ -142,6 +141,7 @@ export function ItemTypeForm({
     {},
   );
   const [expandedVariant, setExpandedVariant] = useState<string | null>(null);
+  const codePrefixTouched = useRef(!!initialData?.base.codePrefix);
 
   useEffect(() => {
     if (!initialData) return;
@@ -182,7 +182,19 @@ export function ItemTypeForm({
   // -- Handlers --
 
   const handleNameChange = (value: string) => {
-    setBase((prev) => ({ ...prev, name: value, slug: slugify(value) }));
+    const slug = slugify(value);
+    setBase((prev) => {
+      const next = { ...prev, name: value, slug };
+      if (!codePrefixTouched.current) {
+        next.codePrefix = determineItemTypeCode({ name: value, slug });
+      }
+      return next;
+    });
+  };
+
+  const handleCodePrefixChange = (value: string) => {
+    codePrefixTouched.current = true;
+    setBase((prev) => ({ ...prev, codePrefix: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -319,17 +331,19 @@ export function ItemTypeForm({
   const removeAttrDef = (idx: number) =>
     setAttrDefs((prev) => prev.filter((_, i) => i !== idx));
 
-  const updateAttrDef = (
-    idx: number,
-    patch: Partial<AttributeDefinitionRow>,
-  ) =>
+  const updateAttrDef = (idx: number, patch: Partial<AttributeDefinitionRow>) =>
     setAttrDefs((prev) =>
       prev.map((d, i) => (i === idx ? { ...d, ...patch } : d)),
     );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <GeneralCard base={base} setBase={setBase} onNameChange={handleNameChange} />
+      <GeneralCard
+        base={base}
+        setBase={setBase}
+        onNameChange={handleNameChange}
+        onCodePrefixChange={handleCodePrefixChange}
+      />
 
       <VariantsCard
         options={options}
