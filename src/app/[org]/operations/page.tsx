@@ -106,11 +106,10 @@ export default function OperationsPage() {
   const handleExecute = async () => {
     if (!chosenOp) return;
 
-    // Build the items map: portRole → item IDs from the suggestion's port matches
     const itemsMap: Record<string, string[]> = {};
     for (const port of chosenOp.ports) {
       if (port.matchedItemIds.length > 0) {
-        itemsMap[port.portRole] = port.matchedItemIds;
+        itemsMap[port.referenceKey] = port.matchedItemIds;
       }
     }
 
@@ -188,7 +187,7 @@ export default function OperationsPage() {
                     >
                       <span className="font-medium">{l.code}</span>
                       <span className="text-muted-foreground text-xs">
-                        {l.status}
+                        {l.statusId}
                       </span>
                     </button>
                   ))}
@@ -402,15 +401,16 @@ function FieldInputs({
     setFieldValues((prev) => ({ ...prev, [key]: value }));
   };
 
+  const enumOpts = (field: (typeof fields)[number]) =>
+    (field.options as { enum?: string[] } | null)?.enum ?? null;
+
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      {fields
-        .filter((f) => !f.isAuto)
-        .map((field) => (
+      {fields.map((field) => (
           <div key={field.id} className="space-y-1.5">
             <label className="text-sm font-medium">
-              {field.key}
-              {field.isRequired && (
+              {field.label ?? field.referenceKey}
+              {field.required && (
                 <span className="text-destructive ml-0.5">*</span>
               )}
             </label>
@@ -420,61 +420,61 @@ function FieldInputs({
               </p>
             )}
 
-            {field.fieldType === "select" && field.enumOptions ? (
+            {field.type === "select" && enumOpts(field) ? (
               <Select
-                value={(fieldValues[field.key] as string) ?? ""}
-                onValueChange={(v) => updateField(field.key, v)}
+                value={(fieldValues[field.referenceKey] as string) ?? ""}
+                onValueChange={(v) => updateField(field.referenceKey, v)}
               >
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder={`Select ${field.key}`} />
+                  <SelectValue placeholder={`Select ${field.referenceKey}`} />
                 </SelectTrigger>
                 <SelectContent>
-                  {field.enumOptions.map((opt) => (
+                  {enumOpts(field)!.map((opt: string) => (
                     <SelectItem key={opt} value={opt}>
                       {opt}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            ) : field.fieldType === "boolean" ? (
+            ) : field.type === "boolean" ? (
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={!!fieldValues[field.key]}
+                  checked={!!fieldValues[field.referenceKey]}
                   onChange={(e) =>
-                    updateField(field.key, e.target.checked)
+                    updateField(field.referenceKey, e.target.checked)
                   }
                   className="size-4 rounded"
                 />
                 <span className="text-sm">Yes</span>
               </label>
-            ) : field.fieldType === "number" ||
-              field.fieldType === "weight" ||
-              field.fieldType === "temperature" ? (
+            ) : field.type === "number" ||
+              field.type === "weight" ||
+              field.type === "temperature" ? (
               <Input
                 type="number"
                 step="any"
-                placeholder={field.key}
-                value={(fieldValues[field.key] as string) ?? ""}
+                placeholder={field.referenceKey}
+                value={(fieldValues[field.referenceKey] as string) ?? ""}
                 onChange={(e) =>
                   updateField(
-                    field.key,
+                    field.referenceKey,
                     e.target.value ? Number(e.target.value) : "",
                   )
                 }
               />
-            ) : field.fieldType === "date" ||
-              field.fieldType === "datetime" ? (
+            ) : field.type === "date" ||
+              field.type === "datetime" ? (
               <Input
-                type={field.fieldType === "datetime" ? "datetime-local" : "date"}
-                value={(fieldValues[field.key] as string) ?? ""}
-                onChange={(e) => updateField(field.key, e.target.value)}
+                type={field.type === "datetime" ? "datetime-local" : "date"}
+                value={(fieldValues[field.referenceKey] as string) ?? ""}
+                onChange={(e) => updateField(field.referenceKey, e.target.value)}
               />
             ) : (
               <Input
-                placeholder={field.key}
-                value={(fieldValues[field.key] as string) ?? ""}
-                onChange={(e) => updateField(field.key, e.target.value)}
+                placeholder={field.referenceKey}
+                value={(fieldValues[field.referenceKey] as string) ?? ""}
+                onChange={(e) => updateField(field.referenceKey, e.target.value)}
               />
             )}
           </div>

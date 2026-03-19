@@ -46,7 +46,7 @@ export function resolvePath(path: string, ctx: ExecCtx): unknown {
   if (items && items.length > 0) {
     const firstItem = items[0]!;
     const attrPath = parts.slice(1).join(".");
-    if (attrPath === "status") return firstItem.status;
+    if (attrPath === "status") return firstItem.statusId;
     if (attrPath === "id") return firstItem.id;
     const attrs = (firstItem.attributes ?? {}) as Record<string, unknown>;
     return attrs[attrPath];

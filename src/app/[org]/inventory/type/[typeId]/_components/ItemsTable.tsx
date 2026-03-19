@@ -134,7 +134,7 @@ export const ItemsTable: React.FC<ItemsTableProps> = ({
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
                 {statuses.map((s) => (
-                  <SelectItem key={s.slug} value={s.slug}>
+                  <SelectItem key={s.id} value={s.id}>
                     {s.name}
                   </SelectItem>
                 ))}

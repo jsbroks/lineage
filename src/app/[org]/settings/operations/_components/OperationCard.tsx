@@ -7,15 +7,14 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { ArrowRight, Pencil } from "lucide-react";
-import type {
-  ItemType,
-  OperationType,
-  OperationTypePort,
-} from "~/server/db/schema";
+import { Pencil } from "lucide-react";
+import type { ItemType, OperationType } from "~/server/db/schema";
+import type { operationTypeInputItem } from "~/server/db/schema";
+
+type Port = typeof operationTypeInputItem.$inferSelect;
 
 type PortRowProps = {
-  port: OperationTypePort;
+  port: Port;
   itemType: ItemType;
 };
 
@@ -23,19 +22,19 @@ const PortRow: React.FC<PortRowProps> = ({ port, itemType }) => {
   return (
     <div key={port.id}>
       {itemType.name}{" "}
-      {port.isConsumed ? (
+      {port.required ? (
         <Badge
           variant="ghost"
           className="bg-orange-300/20 text-xs text-orange-600"
         >
-          Consumed
+          Required
         </Badge>
       ) : (
         <Badge
           variant="ghost"
           className="bg-green-300/20 text-xs text-green-600"
         >
-          Kept
+          Optional
         </Badge>
       )}
     </div>
@@ -44,7 +43,7 @@ const PortRow: React.FC<PortRowProps> = ({ port, itemType }) => {
 
 type OperationCardProps = {
   operationType: OperationType;
-  ports: OperationTypePort[];
+  ports: Port[];
   itemTypes: ItemType[];
   org: string;
 };
@@ -55,12 +54,6 @@ export const OperationCard: React.FC<OperationCardProps> = ({
   itemTypes,
   org,
 }) => {
-  const inputPorts = ports.filter((port) => port.direction === "input");
-  const outputPorts = ports.filter((port) => port.direction === "output");
-
-  const getItemTypeName = (itemTypeId: string) => {
-    return itemTypes.find((itemType) => itemType.id === itemTypeId)?.name;
-  };
   return (
     <Link
       href={`/${org}/settings/operations/${operationType.id}`}
@@ -76,57 +69,27 @@ export const OperationCard: React.FC<OperationCardProps> = ({
         </CardHeader>
 
         <CardContent>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-start gap-3">
-            <div className="col-span-1">
-              <p className="text-muted-foreground mb-1 text-xs uppercase">
-                What goes in
-              </p>
-              <div className="space-y-0.5">
-                {inputPorts.map((port) => (
-                  <PortRow
-                    key={port.id}
-                    port={port}
-                    itemType={
-                      itemTypes.find(
-                        (itemType) => itemType.id === port.itemTypeId,
-                      )!
-                    }
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="text-muted-foreground flex h-full justify-center pt-6">
-              <ArrowRight className="size-4" />
-            </div>
-
-            <div className="col-span-1">
-              <p className="text-muted-foreground mb-1 text-xs uppercase">
-                What comes out
-              </p>
-
-              {outputPorts.length == 0 && (
+          <div>
+            <p className="text-muted-foreground mb-1 text-xs uppercase">
+              Input Items
+            </p>
+            <div className="space-y-0.5">
+              {ports.map((port) => (
+                <PortRow
+                  key={port.id}
+                  port={port}
+                  itemType={
+                    itemTypes.find(
+                      (itemType) => itemType.id === port.itemTypeId,
+                    )!
+                  }
+                />
+              ))}
+              {ports.length === 0 && (
                 <div className="text-muted-foreground pt-1 text-xs">
-                  Connects{" "}
-                  {inputPorts
-                    .map((port) => getItemTypeName(port.itemTypeId))
-                    .join(", ")}{" "}
-                  via history
+                  No input items defined
                 </div>
               )}
-              <div>
-                {outputPorts.map((port) => (
-                  <PortRow
-                    key={port.id}
-                    port={port}
-                    itemType={
-                      itemTypes.find(
-                        (itemType) => itemType.id === port.itemTypeId,
-                      )!
-                    }
-                  />
-                ))}
-              </div>
             </div>
           </div>
         </CardContent>

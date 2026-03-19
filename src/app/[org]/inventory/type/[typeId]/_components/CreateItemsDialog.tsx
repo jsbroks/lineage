@@ -99,7 +99,7 @@ export const CreateItemsDialog: React.FC<CreateItemsDialogProps> = ({
     onConfirm({
       count: cnt,
       variantId: variant === "none" ? null : variant,
-      status: status || initialStatus?.slug || "created",
+      status: status || initialStatus?.id || "created",
       attributes,
     });
   };
@@ -156,7 +156,7 @@ export const CreateItemsDialog: React.FC<CreateItemsDialogProps> = ({
             <div className="space-y-2">
               <Label>Initial status</Label>
               <Select
-                value={status || statuses.find((s) => s.isInitial)?.slug || ""}
+                value={status || statuses.find((s) => s.isInitial)?.id || ""}
                 onValueChange={setStatus}
               >
                 <SelectTrigger>
@@ -164,7 +164,7 @@ export const CreateItemsDialog: React.FC<CreateItemsDialogProps> = ({
                 </SelectTrigger>
                 <SelectContent>
                   {statuses.map((s) => (
-                    <SelectItem key={s.slug} value={s.slug}>
+                    <SelectItem key={s.id} value={s.id}>
                       <div className="flex items-center gap-2">
                         <Circle
                           className="size-2"

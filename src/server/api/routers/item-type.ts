@@ -10,12 +10,11 @@ import {
   itemTypeOptionValue,
   itemTypeAttributeDefinition,
   item,
-  statusDefinition,
-  statusTransition,
+  itemTypeStatusDefinition,
+  itemTypeStatusTransition,
 } from "~/server/db/schema";
 
 const itemTypeCreateInput = z.object({
-  slug: z.string().min(1),
   name: z.string().min(1),
   description: z.string().nullable().optional(),
   category: z.string().min(1),
@@ -23,7 +22,6 @@ const itemTypeCreateInput = z.object({
   quantityDefaultUnit: z.string().min(1).optional(),
   icon: z.string().nullable().optional(),
   color: z.string().nullable().optional(),
-  config: z.record(z.string(), z.unknown()).optional(),
   codePrefix: z.string().min(1).nullable().optional(),
   codeNextNumber: z.number().int().positive().optional(),
 });
@@ -43,7 +41,6 @@ export const itemTypeRouter = createTRPCRouter({
       const [createdItemType] = await ctx.db
         .insert(itemType)
         .values({
-          slug: input.slug,
           name: input.name,
           description: input.description,
           category: input.category,
@@ -65,7 +62,6 @@ export const itemTypeRouter = createTRPCRouter({
       const [updatedItemType] = await ctx.db
         .update(itemType)
         .set({
-          slug: input.slug,
           name: input.name,
           description: input.description,
           category: input.category,
@@ -147,17 +143,17 @@ export const itemTypeRouter = createTRPCRouter({
 
       const statuses = await ctx.db
         .select()
-        .from(statusDefinition)
-        .where(eq(statusDefinition.itemTypeId, input.id))
-        .orderBy(asc(statusDefinition.ordinal));
+        .from(itemTypeStatusDefinition)
+        .where(eq(itemTypeStatusDefinition.itemTypeId, input.id))
+        .orderBy(asc(itemTypeStatusDefinition.ordinal));
 
       const statusIds = statuses.map((s) => s.id);
       const transitions =
         statusIds.length > 0
           ? await ctx.db
               .select()
-              .from(statusTransition)
-              .where(inArray(statusTransition.fromStatusId, statusIds))
+              .from(itemTypeStatusTransition)
+              .where(inArray(itemTypeStatusTransition.fromStatusId, statusIds))
           : [];
 
       const attributeDefinitions = await ctx.db
@@ -360,7 +356,6 @@ export const itemTypeRouter = createTRPCRouter({
         statuses: z.array(
           z.object({
             id: z.uuid().optional(),
-            slug: z.string().min(1),
             name: z.string().min(1),
             color: z.string().nullable().optional(),
             isInitial: z.boolean().default(false),
@@ -380,8 +375,8 @@ export const itemTypeRouter = createTRPCRouter({
       return ctx.db.transaction(async (tx) => {
         const existing = await tx
           .select()
-          .from(statusDefinition)
-          .where(eq(statusDefinition.itemTypeId, input.itemTypeId));
+          .from(itemTypeStatusDefinition)
+          .where(eq(itemTypeStatusDefinition.itemTypeId, input.itemTypeId));
 
         const incomingIds = new Set(
           input.statuses.map((s) => s.id).filter(Boolean),
@@ -391,33 +386,31 @@ export const itemTypeRouter = createTRPCRouter({
         if (toDelete.length > 0) {
           const deleteIds = toDelete.map((d) => d.id);
           await tx
-            .delete(statusTransition)
-            .where(inArray(statusTransition.fromStatusId, deleteIds));
+            .delete(itemTypeStatusTransition)
+            .where(inArray(itemTypeStatusTransition.fromStatusId, deleteIds));
           await tx
-            .delete(statusTransition)
-            .where(inArray(statusTransition.toStatusId, deleteIds));
+            .delete(itemTypeStatusTransition)
+            .where(inArray(itemTypeStatusTransition.toStatusId, deleteIds));
           await tx
-            .delete(statusDefinition)
-            .where(inArray(statusDefinition.id, deleteIds));
+            .delete(itemTypeStatusDefinition)
+            .where(inArray(itemTypeStatusDefinition.id, deleteIds));
         }
 
         for (const s of input.statuses) {
           if (s.id) {
             await tx
-              .update(statusDefinition)
+              .update(itemTypeStatusDefinition)
               .set({
-                slug: s.slug,
                 name: s.name,
                 color: s.color,
                 isInitial: s.isInitial,
                 isTerminal: s.isTerminal,
                 ordinal: s.ordinal,
               })
-              .where(eq(statusDefinition.id, s.id));
+              .where(eq(itemTypeStatusDefinition.id, s.id));
           } else {
-            await tx.insert(statusDefinition).values({
+            await tx.insert(itemTypeStatusDefinition).values({
               itemTypeId: input.itemTypeId,
-              slug: s.slug,
               name: s.name,
               color: s.color,
               isInitial: s.isInitial,
@@ -429,23 +422,23 @@ export const itemTypeRouter = createTRPCRouter({
 
         const saved = await tx
           .select()
-          .from(statusDefinition)
-          .where(eq(statusDefinition.itemTypeId, input.itemTypeId));
+          .from(itemTypeStatusDefinition)
+          .where(eq(itemTypeStatusDefinition.itemTypeId, input.itemTypeId));
 
-        const slugToId = new Map(saved.map((s) => [s.slug, s.id]));
+        const nameToId = new Map(saved.map((s) => [s.name, s.id]));
 
         const existingStatusIds = saved.map((s) => s.id);
         if (existingStatusIds.length > 0) {
           await tx
-            .delete(statusTransition)
-            .where(inArray(statusTransition.fromStatusId, existingStatusIds));
+            .delete(itemTypeStatusTransition)
+            .where(inArray(itemTypeStatusTransition.fromStatusId, existingStatusIds));
         }
 
         for (const t of input.transitions) {
-          const fromId = slugToId.get(t.fromSlug);
-          const toId = slugToId.get(t.toSlug);
+          const fromId = nameToId.get(t.fromSlug);
+          const toId = nameToId.get(t.toSlug);
           if (fromId && toId) {
-            await tx.insert(statusTransition).values({
+            await tx.insert(itemTypeStatusTransition).values({
               fromStatusId: fromId,
               toStatusId: toId,
             });
@@ -456,9 +449,9 @@ export const itemTypeRouter = createTRPCRouter({
           existingStatusIds.length > 0
             ? await tx
                 .select()
-                .from(statusTransition)
+                .from(itemTypeStatusTransition)
                 .where(
-                  inArray(statusTransition.fromStatusId, existingStatusIds),
+                  inArray(itemTypeStatusTransition.fromStatusId, existingStatusIds),
                 )
             : [];
 
@@ -553,21 +546,21 @@ export const itemTypeRouter = createTRPCRouter({
       .where(eq(itemTypeVariant.isActive, true))
       .orderBy(asc(itemTypeVariant.sortOrder));
 
-    const statuses = await ctx.db.select().from(statusDefinition);
+    const statuses = await ctx.db.select().from(itemTypeStatusDefinition);
 
-    const initialSlugs = new Map<string, Set<string>>();
-    const terminalSlugs = new Map<string, Set<string>>();
+    const initialIds = new Map<string, Set<string>>();
+    const terminalIds = new Map<string, Set<string>>();
     for (const s of statuses) {
       if (!s.itemTypeId) continue;
       if (s.isInitial) {
-        if (!initialSlugs.has(s.itemTypeId))
-          initialSlugs.set(s.itemTypeId, new Set());
-        initialSlugs.get(s.itemTypeId)!.add(s.slug);
+        if (!initialIds.has(s.itemTypeId))
+          initialIds.set(s.itemTypeId, new Set());
+        initialIds.get(s.itemTypeId)!.add(s.id);
       }
       if (s.isTerminal) {
-        if (!terminalSlugs.has(s.itemTypeId))
-          terminalSlugs.set(s.itemTypeId, new Set());
-        terminalSlugs.get(s.itemTypeId)!.add(s.slug);
+        if (!terminalIds.has(s.itemTypeId))
+          terminalIds.set(s.itemTypeId, new Set());
+        terminalIds.get(s.itemTypeId)!.add(s.id);
       }
     }
 
@@ -575,13 +568,13 @@ export const itemTypeRouter = createTRPCRouter({
       .select({
         itemTypeId: item.itemTypeId,
         variantId: item.variantId,
-        status: item.status,
+        statusId: item.statusId,
         total: count(),
         totalValue: sum(item.value),
         totalQuantity: sql<string>`sum(${item.quantity}::numeric)`,
       })
       .from(item)
-      .groupBy(item.itemTypeId, item.variantId, item.status);
+      .groupBy(item.itemTypeId, item.variantId, item.statusId);
 
     type Bucket = {
       prepared: number;
@@ -613,9 +606,9 @@ export const itemTypeRouter = createTRPCRouter({
       const tb = typeBucketMap.get(row.itemTypeId)!;
 
       const isInitial =
-        initialSlugs.get(row.itemTypeId)?.has(row.status) ?? false;
+        initialIds.get(row.itemTypeId)?.has(row.statusId) ?? false;
       const isTerminal =
-        terminalSlugs.get(row.itemTypeId)?.has(row.status) ?? false;
+        terminalIds.get(row.itemTypeId)?.has(row.statusId) ?? false;
 
       const cnt = row.total;
       const val = Number(row.totalValue) || 0;

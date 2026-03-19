@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, GripVertical, Pencil, Plus, Trash2, X } from "lucide-react";
+import { GripVertical, Pencil, Plus, Trash2, X, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "~/components/ui/badge";
@@ -25,13 +25,6 @@ import {
 } from "~/components/ui/select";
 import { api } from "~/trpc/react";
 
-const slugify = (value: string) =>
-  value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
 const FIELD_TYPES = [
   "text",
   "number",
@@ -45,7 +38,6 @@ const FIELD_TYPES = [
   "temperature",
   "notes",
 ] as const;
-
 
 // ---------------------------------------------------------------------------
 // Main page component
@@ -65,23 +57,17 @@ export default function OperationTypeDetailPage() {
 
   const { data: itemTypes = [] } = api.itemType.list.useQuery();
 
-  // ---- General info state ----
   const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState("");
-  const [slugTouched, setSlugTouched] = useState(false);
 
   useEffect(() => {
     if (!opType) return;
     setName(opType.name);
-    setSlug(opType.slug);
     setDescription(opType.description ?? "");
     setIcon(opType.icon ?? "");
-    setSlugTouched(true);
   }, [opType]);
 
-  // ---- Mutations ----
   const createMutation = api.operationType.create.useMutation({
     onSuccess: async (created) => {
       await utils.operationType.list.invalidate();
@@ -111,7 +97,6 @@ export default function OperationTypeDetailPage() {
     if (isNew) {
       await createMutation.mutateAsync({
         name: name.trim(),
-        slug: slug.trim(),
         description: description.trim() || null,
         icon: icon.trim() || null,
       });
@@ -119,7 +104,6 @@ export default function OperationTypeDetailPage() {
       await updateMutation.mutateAsync({
         id: params.operationTypeId,
         name: name.trim(),
-        slug: slug.trim(),
         description: description.trim() || null,
         icon: icon.trim() || null,
       });
@@ -156,7 +140,6 @@ export default function OperationTypeDetailPage() {
 
   return (
     <div className="container mx-auto max-w-4xl px-6 py-8">
-      {/* Header */}
       <div className="mb-8 flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <Link
@@ -169,11 +152,6 @@ export default function OperationTypeDetailPage() {
             <h1 className="text-2xl font-semibold tracking-tight">
               {isNew ? "New Task Type" : opType?.name}
             </h1>
-            {!isNew && (
-              <p className="text-muted-foreground mt-0.5 text-sm">
-                {opType?.slug}
-              </p>
-            )}
           </div>
         </div>
         {!isNew && (
@@ -190,7 +168,6 @@ export default function OperationTypeDetailPage() {
       </div>
 
       <div className="space-y-8">
-        {/* General info */}
         <Card>
           <CardHeader>
             <CardTitle>General</CardTitle>
@@ -208,10 +185,7 @@ export default function OperationTypeDetailPage() {
                   id="op-name"
                   placeholder="Harvest"
                   value={name}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    setSlug(slugify(e.target.value));
-                  }}
+                  onChange={(e) => setName(e.target.value)}
                 />
               </div>
               <div className="space-y-1.5 sm:col-span-2">
@@ -229,7 +203,7 @@ export default function OperationTypeDetailPage() {
             <div className="mt-5">
               <Button
                 onClick={handleSaveGeneral}
-                disabled={isSaving || !name.trim() || !slug.trim()}
+                disabled={isSaving || !name.trim()}
               >
                 {isSaving
                   ? "Saving..."
@@ -241,21 +215,15 @@ export default function OperationTypeDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Only show remaining sections if we have a saved operation type */}
         {!isNew && opType && (
           <>
-            {/* Ports (Inputs & Outputs) */}
             <PortsSection
               operationTypeId={opType.id}
-              ports={opType.ports as PortsSectionProps["ports"]}
+              ports={opType.ports}
               itemTypes={itemTypes}
               org={params.org}
             />
-
-            {/* Fields */}
             <FieldsSection operationTypeId={opType.id} fields={opType.fields} />
-
-            {/* Steps */}
             <StepsSection operationTypeId={opType.id} steps={opType.steps} />
           </>
         )}
@@ -273,14 +241,11 @@ type PortsSectionProps = {
   ports: {
     id: string;
     operationTypeId: string;
-    direction: "input" | "output";
     itemTypeId: string;
-    portRole: string;
+    referenceKey: string;
     qtyMin: string | null;
     qtyMax: string | null;
-    uom: string;
-    isConsumed: boolean;
-    isRequired: boolean;
+    required: boolean;
     preconditionsStatuses: string[] | null;
   }[];
   itemTypes: { id: string; name: string }[];
@@ -291,19 +256,16 @@ function PortsSection({
   operationTypeId,
   ports,
   itemTypes,
-  org,
 }: PortsSectionProps) {
   const utils = api.useUtils();
-  const inputPorts = ports.filter((p) => p.direction === "input");
-  const outputPorts = ports.filter((p) => p.direction === "output");
 
-  const [adding, setAdding] = useState<"input" | "output" | null>(null);
+  const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const addMutation = api.operationType.addPort.useMutation({
     onSuccess: async () => {
       await utils.operationType.getById.invalidate({ id: operationTypeId });
-      setAdding(null);
+      setAdding(false);
     },
   });
 
@@ -320,147 +282,120 @@ function PortsSection({
     },
   });
 
-  const handleDeletePort = async (portId: string, portRole: string) => {
-    if (!window.confirm(`Delete port "${portRole}"?`)) return;
+  const handleDeletePort = async (portId: string, referenceKey: string) => {
+    if (!window.confirm(`Delete port "${referenceKey}"?`)) return;
     await deleteMutation.mutateAsync({ id: portId });
   };
-
-  const renderPortList = (
-    direction: "input" | "output",
-    dirPorts: typeof ports,
-  ) => (
-    <div>
-      <div className="mb-3 flex items-center justify-between">
-        <h4 className="text-sm font-medium">
-          {direction === "input" ? "What goes in" : "What comes out"}
-        </h4>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setAdding(direction)}
-          className="h-7 gap-1 text-xs"
-        >
-          <Plus className="size-3" />
-          Add
-        </Button>
-      </div>
-
-      {dirPorts.length === 0 && adding !== direction && (
-        <p className="text-muted-foreground py-3 text-center text-xs">
-          No {direction === "input" ? "inputs" : "outputs"} configured.
-        </p>
-      )}
-
-      <div className="space-y-2">
-        {dirPorts.map((port) =>
-          editingId === port.id ? (
-            <PortForm
-              key={port.id}
-              operationTypeId={operationTypeId}
-              direction={direction}
-              itemTypes={itemTypes}
-              initial={port}
-              onSave={async (data) => {
-                await updateMutation.mutateAsync({ id: port.id, ...data });
-              }}
-              onCancel={() => setEditingId(null)}
-              saving={updateMutation.isPending}
-            />
-          ) : (
-            <div
-              key={port.id}
-              className="border-border flex items-center justify-between rounded-md border px-3 py-2"
-            >
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">{port.portRole}</span>
-                <Badge variant="outline" className="text-xs">
-                  {itemTypes.find((it) => it.id === port.itemTypeId)?.name ??
-                    "Unknown"}
-                </Badge>
-                {port.isConsumed ? (
-                  <Badge
-                    variant="ghost"
-                    className="bg-orange-300/20 text-xs text-orange-600"
-                  >
-                    Consumed
-                  </Badge>
-                ) : (
-                  <Badge
-                    variant="ghost"
-                    className="bg-green-300/20 text-xs text-green-600"
-                  >
-                    Kept
-                  </Badge>
-                )}
-                {!port.isRequired && (
-                  <Badge variant="ghost" className="text-xs">
-                    Optional
-                  </Badge>
-                )}
-                {port.preconditionsStatuses &&
-                  port.preconditionsStatuses.length > 0 && (
-                    <Badge
-                      variant="ghost"
-                      className="bg-blue-300/20 text-xs text-blue-600"
-                    >
-                      {port.preconditionsStatuses.join(", ")}
-                    </Badge>
-                  )}
-              </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                  onClick={() => setEditingId(port.id)}
-                >
-                  <Pencil className="size-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive h-7 w-7 p-0"
-                  onClick={() => handleDeletePort(port.id, port.portRole)}
-                >
-                  <Trash2 className="size-3" />
-                </Button>
-              </div>
-            </div>
-          ),
-        )}
-
-        {adding === direction && (
-          <PortForm
-            operationTypeId={operationTypeId}
-            direction={direction}
-            itemTypes={itemTypes}
-            onSave={async (data) => {
-              await addMutation.mutateAsync({
-                operationTypeId,
-                direction,
-                ...data,
-              });
-            }}
-            onCancel={() => setAdding(null)}
-            saving={addMutation.isPending}
-          />
-        )}
-      </div>
-    </div>
-  );
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>What Goes In / What Comes Out</CardTitle>
-        <CardDescription>
-          Define what categories of items this task uses and produces.
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Input Items</CardTitle>
+            <CardDescription>
+              Define what categories of items this task uses.
+            </CardDescription>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setAdding(true)}
+            className="gap-1"
+          >
+            <Plus className="size-3.5" />
+            Add
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-6 lg:grid-cols-2">
-          {renderPortList("input", inputPorts)}
-          {renderPortList("output", outputPorts)}
+        {ports.length === 0 && !adding && (
+          <p className="text-muted-foreground py-3 text-center text-xs">
+            No input items configured.
+          </p>
+        )}
+
+        <div className="space-y-2">
+          {ports.map((port) =>
+            editingId === port.id ? (
+              <PortForm
+                key={port.id}
+                itemTypes={itemTypes}
+                initial={port}
+                onSave={async (data) => {
+                  await updateMutation.mutateAsync({ id: port.id, ...data });
+                }}
+                onCancel={() => setEditingId(null)}
+                saving={updateMutation.isPending}
+              />
+            ) : (
+              <div
+                key={port.id}
+                className="border-border flex items-center justify-between rounded-md border px-3 py-2"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{port.referenceKey}</span>
+                  <Badge variant="outline" className="text-xs">
+                    {itemTypes.find((it) => it.id === port.itemTypeId)?.name ??
+                      "Unknown"}
+                  </Badge>
+                  {port.required ? (
+                    <Badge
+                      variant="ghost"
+                      className="bg-blue-300/20 text-xs text-blue-600"
+                    >
+                      Required
+                    </Badge>
+                  ) : (
+                    <Badge variant="ghost" className="text-xs">
+                      Optional
+                    </Badge>
+                  )}
+                  {port.preconditionsStatuses &&
+                    port.preconditionsStatuses.length > 0 && (
+                      <Badge
+                        variant="ghost"
+                        className="bg-blue-300/20 text-xs text-blue-600"
+                      >
+                        {port.preconditionsStatuses.join(", ")}
+                      </Badge>
+                    )}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    onClick={() => setEditingId(port.id)}
+                  >
+                    <Pencil className="size-3" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive h-7 w-7 p-0"
+                    onClick={() => handleDeletePort(port.id, port.referenceKey)}
+                  >
+                    <Trash2 className="size-3" />
+                  </Button>
+                </div>
+              </div>
+            ),
+          )}
+
+          {adding && (
+            <PortForm
+              itemTypes={itemTypes}
+              onSave={async (data) => {
+                await addMutation.mutateAsync({
+                  operationTypeId,
+                  ...data,
+                });
+              }}
+              onCancel={() => setAdding(false)}
+              saving={addMutation.isPending}
+            />
+          )}
         </div>
       </CardContent>
     </Card>
@@ -473,41 +408,33 @@ function PortsSection({
 
 type PortFormData = {
   itemTypeId: string;
-  portRole: string;
+  referenceKey: string;
   qtyMin: string | null;
   qtyMax: string | null;
-  uom: string;
-  isConsumed: boolean;
-  isRequired: boolean;
+  required: boolean;
   preconditionsStatuses: string[] | null;
 };
 
 function PortForm({
-  operationTypeId,
-  direction,
   itemTypes,
   initial,
   onSave,
   onCancel,
   saving,
 }: {
-  operationTypeId: string;
-  direction: "input" | "output";
   itemTypes: { id: string; name: string }[];
   initial?: PortFormData;
   onSave: (data: PortFormData) => Promise<void>;
   onCancel: () => void;
   saving: boolean;
 }) {
-  const [portRole, setPortRole] = useState(initial?.portRole ?? "");
+  const [referenceKey, setReferenceKey] = useState(initial?.referenceKey ?? "");
   const [itemTypeId, setItemTypeId] = useState(
     initial?.itemTypeId ?? itemTypes[0]?.id ?? "",
   );
-  const [uom, setUom] = useState(initial?.uom ?? "each");
   const [qtyMin, setQtyMin] = useState(initial?.qtyMin ?? "");
   const [qtyMax, setQtyMax] = useState(initial?.qtyMax ?? "");
-  const [isConsumed, setIsConsumed] = useState(initial?.isConsumed ?? true);
-  const [isRequired, setIsRequired] = useState(initial?.isRequired ?? true);
+  const [required, setRequired] = useState(initial?.required ?? true);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(
     initial?.preconditionsStatuses ?? [],
   );
@@ -519,9 +446,9 @@ function PortForm({
       { enabled: !!itemTypeId },
     );
 
-  const toggleStatus = (slug: string) => {
+  const toggleStatus = (name: string) => {
     setSelectedStatuses((prev) =>
-      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug],
+      prev.includes(name) ? prev.filter((s) => s !== name) : [...prev, name],
     );
   };
 
@@ -529,12 +456,10 @@ function PortForm({
     e.preventDefault();
     await onSave({
       itemTypeId,
-      portRole: portRole.trim(),
+      referenceKey: referenceKey.trim(),
       qtyMin: qtyMin.trim() || null,
       qtyMax: qtyMax.trim() || null,
-      uom: uom.trim() || "each",
-      isConsumed,
-      isRequired,
+      required,
       preconditionsStatuses:
         selectedStatuses.length > 0 ? selectedStatuses : null,
     });
@@ -547,7 +472,7 @@ function PortForm({
     >
       <div className="mb-3 flex items-center justify-between">
         <span className="text-xs font-medium tracking-wider uppercase">
-          {initial ? "Edit" : "New"} {direction === "input" ? "input" : "output"}
+          {initial ? "Edit" : "New"} input item
         </span>
         <Button
           type="button"
@@ -561,12 +486,12 @@ function PortForm({
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
-          <label className="text-xs font-medium">Role</label>
+          <label className="text-xs font-medium">Reference Key</label>
           <Input
             required
             placeholder="primary"
-            value={portRole}
-            onChange={(e) => setPortRole(e.target.value)}
+            value={referenceKey}
+            onChange={(e) => setReferenceKey(e.target.value)}
           />
         </div>
         <div className="space-y-1">
@@ -583,14 +508,6 @@ function PortForm({
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Unit</label>
-          <Input
-            placeholder="each"
-            value={uom}
-            onChange={(e) => setUom(e.target.value)}
-          />
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="space-y-1">
@@ -613,17 +530,8 @@ function PortForm({
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
-            checked={isConsumed}
-            onChange={(e) => setIsConsumed(e.target.checked)}
-            className="size-4 rounded"
-          />
-          Consumed
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={isRequired}
-            onChange={(e) => setIsRequired(e.target.checked)}
+            checked={required}
+            onChange={(e) => setRequired(e.target.checked)}
             className="size-4 rounded"
           />
           Required
@@ -640,11 +548,11 @@ function PortForm({
           <div className="mt-1.5 flex flex-wrap gap-1.5">
             {availableStatuses.map((s) => (
               <button
-                key={s.slug}
+                key={s.name}
                 type="button"
-                onClick={() => toggleStatus(s.slug)}
+                onClick={() => toggleStatus(s.name)}
                 className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
-                  selectedStatuses.includes(s.slug)
+                  selectedStatuses.includes(s.name)
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border text-muted-foreground hover:border-primary/50"
                 }`}
@@ -698,7 +606,7 @@ function PortForm({
       </div>
 
       <div className="mt-3">
-        <Button type="submit" size="sm" disabled={saving || !portRole.trim()}>
+        <Button type="submit" size="sm" disabled={saving || !referenceKey.trim()}>
           {saving ? "Saving..." : initial ? "Update Port" : "Add Port"}
         </Button>
       </div>
@@ -715,16 +623,14 @@ type FieldsSectionProps = {
   fields: {
     id: string;
     operationTypeId: string;
-    key: string;
+    referenceKey: string;
+    label: string | null;
     description: string | null;
-    fieldType: string;
-    isRequired: boolean;
+    type: string;
+    required: boolean;
     options: Record<string, unknown> | null;
     defaultValue: unknown;
-    sortOrder: string;
-    scanMethod: string | null;
-    isAuto: boolean;
-    enumOptions: string[] | null;
+    sortOrder: number;
   }[];
 };
 
@@ -792,7 +698,6 @@ function FieldsSection({ operationTypeId, fields }: FieldsSectionProps) {
             editingId === field.id ? (
               <FieldForm
                 key={field.id}
-                operationTypeId={operationTypeId}
                 initial={field}
                 onSave={async (data) => {
                   await updateMutation.mutateAsync({ id: field.id, ...data });
@@ -807,29 +712,16 @@ function FieldsSection({ operationTypeId, fields }: FieldsSectionProps) {
               >
                 <div className="flex items-center gap-2">
                   <GripVertical className="text-muted-foreground/50 size-3.5" />
-                  <span className="font-mono text-sm">{field.key}</span>
+                  <span className="font-mono text-sm">{field.referenceKey}</span>
                   <Badge variant="outline" className="text-xs">
-                    {field.fieldType}
+                    {field.type}
                   </Badge>
-                  {field.isRequired && (
+                  {field.required && (
                     <Badge
                       variant="ghost"
                       className="bg-blue-300/20 text-xs text-blue-600"
                     >
                       Required
-                    </Badge>
-                  )}
-                  {field.isAuto && (
-                    <Badge
-                      variant="ghost"
-                      className="bg-purple-300/20 text-xs text-purple-600"
-                    >
-                      Auto
-                    </Badge>
-                  )}
-                  {field.scanMethod && (
-                    <Badge variant="ghost" className="text-xs">
-                      Scan: {field.scanMethod}
                     </Badge>
                   )}
                 </div>
@@ -846,7 +738,7 @@ function FieldsSection({ operationTypeId, fields }: FieldsSectionProps) {
                     variant="ghost"
                     size="sm"
                     className="text-destructive h-7 w-7 p-0"
-                    onClick={() => handleDelete(field.id, field.key)}
+                    onClick={() => handleDelete(field.id, field.referenceKey)}
                   >
                     <Trash2 className="size-3" />
                   </Button>
@@ -857,7 +749,6 @@ function FieldsSection({ operationTypeId, fields }: FieldsSectionProps) {
 
           {adding && (
             <FieldForm
-              operationTypeId={operationTypeId}
               onSave={async (data) => {
                 await addMutation.mutateAsync({
                   operationTypeId,
@@ -879,38 +770,34 @@ function FieldsSection({ operationTypeId, fields }: FieldsSectionProps) {
 // ---------------------------------------------------------------------------
 
 type FieldFormData = {
-  key: string;
+  referenceKey: string;
+  label: string | null;
   description: string | null;
-  fieldType: string;
-  isRequired: boolean;
-  sortOrder: string;
-  scanMethod: string | null;
-  isAuto: boolean;
-  enumOptions: string[] | null;
+  type: string;
+  required: boolean;
+  options: Record<string, unknown> | null;
+  sortOrder: number;
 };
 
 function FieldForm({
-  operationTypeId,
   initial,
   onSave,
   onCancel,
   saving,
 }: {
-  operationTypeId: string;
   initial?: FieldFormData;
   onSave: (data: FieldFormData) => Promise<void>;
   onCancel: () => void;
   saving: boolean;
 }) {
-  const [key, setKey] = useState(initial?.key ?? "");
+  const [referenceKey, setReferenceKey] = useState(initial?.referenceKey ?? "");
+  const [label, setLabel] = useState(initial?.label ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [fieldType, setFieldType] = useState(initial?.fieldType ?? "text");
-  const [isRequired, setIsRequired] = useState(initial?.isRequired ?? false);
-  const [sortOrder, setSortOrder] = useState(initial?.sortOrder ?? "0");
-  const [scanMethod, setScanMethod] = useState(initial?.scanMethod ?? "");
-  const [isAuto, setIsAuto] = useState(initial?.isAuto ?? false);
+  const [fieldType, setFieldType] = useState(initial?.type ?? "text");
+  const [required, setRequired] = useState(initial?.required ?? false);
+  const [sortOrder, setSortOrder] = useState(String(initial?.sortOrder ?? 0));
   const [enumText, setEnumText] = useState(
-    initial?.enumOptions?.join(", ") ?? "",
+    ((initial?.options as { enum?: string[] } | null)?.enum ?? []).join(", "),
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -923,14 +810,13 @@ function FieldForm({
             .filter(Boolean)
         : null;
     await onSave({
-      key: key.trim(),
+      referenceKey: referenceKey.trim(),
+      label: label.trim() || null,
       description: description.trim() || null,
-      fieldType,
-      isRequired,
-      sortOrder,
-      scanMethod: scanMethod.trim() || null,
-      isAuto,
-      enumOptions,
+      type: fieldType,
+      required,
+      options: enumOptions ? { enum: enumOptions } : null,
+      sortOrder: Number(sortOrder) || 0,
     });
   };
 
@@ -955,12 +841,12 @@ function FieldForm({
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
-          <label className="text-xs font-medium">Key</label>
+          <label className="text-xs font-medium">Reference Key</label>
           <Input
             required
             placeholder="weight_kg"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
+            value={referenceKey}
+            onChange={(e) => setReferenceKey(e.target.value)}
           />
         </div>
         <div className="space-y-1">
@@ -977,6 +863,14 @@ function FieldForm({
               ))}
             </SelectContent>
           </Select>
+        </div>
+        <div className="space-y-1 sm:col-span-2">
+          <label className="text-xs font-medium">Label</label>
+          <Input
+            placeholder="Optional display label"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+          />
         </div>
         <div className="space-y-1 sm:col-span-2">
           <label className="text-xs font-medium">Description</label>
@@ -1006,35 +900,18 @@ function FieldForm({
             onChange={(e) => setSortOrder(e.target.value)}
           />
         </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Scan Method</label>
-          <Input
-            placeholder="barcode, qr, nfc..."
-            value={scanMethod}
-            onChange={(e) => setScanMethod(e.target.value)}
-          />
-        </div>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
-            checked={isRequired}
-            onChange={(e) => setIsRequired(e.target.checked)}
+            checked={required}
+            onChange={(e) => setRequired(e.target.checked)}
             className="size-4 rounded"
           />
           Required
         </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={isAuto}
-            onChange={(e) => setIsAuto(e.target.checked)}
-            className="size-4 rounded"
-          />
-          Auto-populated
-        </label>
       </div>
       <div className="mt-3">
-        <Button type="submit" size="sm" disabled={saving || !key.trim()}>
+        <Button type="submit" size="sm" disabled={saving || !referenceKey.trim()}>
           {saving ? "Saving..." : initial ? "Update Field" : "Add Field"}
         </Button>
       </div>
@@ -1055,9 +932,7 @@ type StepsSectionProps = {
     action: string;
     target: string | null;
     value: unknown;
-    sortOrder: string;
-    itemType: string | null;
-    eventType: string | null;
+    sortOrder: number;
   }[];
 };
 
@@ -1150,11 +1025,6 @@ function StepsSection({ operationTypeId, steps }: StepsSectionProps) {
                       → {step.target}
                     </span>
                   )}
-                  {step.eventType && (
-                    <Badge variant="ghost" className="text-xs">
-                      {step.eventType}
-                    </Badge>
-                  )}
                 </div>
                 <div className="flex items-center gap-1">
                   <Button
@@ -1205,9 +1075,7 @@ type StepFormData = {
   action: string;
   target: string | null;
   value: unknown;
-  sortOrder: string;
-  itemType: string | null;
-  eventType: string | null;
+  sortOrder: number;
 };
 
 function StepForm({
@@ -1229,9 +1097,7 @@ function StepForm({
   const [valueText, setValueText] = useState(
     initial?.value != null ? JSON.stringify(initial.value) : "",
   );
-  const [sortOrder, setSortOrder] = useState(initial?.sortOrder ?? "0");
-  const [itemType, setItemType] = useState(initial?.itemType ?? "");
-  const [eventType, setEventType] = useState(initial?.eventType ?? "");
+  const [sortOrder, setSortOrder] = useState(String(initial?.sortOrder ?? 0));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1248,9 +1114,7 @@ function StepForm({
       action,
       target: target.trim() || null,
       value: parsedValue,
-      sortOrder,
-      itemType: itemType.trim() || null,
-      eventType: eventType.trim() || null,
+      sortOrder: Number(sortOrder) || 0,
     });
   };
 
@@ -1320,22 +1184,6 @@ function StepForm({
             placeholder="0"
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Item Type (slug)</label>
-          <Input
-            placeholder="substrate-bag"
-            value={itemType}
-            onChange={(e) => setItemType(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1 sm:col-span-2">
-          <label className="text-xs font-medium">Event Type</label>
-          <Input
-            placeholder="status_change, weight_recorded..."
-            value={eventType}
-            onChange={(e) => setEventType(e.target.value)}
           />
         </div>
       </div>

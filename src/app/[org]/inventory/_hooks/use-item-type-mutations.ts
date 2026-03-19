@@ -6,7 +6,6 @@ import { type ItemTypeFormData } from "../_components/ItemTypeForm";
 function buildBasePayload(base: ItemTypeFormData["base"]) {
   return {
     name: base.name.trim(),
-    slug: base.slug.trim(),
     category: base.category.trim(),
     quantityName: base.quantityName.trim() || null,
     quantityDefaultUnit: base.defaultUom.trim() || "each",
@@ -72,7 +71,6 @@ export function useItemTypeMutations() {
 
     const filteredStatuses = statuses.map((s, i) => ({
       id: s.id,
-      slug: s.slug.trim(),
       name: s.name.trim(),
       color: s.color.trim() || null,
       isInitial: s.isInitial,

@@ -75,7 +75,7 @@ export default function ItemDetailPage() {
             {data.item.code}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Status: {data.item.status} | Unit: {data.item.uom}
+            Status: {data.item.statusId}
           </p>
         </div>
         <Link

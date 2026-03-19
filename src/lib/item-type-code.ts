@@ -1,6 +1,6 @@
 export const determineItemTypeCode = (itemType: {
   name: string;
-  slug: string;
+  slug?: string;
 }) => {
   const codeNormalized = itemType.name.replace(/[^a-zA-Z]/g, " ");
   const words = codeNormalized.toUpperCase().split(" ");

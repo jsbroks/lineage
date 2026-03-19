@@ -176,14 +176,12 @@ export default function NewItemPage() {
 
     await editItemType.mutateAsync({
       id: form.itemTypeId,
-      slug: selectedItemType.slug,
       name: selectedItemType.name,
       category: selectedItemType.category,
       description: selectedItemType.description,
-      defaultUom: selectedItemType.defaultUom,
+      quantityDefaultUnit: selectedItemType.quantityDefaultUnit,
       icon: selectedItemType.icon,
       color: selectedItemType.color,
-      config: selectedItemType.config as Record<string, unknown>,
       codePrefix: sequenceForm.prefix.trim(),
       codeNextNumber: nextNumber,
     });
@@ -221,7 +219,7 @@ export default function NewItemPage() {
                   >
                     <p className="font-medium">{item.code}</p>
                     <p className="text-muted-foreground text-xs">
-                      Status: {item.status}
+                      Status: {item.statusId}
                     </p>
                   </Link>
                 ))}

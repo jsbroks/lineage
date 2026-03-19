@@ -29,14 +29,13 @@ type Db = typeof dbInstance;
 type ItemSummary = {
   id: string;
   itemTypeId: string;
-  status: string;
+  statusId: string;
 };
 
 export type PortMatch = {
-  portRole: string;
-  direction: "input" | "output";
+  referenceKey: string;
   itemTypeId: string;
-  isRequired: boolean;
+  required: boolean;
   preconditionsStatuses: string[] | null;
   qtyMin: number;
   qtyMax: number | null;
@@ -48,7 +47,6 @@ export type PortMatch = {
 export type SuggestedOperation = {
   operationType: {
     id: string;
-    slug: string;
     name: string;
     description: string | null;
     icon: string | null;
@@ -64,19 +62,17 @@ export async function suggestOperations(
 ): Promise<SuggestedOperation[]> {
   if (itemIds.length === 0) return [];
 
-  // 1. Load the scanned items
   const items = await db
     .select({
       id: item.id,
       itemTypeId: item.itemTypeId,
-      status: item.status,
+      statusId: item.statusId,
     })
     .from(item)
     .where(inArray(item.id, itemIds));
 
   if (items.length === 0) return [];
 
-  // Index items by item type for fast lookup
   const itemsByType = new Map<string, ItemSummary[]>();
   for (const l of items) {
     const arr = itemsByType.get(l.itemTypeId) ?? [];
@@ -84,7 +80,6 @@ export async function suggestOperations(
     itemsByType.set(l.itemTypeId, arr);
   }
 
-  // 2. Load all operation types + their input ports
   const opTypes = await db
     .select()
     .from(operationType)
@@ -92,8 +87,7 @@ export async function suggestOperations(
 
   const allPorts = await db
     .select()
-    .from(operationTypeInputItem)
-    .where(eq(operationTypeInputItem.direction, "input"));
+    .from(operationTypeInputItem);
 
   const portsByOpType = new Map<string, typeof allPorts>();
   for (const port of allPorts) {
@@ -102,7 +96,6 @@ export async function suggestOperations(
     portsByOpType.set(port.operationTypeId, arr);
   }
 
-  // 3. Score each operation type
   const results: SuggestedOperation[] = [];
 
   for (const opType of opTypes) {
@@ -118,29 +111,26 @@ export async function suggestOperations(
       const qtyMin = Number(port.qtyMin ?? 0);
       const qtyMax = port.qtyMax ? Number(port.qtyMax) : null;
 
-      // Filter by precondition statuses
       const statusOk =
         port.preconditionsStatuses && port.preconditionsStatuses.length > 0
           ? new Set(port.preconditionsStatuses)
           : null;
 
       const fullyMatched = statusOk
-        ? candidates.filter((c) => statusOk.has(c.status))
+        ? candidates.filter((c) => statusOk.has(c.statusId))
         : candidates;
 
       const statusMismatch =
         candidates.length > 0 && fullyMatched.length < candidates.length;
 
-      // Apply qty constraints to select which items actually fill this port
       const matched = qtyMax ? fullyMatched.slice(0, qtyMax) : fullyMatched;
 
       const satisfied = matched.length >= qtyMin && matched.length > 0;
 
-      if (port.isRequired) {
+      if (port.required) {
         if (satisfied) {
           score += 3;
         } else if (candidates.length > 0) {
-          // Item type matches but status preconditions don't
           score += 1;
           allRequiredSatisfied = false;
         } else {
@@ -152,10 +142,9 @@ export async function suggestOperations(
       }
 
       portMatches.push({
-        portRole: port.portRole,
-        direction: port.direction as "input" | "output",
+        referenceKey: port.referenceKey,
         itemTypeId: port.itemTypeId,
-        isRequired: port.isRequired,
+        required: port.required,
         preconditionsStatuses: port.preconditionsStatuses,
         qtyMin,
         qtyMax,
@@ -172,7 +161,6 @@ export async function suggestOperations(
     results.push({
       operationType: {
         id: opType.id,
-        slug: opType.slug,
         name: opType.name,
         description: opType.description,
         icon: opType.icon,
@@ -184,7 +172,6 @@ export async function suggestOperations(
   }
 
   results.sort((a, b) => {
-    // Ready operations first, then by score descending
     if (a.ready !== b.ready) return a.ready ? -1 : 1;
     return b.score - a.score;
   });

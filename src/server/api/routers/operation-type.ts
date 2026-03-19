@@ -8,25 +8,20 @@ import {
   operationTypeInputField,
   operationTypeInputItem,
   operationTypeStep,
-  statusDefinition,
+  itemTypeStatusDefinition,
 } from "~/server/db/schema";
 
 const createOperationTypeInput = z.object({
-  slug: z.string().min(1),
   name: z.string().min(1),
   description: z.string().nullable().optional(),
   icon: z.string().nullable().optional(),
-  needs: z.array(z.string()).nullable().optional(),
-  config: z.record(z.string(), z.unknown()).optional(),
 });
 
 const updateOperationTypeInput = z.object({
   id: z.uuid(),
-  slug: z.string().min(1).optional(),
   name: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
   icon: z.string().nullable().optional(),
-  config: z.record(z.string(), z.unknown()).optional(),
 });
 
 const addOperationTypeStepInput = z.object({
@@ -35,9 +30,7 @@ const addOperationTypeStepInput = z.object({
   action: z.string().min(1),
   target: z.string().nullable().optional(),
   value: z.unknown().nullable().optional(),
-  sortOrder: z.string().optional(),
-  itemType: z.string().nullable().optional(),
-  eventType: z.string().nullable().optional(),
+  sortOrder: z.number().int().optional(),
 });
 
 const updateOperationTypeStepInput = z.object({
@@ -46,63 +39,51 @@ const updateOperationTypeStepInput = z.object({
   action: z.string().min(1).optional(),
   target: z.string().nullable().optional(),
   value: z.unknown().nullable().optional(),
-  sortOrder: z.string().optional(),
-  itemType: z.string().nullable().optional(),
-  eventType: z.string().nullable().optional(),
+  sortOrder: z.number().int().optional(),
 });
 
 const addOperationTypePortInput = z.object({
   operationTypeId: z.uuid(),
-  direction: z.enum(["input", "output"]),
   itemTypeId: z.uuid(),
-  portRole: z.string().min(1),
+  referenceKey: z.string().min(1),
   qtyMin: z.string().nullable().optional(),
   qtyMax: z.string().nullable().optional(),
-  uom: z.string().min(1).optional(),
-  isConsumed: z.boolean().optional(),
-  isRequired: z.boolean().optional(),
+  required: z.boolean().optional(),
   preconditionsStatuses: z.array(z.string()).nullable().optional(),
 });
 
 const updateOperationTypePortInput = z.object({
   id: z.uuid(),
-  direction: z.enum(["input", "output"]).optional(),
   itemTypeId: z.uuid().optional(),
-  portRole: z.string().min(1).optional(),
+  referenceKey: z.string().min(1).optional(),
   qtyMin: z.string().nullable().optional(),
   qtyMax: z.string().nullable().optional(),
-  uom: z.string().min(1).optional(),
-  isConsumed: z.boolean().optional(),
-  isRequired: z.boolean().optional(),
+  required: z.boolean().optional(),
   preconditionsStatuses: z.array(z.string()).nullable().optional(),
 });
 
 const addOperationTypeFieldInput = z.object({
   operationTypeId: z.uuid(),
-  key: z.string().min(1),
+  referenceKey: z.string().min(1),
+  label: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
-  fieldType: z.string().min(1),
-  isRequired: z.boolean().optional(),
+  type: z.string().min(1),
+  required: z.boolean().optional(),
   options: z.record(z.string(), z.unknown()).nullable().optional(),
   defaultValue: z.unknown().nullable().optional(),
-  sortOrder: z.string().optional(),
-  scanMethod: z.string().nullable().optional(),
-  isAuto: z.boolean().optional(),
-  enumOptions: z.array(z.string()).nullable().optional(),
+  sortOrder: z.number().int().optional(),
 });
 
 const updateOperationTypeFieldInput = z.object({
   id: z.uuid(),
-  key: z.string().min(1).optional(),
+  referenceKey: z.string().min(1).optional(),
+  label: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
-  fieldType: z.string().min(1).optional(),
-  isRequired: z.boolean().optional(),
+  type: z.string().min(1).optional(),
+  required: z.boolean().optional(),
   options: z.record(z.string(), z.unknown()).nullable().optional(),
   defaultValue: z.unknown().nullable().optional(),
-  sortOrder: z.string().optional(),
-  scanMethod: z.string().nullable().optional(),
-  isAuto: z.boolean().optional(),
-  enumOptions: z.array(z.string()).nullable().optional(),
+  sortOrder: z.number().int().optional(),
 });
 
 export const operationTypeRouter = createTRPCRouter({
@@ -114,10 +95,10 @@ export const operationTypeRouter = createTRPCRouter({
     .input(z.object({ itemTypeId: z.uuid() }))
     .query(async ({ ctx, input }) => {
       return ctx.db
-        .select({ slug: statusDefinition.slug, name: statusDefinition.name })
-        .from(statusDefinition)
-        .where(eq(statusDefinition.itemTypeId, input.itemTypeId))
-        .orderBy(asc(statusDefinition.ordinal));
+        .select({ name: itemTypeStatusDefinition.name })
+        .from(itemTypeStatusDefinition)
+        .where(eq(itemTypeStatusDefinition.itemTypeId, input.itemTypeId))
+        .orderBy(asc(itemTypeStatusDefinition.ordinal));
     }),
 
   getById: publicProcedure
@@ -140,7 +121,7 @@ export const operationTypeRouter = createTRPCRouter({
           .select()
           .from(operationTypeInputItem)
           .where(eq(operationTypeInputItem.operationTypeId, input.id))
-          .orderBy(asc(operationTypeInputItem.portRole)),
+          .orderBy(asc(operationTypeInputItem.referenceKey)),
         ctx.db
           .select()
           .from(operationTypeInputField)
@@ -160,7 +141,7 @@ export const operationTypeRouter = createTRPCRouter({
     return ctx.db
       .select()
       .from(operationTypeInputItem)
-      .orderBy(asc(operationTypeInputItem.portRole));
+      .orderBy(asc(operationTypeInputItem.referenceKey));
   }),
 
   create: publicProcedure
@@ -169,7 +150,6 @@ export const operationTypeRouter = createTRPCRouter({
       const [createdOperationType] = await ctx.db
         .insert(operationType)
         .values({
-          slug: input.slug,
           name: input.name,
           description: input.description,
           icon: input.icon,
@@ -206,14 +186,11 @@ export const operationTypeRouter = createTRPCRouter({
         .insert(operationTypeInputItem)
         .values({
           operationTypeId: input.operationTypeId,
-          direction: input.direction,
           itemTypeId: input.itemTypeId,
-          portRole: input.portRole,
+          referenceKey: input.referenceKey,
           qtyMin: input.qtyMin,
           qtyMax: input.qtyMax,
-          uom: input.uom,
-          isConsumed: input.isConsumed,
-          isRequired: input.isRequired,
+          required: input.required,
           preconditionsStatuses: input.preconditionsStatuses,
         })
         .returning();
@@ -260,16 +237,14 @@ export const operationTypeRouter = createTRPCRouter({
         .insert(operationTypeInputField)
         .values({
           operationTypeId: input.operationTypeId,
-          key: input.key,
+          referenceKey: input.referenceKey,
+          label: input.label,
           description: input.description,
-          fieldType: input.fieldType,
-          isRequired: input.isRequired,
+          type: input.type,
+          required: input.required,
           options: input.options,
           defaultValue: input.defaultValue,
-          sortOrder: input.sortOrder,
-          scanMethod: input.scanMethod,
-          isAuto: input.isAuto,
-          enumOptions: input.enumOptions,
+          sortOrder: input.sortOrder ?? 0,
         })
         .returning();
 
@@ -335,9 +310,7 @@ export const operationTypeRouter = createTRPCRouter({
           action: input.action,
           target: input.target,
           value: input.value,
-          sortOrder: input.sortOrder,
-          itemType: input.itemType,
-          eventType: input.eventType,
+          sortOrder: input.sortOrder ?? 0,
         })
         .returning();
 

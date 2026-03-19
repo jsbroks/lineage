@@ -10,7 +10,7 @@ export const recordEvent: ActionHandler = async (tx, step, config, ctx) => {
       : "no target role specified";
 
   const eventType =
-    (config.event_type as string) ?? step.eventType ?? "operation_event";
+    (config.event_type as string) ?? "operation_event";
   const withData = config.with
     ? (resolveRef(config.with, ctx) as Record<string, unknown>)
     : {};

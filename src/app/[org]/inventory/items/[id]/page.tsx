@@ -74,7 +74,7 @@ export default function ItemDetailPage() {
         <div className="mx-auto max-w-6xl space-y-6 px-6 py-6">
           <ItemHeaderInfo
             code={currentItem.code}
-            status={currentItem.status}
+            status={currentItem.statusId}
             typeName={currentItemType?.name}
             variantName={data.variant?.name}
           />

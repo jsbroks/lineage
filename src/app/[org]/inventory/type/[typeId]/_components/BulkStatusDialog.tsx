@@ -59,7 +59,7 @@ export const BulkStatusDialog: React.FC<BulkStatusDialogProps> = ({
           </SelectTrigger>
           <SelectContent>
             {statuses.map((s) => (
-              <SelectItem key={s.slug} value={s.slug}>
+              <SelectItem key={s.id} value={s.id}>
                 <div className="flex items-center gap-2">
                   <Circle
                     className="size-2"

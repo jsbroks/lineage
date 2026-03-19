@@ -55,7 +55,6 @@ export async function executeOperation(
   tx: Tx,
   input: ExecuteOperationInput,
 ): Promise<ExecuteOperationResult> {
-  // 1. Load operation type definition
   const [opType] = await tx
     .select()
     .from(operationType)
@@ -82,34 +81,30 @@ export async function executeOperation(
     .where(eq(operationTypeStep.operationTypeId, opType.id))
     .orderBy(operationTypeStep.sortOrder);
 
-  // 2. Validate required fields
   for (const field of fields) {
-    if (field.isRequired && !(field.key in input.fields)) {
-      throw new Error(`Required field "${field.key}" is missing`);
+    if (field.required && !(field.referenceKey in input.fields)) {
+      throw new Error(`Required field "${field.referenceKey}" is missing`);
     }
   }
 
-  // 3. Validate required input ports & load items
   const loadedItems: Record<string, Item[]> = {};
 
   for (const port of ports) {
-    if (port.direction !== "input") continue;
+    const itemIds = input.items[port.referenceKey] ?? [];
 
-    const itemIds = input.items[port.portRole] ?? [];
-
-    if (port.isRequired && itemIds.length === 0) {
-      throw new Error(`Required input "${port.portRole}" is empty`);
+    if (port.required && itemIds.length === 0) {
+      throw new Error(`Required input "${port.referenceKey}" is empty`);
     }
 
     if (port.qtyMin && itemIds.length < Number(port.qtyMin)) {
       throw new Error(
-        `"${port.portRole}" requires at least ${port.qtyMin}, got ${itemIds.length}`,
+        `"${port.referenceKey}" requires at least ${port.qtyMin}, got ${itemIds.length}`,
       );
     }
 
     if (port.qtyMax && itemIds.length > Number(port.qtyMax)) {
       throw new Error(
-        `"${port.portRole}" allows at most ${port.qtyMax}, got ${itemIds.length}`,
+        `"${port.referenceKey}" allows at most ${port.qtyMax}, got ${itemIds.length}`,
       );
     }
 
@@ -127,26 +122,25 @@ export async function executeOperation(
         const found = new Set(rows.map((r) => r.id));
         const missing = itemIds.filter((id) => !found.has(id));
         throw new Error(
-          `"${port.portRole}" references missing items: ${missing.join(", ")}`,
+          `"${port.referenceKey}" references missing items: ${missing.join(", ")}`,
         );
       }
 
       if (port.preconditionsStatuses && port.preconditionsStatuses.length > 0) {
         const allowed = new Set(port.preconditionsStatuses);
         for (const r of rows) {
-          if (!allowed.has(r.status)) {
+          if (!allowed.has(r.statusId)) {
             throw new Error(
-              `${r.code} has status "${r.status}" but "${port.portRole}" requires one of: ${port.preconditionsStatuses.join(", ")}`,
+              `${r.code} has status "${r.statusId}" but "${port.referenceKey}" requires one of: ${port.preconditionsStatuses.join(", ")}`,
             );
           }
         }
       }
 
-      loadedItems[port.portRole] = rows;
+      loadedItems[port.referenceKey] = rows;
     }
   }
 
-  // 4. Build item type name lookup from loaded items
   const itemTypeNames = new Map<string, string>();
   const seenItemTypeIds = new Set<string>();
   for (const group of Object.values(loadedItems)) {
@@ -165,7 +159,6 @@ export async function executeOperation(
     }
   }
 
-  // 5. Create the operation record
   const [op] = await tx
     .insert(operation)
     .values({
@@ -182,7 +175,6 @@ export async function executeOperation(
 
   if (!op) throw new Error("Failed to create operation record");
 
-  // 6. Build execution context
   const ctx: ExecCtx = {
     items: loadedItems,
     inputs: input.fields,
@@ -193,7 +185,6 @@ export async function executeOperation(
     operationId: op.id,
   };
 
-  // 7. Execute steps
   const stepResults: StepResult[] = [];
 
   for (const step of steps) {

@@ -61,7 +61,6 @@ export type VariantRow = {
 
 export type StatusRow = {
   id?: string;
-  slug: string;
   name: string;
   color: string;
   isInitial: boolean;
@@ -182,11 +181,10 @@ export function ItemTypeForm({
   // -- Handlers --
 
   const handleNameChange = (value: string) => {
-    const slug = slugify(value);
     setBase((prev) => {
-      const next = { ...prev, name: value, slug };
+      const next = { ...prev, name: value };
       if (!codePrefixTouched.current) {
-        next.codePrefix = determineItemTypeCode({ name: value, slug });
+        next.codePrefix = determineItemTypeCode({ name: value, slug: slugify(value) });
       }
       return next;
     });
@@ -264,7 +262,6 @@ export function ItemTypeForm({
     setStatuses((prev) => [
       ...prev,
       {
-        slug: "",
         name: "",
         color: "",
         isInitial: prev.length === 0,
@@ -279,7 +276,7 @@ export function ItemTypeForm({
     setStatuses((prev) => prev.filter((_, i) => i !== idx));
     setTransitions((prev) =>
       prev.filter(
-        (t) => t.fromSlug !== removed.slug && t.toSlug !== removed.slug,
+        (t) => t.fromSlug !== removed.name && t.toSlug !== removed.name,
       ),
     );
   };
@@ -287,21 +284,13 @@ export function ItemTypeForm({
   const updateStatus = (idx: number, patch: Partial<StatusRow>) => {
     const old = statuses[idx];
     setStatuses((prev) =>
-      prev.map((s, i) => {
-        if (i !== idx) return s;
-        const updated = { ...s, ...patch };
-        if (patch.name !== undefined && !patch.slug) {
-          updated.slug = slugify(patch.name);
-        }
-        return updated;
-      }),
+      prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)),
     );
     if (patch.name && old) {
-      const newSlug = slugify(patch.name);
       setTransitions((prev) =>
         prev.map((t) => ({
-          fromSlug: t.fromSlug === old.slug ? newSlug : t.fromSlug,
-          toSlug: t.toSlug === old.slug ? newSlug : t.toSlug,
+          fromSlug: t.fromSlug === old.name ? patch.name! : t.fromSlug,
+          toSlug: t.toSlug === old.name ? patch.name! : t.toSlug,
         })),
       );
     }

@@ -74,7 +74,6 @@ export default function EditItemTypePage() {
       })),
       statuses: data.statuses.map((s) => ({
         id: s.id,
-        slug: s.slug,
         name: s.name,
         color: s.color ?? "",
         isInitial: s.isInitial,
@@ -83,7 +82,7 @@ export default function EditItemTypePage() {
       transitions: data.transitions.map((t) => {
         const from = data.statuses.find((s) => s.id === t.fromStatusId);
         const to = data.statuses.find((s) => s.id === t.toStatusId);
-        return { fromSlug: from?.slug ?? "", toSlug: to?.slug ?? "" };
+        return { fromSlug: from?.name ?? "", toSlug: to?.name ?? "" };
       }),
       attributeDefinitions: (data.attributeDefinitions ?? []).map((d) => ({
         id: d.id,

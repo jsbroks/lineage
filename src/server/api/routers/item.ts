@@ -12,7 +12,7 @@ import {
   itemIdentifier,
   itemLineage,
   location,
-  statusDefinition,
+  itemTypeStatusDefinition,
 } from "~/server/db/schema";
 
 const createItemInput = z
@@ -150,7 +150,7 @@ export const itemRouter = createTRPCRouter({
           .values({
             itemTypeId: input.itemTypeId,
             code: codeValue,
-            status: input.status,
+            statusId: input.status,
             quantityUnit: it?.quantityDefaultUnit ?? "each",
             locationId: input.locationId,
             notes: input.notes,
@@ -206,7 +206,7 @@ export const itemRouter = createTRPCRouter({
       await ctx.db.insert(itemEvent).values({
         itemId: createdItem.id,
         eventType: "item_created_manual",
-        newStatus: createdItem.status,
+        newStatus: createdItem.statusId,
         newLocationId: createdItem.locationId,
         message: `${it.name} created manually.`,
         payload: {
@@ -409,7 +409,7 @@ export const itemRouter = createTRPCRouter({
               itemTypeId: input.itemTypeId,
               variantId: input.variantId ?? null,
               code,
-              status: input.status,
+              statusId: input.status,
               locationId: input.locationId,
               attributes: input.attributes ?? {},
             })),
@@ -429,7 +429,7 @@ export const itemRouter = createTRPCRouter({
             insertedItems.map((created) => ({
               itemId: created.id,
               eventType: "item_created_batch",
-              newStatus: created.status,
+              newStatus: created.statusId,
               newLocationId: created.locationId,
               message: `${typeName} created via batch.`,
               payload: {
@@ -458,7 +458,7 @@ export const itemRouter = createTRPCRouter({
     )
     .query(async ({ ctx, input }) => {
       const conditions = [eq(item.itemTypeId, input.itemTypeId)];
-      if (input.status) conditions.push(eq(item.status, input.status));
+      if (input.status) conditions.push(eq(item.statusId, input.status));
       if (input.variantId) conditions.push(eq(item.variantId, input.variantId));
       if (input.search) conditions.push(ilike(item.code, `%${input.search}%`));
 
@@ -466,7 +466,7 @@ export const itemRouter = createTRPCRouter({
         .select({
           id: item.id,
           code: item.code,
-          status: item.status,
+          status: item.statusId,
           variantId: item.variantId,
           variantName: itemTypeVariant.name,
           locationId: item.locationId,
@@ -514,18 +514,18 @@ export const itemRouter = createTRPCRouter({
     .query(async ({ ctx, input }) => {
       const rows = await ctx.db
         .select({
-          status: item.status,
+          status: item.statusId,
           total: count(),
         })
         .from(item)
         .where(eq(item.itemTypeId, input.itemTypeId))
-        .groupBy(item.status);
+        .groupBy(item.statusId);
 
       const statuses = await ctx.db
         .select()
-        .from(statusDefinition)
-        .where(eq(statusDefinition.itemTypeId, input.itemTypeId))
-        .orderBy(asc(statusDefinition.ordinal));
+        .from(itemTypeStatusDefinition)
+        .where(eq(itemTypeStatusDefinition.itemTypeId, input.itemTypeId))
+        .orderBy(asc(itemTypeStatusDefinition.ordinal));
 
       return { counts: rows, statuses };
     }),
@@ -627,7 +627,7 @@ export const itemRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const updated = await ctx.db
         .update(item)
-        .set({ status: input.status, updatedAt: new Date() })
+        .set({ statusId: input.status, updatedAt: new Date() })
         .where(inArray(item.id, input.itemIds))
         .returning({ id: item.id });
 
@@ -857,7 +857,7 @@ export const itemRouter = createTRPCRouter({
               groupByExprs.push({
                 field,
                 label: "Status",
-                expr: sql`${item.status}`,
+                expr: sql`${item.statusId}`,
               });
               break;
             case "variant":
@@ -964,7 +964,7 @@ export const itemRouter = createTRPCRouter({
 
       const conditions = [eq(item.itemTypeId, input.itemTypeId)];
       if (input.filters?.status)
-        conditions.push(eq(item.status, input.filters.status));
+        conditions.push(eq(item.statusId, input.filters.status));
       if (input.filters?.variantId)
         conditions.push(eq(item.variantId, input.filters.variantId));
       if (input.filters?.locationId)

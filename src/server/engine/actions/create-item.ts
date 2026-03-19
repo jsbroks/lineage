@@ -4,21 +4,21 @@ import { resolveRef } from "../context";
 import type { ActionHandler, Item } from "../types";
 
 export const createItem: ActionHandler = async (tx, step, config, ctx) => {
-  const itemTypeSlug = (config.item_type as string) ?? step.itemType;
-  if (!itemTypeSlug) return "no item_type specified";
+  const itemTypeName = config.item_type as string | undefined;
+  if (!itemTypeName) return "no item_type specified";
 
   const [it] = await tx
     .select()
     .from(itemType)
-    .where(eq(itemType.slug, itemTypeSlug))
+    .where(eq(itemType.name, itemTypeName))
     .limit(1);
 
-  if (!it) return `item type "${itemTypeSlug}" not found`;
+  if (!it) return `item type "${itemTypeName}" not found`;
 
   ctx.itemTypeNames.set(it.id, it.name);
 
   const count = Number(resolveRef(config.count, ctx) ?? 1);
-  const alias = (config.as as string) ?? step.target ?? itemTypeSlug;
+  const alias = (config.as as string) ?? step.target ?? itemTypeName;
   const withAttrs = config.with
     ? (resolveRef(config.with, ctx) as Record<string, unknown>)
     : {};
@@ -45,7 +45,7 @@ export const createItem: ActionHandler = async (tx, step, config, ctx) => {
       .values({
         itemTypeId: it.id,
         code,
-        status: initialStatus,
+        statusId: initialStatus,
         quantityUnit: it.quantityDefaultUnit ?? "each",
         attributes: withAttrs ?? {},
       })

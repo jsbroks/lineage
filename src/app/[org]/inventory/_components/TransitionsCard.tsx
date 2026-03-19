@@ -62,8 +62,8 @@ export function TransitionsCard({
                 </SelectTrigger>
                 <SelectContent>
                   {statuses.map((s) => (
-                    <SelectItem key={s.slug} value={s.slug}>
-                      {s.name || s.slug}
+                    <SelectItem key={s.name} value={s.name}>
+                      {s.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -78,8 +78,8 @@ export function TransitionsCard({
                 </SelectTrigger>
                 <SelectContent>
                   {statuses.map((s) => (
-                    <SelectItem key={s.slug} value={s.slug}>
-                      {s.name || s.slug}
+                    <SelectItem key={s.name} value={s.name}>
+                      {s.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

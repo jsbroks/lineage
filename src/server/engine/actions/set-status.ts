@@ -17,22 +17,24 @@ export const setStatus: ActionHandler = async (tx, step, config, ctx) => {
   if (typeof newStatus !== "string") return "invalid status value";
 
   for (const targetItem of targetItems) {
-    const oldStatus = targetItem.status;
+    const oldStatus = targetItem.statusId;
     await tx
       .update(item)
-      .set({ status: newStatus, updatedAt: new Date() })
+      .set({ statusId: newStatus, updatedAt: new Date() })
       .where(eq(item.id, targetItem.id));
+
+    const eventType = (config.event_type as string) ?? "status_change";
 
     await tx.insert(itemEvent).values({
       itemId: targetItem.id,
-      eventType: step.eventType ?? "status_change",
+      eventType,
       operationId: ctx.operationId,
       oldStatus,
       newStatus,
       message: `${step.name}: ${oldStatus} → ${newStatus}`,
     });
 
-    targetItem.status = newStatus;
+    targetItem.statusId = newStatus;
     ctx.itemsUpdated.add(targetItem.id);
   }
 

@@ -123,7 +123,7 @@ export default function ItemTypeDetailPage() {
       }
     >();
     for (const s of statuses) {
-      m.set(s.slug, {
+      m.set(s.id, {
         name: s.name,
         color: s.color,
         isInitial: s.isInitial,
