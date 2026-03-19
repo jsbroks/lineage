@@ -1,7 +1,13 @@
+import Link from "next/link";
 import { format } from "date-fns";
 import { Button } from "~/components/ui/button";
 import { Scan } from "lucide-react";
-export default function Home() {
+export default async function Home({
+  params,
+}: {
+  params: Promise<{ org: string }>;
+}) {
+  const { org } = await params;
   const now = new Date();
   const today = format(now, "EEEE, MMMM d");
   const hour = now.getHours();
@@ -20,8 +26,10 @@ export default function Home() {
           </p>
         </header>
         <div>
-          <Button variant="outline">
-            <Scan /> Scan
+          <Button variant="outline" asChild>
+            <Link href={`/${org}/scan`}>
+              <Scan /> Scan
+            </Link>
           </Button>
         </div>
       </div>

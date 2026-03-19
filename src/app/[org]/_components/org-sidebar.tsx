@@ -8,6 +8,7 @@ import {
   MapPin,
   Package2,
   Printer,
+  ScanBarcode,
   Settings2,
 } from "lucide-react";
 
@@ -43,6 +44,11 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
       icon: Printer,
     },
     {
+      label: "Scan",
+      href: `/${org}/scan`,
+      icon: ScanBarcode,
+    },
+    {
       label: "Record Task",
       href: `/${org}/operations`,
       icon: ClipboardList,
@@ -52,7 +58,7 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
   const settingsNav = [
     {
       label: "Task Types",
-      href: `/${org}/settings/operations`,
+      href: `/${org}/tasks`,
       icon: Settings2,
     },
     {

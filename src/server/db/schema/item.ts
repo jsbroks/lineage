@@ -38,7 +38,7 @@ export const item = pgTable(
 
     notes: text(),
 
-    quantity: numeric("quantity").notNull().default("1"),
+    quantity: numeric("quantity").notNull().default("0"),
     quantityUnit: text("quantity_unit"),
 
     value: integer("value").notNull().default(0),

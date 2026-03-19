@@ -1,0 +1,125 @@
+"use client";
+
+import { Plus, Trash2 } from "lucide-react";
+
+import { Button } from "~/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
+import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import type { InputFieldRow } from "./OperationTypeForm";
+
+type InputFieldsCardProps = {
+  inputFields: InputFieldRow[];
+  onAdd: () => void;
+  onRemove: (idx: number) => void;
+  onUpdate: (idx: number, patch: Partial<InputFieldRow>) => void;
+};
+
+export function InputFieldsCard({
+  inputFields,
+  onAdd,
+  onRemove,
+  onUpdate,
+}: InputFieldsCardProps) {
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Input Fields</CardTitle>
+            <CardDescription>
+              Data fields to collect when running this task.
+            </CardDescription>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={onAdd}>
+            <Plus className="mr-1 size-3.5" /> Add field
+          </Button>
+        </div>
+      </CardHeader>
+      {inputFields.length > 0 && (
+        <CardContent className="space-y-3">
+          {inputFields.map((field, idx) => (
+            <div
+              key={idx}
+              className="flex items-start gap-3 rounded-md border p-3"
+            >
+              <div className="flex flex-1 flex-wrap items-center gap-3">
+                <div className="min-w-[120px] flex-1 space-y-1">
+                  <Label className="text-xs">Reference Key</Label>
+                  <Input
+                    value={field.referenceKey}
+                    onChange={(e) =>
+                      onUpdate(idx, { referenceKey: e.target.value })
+                    }
+                    placeholder="Harvest By"
+                  />
+                </div>
+                <div className="min-w-[120px] flex-1 space-y-1">
+                  <Label className="text-xs">Label</Label>
+                  <Input
+                    value={field.label}
+                    onChange={(e) =>
+                      onUpdate(idx, { label: e.target.value })
+                    }
+                    placeholder="Harvest By"
+                  />
+                </div>
+                <div className="w-28 space-y-1">
+                  <Label className="text-xs">Type</Label>
+                  <Select
+                    value={field.type}
+                    onValueChange={(val) => onUpdate(idx, { type: val })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="string">String</SelectItem>
+                      <SelectItem value="number">Number</SelectItem>
+                      <SelectItem value="date">Date</SelectItem>
+                      <SelectItem value="boolean">Boolean</SelectItem>
+                      <SelectItem value="location">Location</SelectItem>
+                      <SelectItem value="select">Select</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <label className="mt-5 flex items-center gap-1.5 text-xs whitespace-nowrap">
+                  <Checkbox
+                    checked={field.required}
+                    onCheckedChange={(val) =>
+                      onUpdate(idx, { required: val === true })
+                    }
+                  />
+                  Required
+                </label>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-muted-foreground hover:text-destructive mt-5 size-8 shrink-0 p-0"
+                onClick={() => onRemove(idx)}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </div>
+          ))}
+        </CardContent>
+      )}
+    </Card>
+  );
+}

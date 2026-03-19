@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
@@ -389,5 +389,208 @@ export const operationTypeRouter = createTRPCRouter({
       }
 
       return deletedOperationTypePort;
+    }),
+
+  savePorts: publicProcedure
+    .input(
+      z.object({
+        operationTypeId: z.uuid(),
+        ports: z.array(
+          z.object({
+            id: z.uuid().optional(),
+            itemTypeId: z.uuid(),
+            referenceKey: z.string().min(1),
+            qtyMin: z.string().nullable().optional(),
+            qtyMax: z.string().nullable().optional(),
+            required: z.boolean().optional(),
+            preconditionsStatuses: z.array(z.string()).nullable().optional(),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.transaction(async (tx) => {
+        const existing = await tx
+          .select()
+          .from(operationTypeInputItem)
+          .where(eq(operationTypeInputItem.operationTypeId, input.operationTypeId));
+
+        const incomingIds = new Set(input.ports.map((p) => p.id).filter(Boolean));
+        const toDelete = existing.filter((e) => !incomingIds.has(e.id));
+
+        if (toDelete.length > 0) {
+          await tx
+            .delete(operationTypeInputItem)
+            .where(inArray(operationTypeInputItem.id, toDelete.map((d) => d.id)));
+        }
+
+        for (const p of input.ports) {
+          if (p.id && existing.some((e) => e.id === p.id)) {
+            await tx
+              .update(operationTypeInputItem)
+              .set({
+                itemTypeId: p.itemTypeId,
+                referenceKey: p.referenceKey,
+                qtyMin: p.qtyMin ?? null,
+                qtyMax: p.qtyMax ?? null,
+                required: p.required ?? false,
+                preconditionsStatuses: p.preconditionsStatuses ?? null,
+              })
+              .where(eq(operationTypeInputItem.id, p.id));
+          } else {
+            await tx.insert(operationTypeInputItem).values({
+              operationTypeId: input.operationTypeId,
+              itemTypeId: p.itemTypeId,
+              referenceKey: p.referenceKey,
+              qtyMin: p.qtyMin ?? null,
+              qtyMax: p.qtyMax ?? null,
+              required: p.required ?? false,
+              preconditionsStatuses: p.preconditionsStatuses ?? null,
+            });
+          }
+        }
+
+        return tx
+          .select()
+          .from(operationTypeInputItem)
+          .where(eq(operationTypeInputItem.operationTypeId, input.operationTypeId));
+      });
+    }),
+
+  saveFields: publicProcedure
+    .input(
+      z.object({
+        operationTypeId: z.uuid(),
+        fields: z.array(
+          z.object({
+            id: z.uuid().optional(),
+            referenceKey: z.string().min(1),
+            label: z.string().nullable().optional(),
+            description: z.string().nullable().optional(),
+            type: z.string().min(1),
+            required: z.boolean().optional(),
+            options: z.record(z.string(), z.unknown()).nullable().optional(),
+            defaultValue: z.unknown().nullable().optional(),
+            sortOrder: z.number().int().default(0),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.transaction(async (tx) => {
+        const existing = await tx
+          .select()
+          .from(operationTypeInputField)
+          .where(eq(operationTypeInputField.operationTypeId, input.operationTypeId));
+
+        const incomingIds = new Set(input.fields.map((f) => f.id).filter(Boolean));
+        const toDelete = existing.filter((e) => !incomingIds.has(e.id));
+
+        if (toDelete.length > 0) {
+          await tx
+            .delete(operationTypeInputField)
+            .where(inArray(operationTypeInputField.id, toDelete.map((d) => d.id)));
+        }
+
+        for (const f of input.fields) {
+          if (f.id && existing.some((e) => e.id === f.id)) {
+            await tx
+              .update(operationTypeInputField)
+              .set({
+                referenceKey: f.referenceKey,
+                label: f.label ?? null,
+                description: f.description ?? null,
+                type: f.type,
+                required: f.required ?? false,
+                options: f.options ?? null,
+                defaultValue: f.defaultValue ?? null,
+                sortOrder: f.sortOrder,
+              })
+              .where(eq(operationTypeInputField.id, f.id));
+          } else {
+            await tx.insert(operationTypeInputField).values({
+              operationTypeId: input.operationTypeId,
+              referenceKey: f.referenceKey,
+              label: f.label ?? null,
+              description: f.description ?? null,
+              type: f.type,
+              required: f.required ?? false,
+              options: f.options ?? null,
+              defaultValue: f.defaultValue ?? null,
+              sortOrder: f.sortOrder,
+            });
+          }
+        }
+
+        return tx
+          .select()
+          .from(operationTypeInputField)
+          .where(eq(operationTypeInputField.operationTypeId, input.operationTypeId))
+          .orderBy(asc(operationTypeInputField.sortOrder));
+      });
+    }),
+
+  saveSteps: publicProcedure
+    .input(
+      z.object({
+        operationTypeId: z.uuid(),
+        steps: z.array(
+          z.object({
+            id: z.uuid().optional(),
+            name: z.string().min(1),
+            action: z.string().min(1),
+            target: z.string().nullable().optional(),
+            value: z.unknown().nullable().optional(),
+            sortOrder: z.number().int().default(0),
+          }),
+        ),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.transaction(async (tx) => {
+        const existing = await tx
+          .select()
+          .from(operationTypeStep)
+          .where(eq(operationTypeStep.operationTypeId, input.operationTypeId));
+
+        const incomingIds = new Set(input.steps.map((s) => s.id).filter(Boolean));
+        const toDelete = existing.filter((e) => !incomingIds.has(e.id));
+
+        if (toDelete.length > 0) {
+          await tx
+            .delete(operationTypeStep)
+            .where(inArray(operationTypeStep.id, toDelete.map((d) => d.id)));
+        }
+
+        for (const s of input.steps) {
+          if (s.id && existing.some((e) => e.id === s.id)) {
+            await tx
+              .update(operationTypeStep)
+              .set({
+                name: s.name,
+                action: s.action,
+                target: s.target ?? null,
+                value: s.value ?? {},
+                sortOrder: s.sortOrder,
+              })
+              .where(eq(operationTypeStep.id, s.id));
+          } else {
+            await tx.insert(operationTypeStep).values({
+              operationTypeId: input.operationTypeId,
+              name: s.name,
+              action: s.action,
+              target: s.target ?? null,
+              value: s.value ?? {},
+              sortOrder: s.sortOrder,
+            });
+          }
+        }
+
+        return tx
+          .select()
+          .from(operationTypeStep)
+          .where(eq(operationTypeStep.operationTypeId, input.operationTypeId))
+          .orderBy(asc(operationTypeStep.sortOrder));
+      });
     }),
 });

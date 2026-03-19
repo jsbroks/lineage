@@ -110,9 +110,25 @@ export const itemRouter = createTRPCRouter({
         .where(eq(itemType.id, currentItem.itemTypeId))
         .limit(1);
 
+      const [status] = await ctx.db
+        .select({ name: itemTypeStatusDefinition.name, color: itemTypeStatusDefinition.color })
+        .from(itemTypeStatusDefinition)
+        .where(eq(itemTypeStatusDefinition.id, currentItem.statusId))
+        .limit(1);
+
+      const [variant] = currentItem.variantId
+        ? await ctx.db
+            .select({ name: itemTypeVariant.name })
+            .from(itemTypeVariant)
+            .where(eq(itemTypeVariant.id, currentItem.variantId))
+            .limit(1)
+        : [undefined];
+
       return {
         item: currentItem,
         itemType: currentItemType ?? null,
+        status: status ?? null,
+        variant: variant ?? null,
       };
     }),
 
@@ -615,6 +631,41 @@ export const itemRouter = createTRPCRouter({
       }
 
       return updated;
+    }),
+
+  bulkSetLocation: publicProcedure
+    .input(
+      z.object({
+        itemIds: z.array(z.uuid()).min(1).max(1000),
+        locationId: z.uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [loc] = await ctx.db
+        .select({ name: location.name })
+        .from(location)
+        .where(eq(location.id, input.locationId))
+        .limit(1);
+
+      const updated = await ctx.db
+        .update(item)
+        .set({ locationId: input.locationId, updatedAt: new Date() })
+        .where(inArray(item.id, input.itemIds))
+        .returning({ id: item.id });
+
+      if (updated.length > 0) {
+        await ctx.db.insert(itemEvent).values(
+          updated.map((u) => ({
+            itemId: u.id,
+            eventType: "location_changed",
+            newLocationId: input.locationId,
+            message: `Moved to ${loc?.name ?? "location"}.`,
+            payload: {},
+          })),
+        );
+      }
+
+      return { updated: updated.length };
     }),
 
   bulkUpdateStatus: publicProcedure

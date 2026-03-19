@@ -157,7 +157,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
       useSequence: true,
       count: cnt,
       variantId: batchVariant === "none" ? null : batchVariant,
-      status: batchStatus || initialStatus?.name || "created",
+      status: batchStatus || initialStatus?.id || "created",
       attributes: Object.keys(attributes).length > 0 ? attributes : undefined,
     });
   }
