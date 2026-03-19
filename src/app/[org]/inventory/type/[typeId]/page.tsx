@@ -327,13 +327,16 @@ export default function ItemTypeDetailPage() {
         codePrefix={it.codePrefix}
         statuses={statuses}
         variants={variants}
-        onConfirm={({ count, variantId, status }) =>
+        attrDefs={attrDefs}
+        onConfirm={({ count, variantId, status, attributes }) =>
           batchCreate.mutate({
             itemTypeId: typeId,
             useSequence: true,
             count,
             variantId,
             status,
+            attributes:
+              Object.keys(attributes).length > 0 ? attributes : undefined,
           })
         }
         isPending={batchCreate.isPending}

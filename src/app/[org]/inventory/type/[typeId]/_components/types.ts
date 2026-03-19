@@ -20,8 +20,10 @@ export interface AttrDef {
   id: string;
   attrKey: string;
   dataType: string;
+  isRequired?: boolean;
   unit?: string | null;
   options?: unknown;
+  defaultValue?: string | null;
 }
 
 export interface ItemRow {
