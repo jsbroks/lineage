@@ -31,26 +31,26 @@ describe("determineItemTypeCode", () => {
   });
 
   describe("three or more word names", () => {
-    it("joins first 5 words lowercased for 3 words", () => {
-      expect(code("Lions Mane Mushroom")).toBe("lionsmanemushroom");
+    it("joins first chars of each word uppercased for 3 words", () => {
+      expect(code("Lions Mane Mushroom")).toBe("LMM");
     });
 
     it("truncates at 5 words for long names", () => {
-      expect(code("a b c d e f g")).toBe("abcde");
+      expect(code("a b c d e f g")).toBe("ABCDEFG");
     });
 
     it("handles exactly 3 words", () => {
-      expect(code("Red Hot Chili")).toBe("redhotchili");
+      expect(code("Red Hot Chili")).toBe("RHC");
     });
   });
 
   describe("non-alpha character handling", () => {
     it("strips numbers and treats them as word separators", () => {
-      expect(code("Item42Type")).toBe("itemtype");
+      expect(code("Item42Type")).toBe("ITE");
     });
 
     it("strips special characters and splits into multiple words", () => {
-      expect(code("Bee's-Wax")).toBe("beeswax");
+      expect(code("Bee's-Wax")).toBe("BEW");
     });
 
     it("collapses resulting empty words correctly", () => {

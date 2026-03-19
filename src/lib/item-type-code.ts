@@ -2,10 +2,14 @@ export const determineItemTypeCode = (itemType: {
   name: string;
   slug?: string;
 }) => {
-  const codeNormalized = itemType.name.replace(/[^a-zA-Z]/g, " ");
-  const words = codeNormalized.toUpperCase().split(" ");
+  const codeNormalized = itemType.name
+    .replaceAll("’", "")
+    .replaceAll("-", " ")
+    .toUpperCase()
+    .replace(/[^A-Z\s]/g, "");
+  const words = codeNormalized.split(" ");
   if (words.length > 2) {
-    return words.slice(0, 5).join("");
+    return words.map((w) => w.charAt(0)).join("");
   }
 
   if (words.length === 2) {

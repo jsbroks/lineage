@@ -33,7 +33,7 @@ type ItemSummary = {
   statusId: string;
 };
 
-export type PortMatch = {
+export type ItemInputMatch = {
   referenceKey: string;
   itemTypeId: string;
   preconditionsStatuses: string[] | null;
@@ -53,7 +53,7 @@ export type SuggestedOperation = {
   };
   score: number;
   ready: boolean;
-  ports: PortMatch[];
+  ports: ItemInputMatch[];
 };
 
 export async function suggestOperations(
@@ -128,7 +128,7 @@ export async function suggestOperations(
 
     let score = 0;
     let allRequiredSatisfied = true;
-    const portMatches: PortMatch[] = [];
+    const portMatches: ItemInputMatch[] = [];
 
     for (const port of inputPorts) {
       const candidates = itemsByType.get(port.itemTypeId) ?? [];

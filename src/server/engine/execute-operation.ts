@@ -16,6 +16,8 @@ import {
   type OperationTypeInputItem,
   type OperationTypeInputField,
   type OperationTypeStep,
+  type ItemType,
+  type ItemTypeStatusDefinition,
 } from "~/server/db/schema";
 import { registry } from "./actions";
 import { evaluateCondition, getStepConfig } from "./context";
@@ -51,7 +53,10 @@ export type OperationContext = {
   /** statusId → display name (for human-readable error messages) */
   statusNames: Map<string, string>;
   /** itemTypeId → display name */
-  itemTypeNames: Map<string, string>;
+  itemTypes: Map<
+    string,
+    ItemType & { statusDefinitions: ItemTypeStatusDefinition[] }
+  >;
 };
 
 // ── Validation (pure, no DB) ─────────────────────────────────────────
@@ -236,28 +241,33 @@ async function fetchInputItems(
   return loaded;
 }
 
-async function fetchItemTypeNames(
+async function fetchItemTypes(
   tx: Tx,
   loadedItems: Record<string, Item[]>,
-): Promise<Map<string, string>> {
-  const names = new Map<string, string>();
-  const seenTypeIds = new Set<string>();
-  for (const group of Object.values(loadedItems)) {
-    for (const it of group) seenTypeIds.add(it.itemTypeId);
-  }
+): Promise<
+  Map<string, ItemType & { statusDefinitions: ItemTypeStatusDefinition[] }>
+> {
+  const itemTypeIds = [
+    ...new Set(
+      Object.values(loadedItems).flatMap((items) =>
+        items.map((item) => item.itemTypeId),
+      ),
+    ),
+  ];
 
-  if (seenTypeIds.size > 0) {
-    const ids = [...seenTypeIds];
-    const types = await tx
-      .select({ id: itemType.id, name: itemType.name })
-      .from(itemType)
-      .where(
-        ids.length === 1 ? eq(itemType.id, ids[0]!) : inArray(itemType.id, ids),
-      );
-    for (const t of types) names.set(t.id, t.name);
-  }
+  const itemTypes = await tx.query.itemType.findMany({
+    where: inArray(itemType.id, itemTypeIds),
+    with: {
+      statusDefinitions: true,
+    },
+  });
 
-  return names;
+  return new Map(
+    itemTypes.map((it) => [
+      it.id,
+      { ...it, statusDefinitions: it.statusDefinitions },
+    ]),
+  );
 }
 
 export async function buildContext(
@@ -277,7 +287,7 @@ export async function buildContext(
   );
 
   const items = await fetchInputItems(tx, inputItemDefs, input.items);
-  const itemTypeNames = await fetchItemTypeNames(tx, items);
+  const itemTypes = await fetchItemTypes(tx, items);
 
   return {
     operationType: opType,
@@ -287,7 +297,7 @@ export async function buildContext(
     items,
     fields: input.fields,
     statusNames,
-    itemTypeNames,
+    itemTypes,
   };
 }
 
@@ -379,14 +389,19 @@ export async function executeOperation(
   const execCtx: ExecCtx = {
     items: ctx.items,
     inputs: ctx.fields,
-    itemTypeNames: ctx.itemTypeNames,
+    itemTypes: ctx.itemTypes,
     itemsCreated: [],
     itemsUpdated: new Set(),
     lineageCreated: 0,
     operationId: op.id,
   };
 
-  const stepResults = await executeSteps(tx, actionsRegistry, ctx.steps, execCtx);
+  const stepResults = await executeSteps(
+    tx,
+    actionsRegistry,
+    ctx.steps,
+    execCtx,
+  );
 
   return {
     operationId: op.id,

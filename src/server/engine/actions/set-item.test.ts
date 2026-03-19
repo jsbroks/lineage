@@ -1,11 +1,13 @@
 import { describe, it, expect } from "vitest";
-import {
-  resolveValue,
-  resolveAttrDef,
-  resolveFromRef,
-  traverseRest,
-} from "./set-item";
-import type { ExecCtx, Item } from "../types";
+import { setItem, resolveValue } from "./set-item";
+import type { ExecCtx, Item, Tx } from "../types";
+import type {
+  ItemType,
+  ItemTypeStatusDefinition,
+  OperationTypeStep,
+} from "~/server/db/schema";
+
+const fakeTx = {} as Tx;
 
 function makeItem(overrides: Partial<Item> = {}): Item {
   return {
@@ -28,11 +30,63 @@ function makeItem(overrides: Partial<Item> = {}): Item {
   } as Item;
 }
 
+function makeStep(
+  overrides: Partial<OperationTypeStep> = {},
+): OperationTypeStep {
+  return {
+    id: "step-1",
+    operationTypeId: "op-type-1",
+    name: "Set item",
+    action: "set-item",
+    target: "source",
+    value: {},
+    sortOrder: 0,
+    ...overrides,
+  };
+}
+
+function makeStatusDef(
+  overrides: Partial<ItemTypeStatusDefinition> = {},
+): ItemTypeStatusDefinition {
+  return {
+    id: "status-approved",
+    itemTypeId: "type-1",
+    name: "Approved",
+    color: null,
+    isInitial: false,
+    isTerminal: false,
+    ordinal: 0,
+    ...overrides,
+  };
+}
+
+function makeItemType(
+  overrides: Partial<ItemType> & {
+    statusDefinitions?: ItemTypeStatusDefinition[];
+  } = {},
+): ItemType & { statusDefinitions: ItemTypeStatusDefinition[] } {
+  const { statusDefinitions = [], ...rest } = overrides;
+  return {
+    id: "type-1",
+    name: "Block",
+    description: null,
+    category: "raw",
+    quantityName: null,
+    quantityDefaultUnit: "each",
+    icon: null,
+    color: null,
+    codePrefix: "BLK",
+    codeNextNumber: 1,
+    statusDefinitions,
+    ...rest,
+  };
+}
+
 function makeCtx(overrides: Partial<ExecCtx> = {}): ExecCtx {
   return {
     items: {},
     inputs: {},
-    itemTypeNames: new Map(),
+    itemTypes: new Map(),
     itemsCreated: [],
     itemsUpdated: new Set(),
     lineageCreated: 0,
@@ -41,7 +95,7 @@ function makeCtx(overrides: Partial<ExecCtx> = {}): ExecCtx {
   };
 }
 
-// ── resolveValue ─────────────────────────────────────────────────────────
+// ── resolveValue ─────────────────────────────────────────────────────
 
 describe("resolveValue", () => {
   it("returns null for null input", () => {
@@ -85,173 +139,209 @@ describe("resolveValue", () => {
   });
 });
 
-// ── resolveAttrDef ───────────────────────────────────────────────────────
+// ── setItem ──────────────────────────────────────────────────────────
 
-describe("resolveAttrDef", () => {
-  it("returns null literal with keepExisting false", () => {
-    expect(resolveAttrDef(null, makeCtx())).toEqual({
-      value: null,
-      keepExisting: false,
+describe("setItem", () => {
+  it("returns error for invalid config", async () => {
+    const result = await setItem(
+      fakeTx,
+      makeStep(),
+      "not-an-object" as any,
+      makeCtx(),
+    );
+    expect(result).toMatch(/Invalid config/);
+  });
+
+  it("returns error when target is null and no items match", async () => {
+    const result = await setItem(
+      fakeTx,
+      makeStep({ target: null }),
+      { status: "Approved" },
+      makeCtx(),
+    );
+    expect(result).toBe("No item type specified for updating");
+  });
+
+  it("returns error when target port has no items", async () => {
+    const result = await setItem(
+      fakeTx,
+      makeStep({ target: "source" }),
+      { status: "Approved" },
+      makeCtx({ items: {} }),
+    );
+    expect(result).toMatch(/Unknown able to update items type/);
+  });
+
+  describe("status updates", () => {
+    it("updates status on all target items", async () => {
+      const items = [
+        makeItem({ id: "a", statusId: "status-1" }),
+        makeItem({ id: "b", statusId: "status-1" }),
+      ];
+      const ctx = makeCtx({
+        items: { source: items },
+        itemTypes: new Map([
+          [
+            "type-1",
+            makeItemType({
+              statusDefinitions: [
+                makeStatusDef({ id: "status-approved", name: "Approved" }),
+              ],
+            }),
+          ],
+        ]),
+      });
+
+      const result = await setItem(
+        fakeTx,
+        makeStep({ target: "source" }),
+        { status: "Approved" },
+        ctx,
+      );
+
+      expect(result).toBe("2 items updated.");
+      expect(items[0]!.statusId).toBe("status-approved");
+      expect(items[1]!.statusId).toBe("status-approved");
+      expect(ctx.itemsUpdated).toEqual(new Set(["a", "b"]));
+    });
+
+    it("throws when status name is not found in item type", async () => {
+      const ctx = makeCtx({
+        items: { source: [makeItem()] },
+        itemTypes: new Map([
+          ["type-1", makeItemType({ statusDefinitions: [] })],
+        ]),
+      });
+
+      await expect(
+        setItem(
+          fakeTx,
+          makeStep({ target: "source" }),
+          { status: "NonExistent" },
+          ctx,
+        ),
+      ).rejects.toThrow('Status "NonExistent" not found for item type');
+    });
+
+    it("resolves status from a from-ref", async () => {
+      const items = [makeItem({ id: "a" })];
+      const ctx = makeCtx({
+        items: { source: items },
+        inputs: { desiredStatus: "Approved" },
+        itemTypes: new Map([
+          [
+            "type-1",
+            makeItemType({
+              statusDefinitions: [
+                makeStatusDef({ id: "status-approved", name: "Approved" }),
+              ],
+            }),
+          ],
+        ]),
+      });
+
+      const result = await setItem(
+        fakeTx,
+        makeStep({ target: "source" }),
+        { status: { from: ["desiredStatus"] } },
+        ctx,
+      );
+
+      expect(result).toBe("1 items updated.");
+      expect(items[0]!.statusId).toBe("status-approved");
+    });
+
+    it("reports no items updated when status is null", async () => {
+      const ctx = makeCtx({
+        items: { source: [makeItem()] },
+      });
+
+      const result = await setItem(
+        fakeTx,
+        makeStep({ target: "source" }),
+        { status: null },
+        ctx,
+      );
+
+      expect(result).toBe("No items updated.");
     });
   });
 
-  it("passes through string literal", () => {
-    expect(resolveAttrDef("hello", makeCtx())).toEqual({
-      value: "hello",
-      keepExisting: false,
+  describe("attribute updates", () => {
+    it("applies literal attribute values", async () => {
+      const items = [makeItem({ id: "a" })];
+      const ctx = makeCtx({
+        items: { source: items },
+      });
+
+      const result = await setItem(
+        fakeTx,
+        makeStep({ target: "source" }),
+        { attributes: { color: "red", weight: 50 } },
+        ctx,
+      );
+
+      expect(result).toBe("1 items updated.");
+    });
+
+    it("reports no items updated when attributes is null", async () => {
+      const ctx = makeCtx({
+        items: { source: [makeItem()] },
+      });
+
+      const result = await setItem(
+        fakeTx,
+        makeStep({ target: "source" }),
+        { attributes: null },
+        ctx,
+      );
+
+      expect(result).toBe("No items updated.");
+    });
+
+    it("reports no items updated with empty config", async () => {
+      const ctx = makeCtx({
+        items: { source: [makeItem()] },
+      });
+
+      const result = await setItem(
+        fakeTx,
+        makeStep({ target: "source" }),
+        {},
+        ctx,
+      );
+
+      expect(result).toBe("No items updated.");
     });
   });
 
-  it("passes through number literal", () => {
-    expect(resolveAttrDef(99, makeCtx())).toEqual({
-      value: 99,
-      keepExisting: false,
+  describe("combined status + attributes", () => {
+    it("updates both status and attributes in one call", async () => {
+      const items = [makeItem({ id: "a" })];
+      const ctx = makeCtx({
+        items: { source: items },
+        itemTypes: new Map([
+          [
+            "type-1",
+            makeItemType({
+              statusDefinitions: [
+                makeStatusDef({ id: "status-approved", name: "Approved" }),
+              ],
+            }),
+          ],
+        ]),
+      });
+
+      const result = await setItem(
+        fakeTx,
+        makeStep({ target: "source" }),
+        { status: "Approved", attributes: { grade: "A" } },
+        ctx,
+      );
+
+      expect(result).toBe("1 items updated.");
+      expect(items[0]!.statusId).toBe("status-approved");
+      expect(ctx.itemsUpdated.has("a")).toBe(true);
     });
-  });
-
-  it("passes through boolean literal", () => {
-    expect(resolveAttrDef(true, makeCtx())).toEqual({
-      value: true,
-      keepExisting: false,
-    });
-  });
-
-  it("resolves from-ref to an input value", () => {
-    const ctx = makeCtx({ inputs: { Grade: "A" } });
-    expect(resolveAttrDef({ from: ["inputs", "Grade"] }, ctx)).toEqual({
-      value: "A",
-      keepExisting: false,
-    });
-  });
-
-  it("resolves from-ref with keepExisting true", () => {
-    const ctx = makeCtx({ inputs: { Grade: "B+" } });
-    expect(
-      resolveAttrDef({ from: ["inputs", "Grade"], keepExisting: true }, ctx),
-    ).toEqual({
-      value: "B+",
-      keepExisting: true,
-    });
-  });
-
-  it("resolves from-ref to an item attribute", () => {
-    const ctx = makeCtx({
-      items: {
-        source: [makeItem({ attributes: { color: "red" } })],
-      },
-    });
-    expect(resolveAttrDef({ from: ["source", "color"] }, ctx)).toEqual({
-      value: "red",
-      keepExisting: false,
-    });
-  });
-
-  it("resolves from-ref to item id when no sub-path given", () => {
-    const ctx = makeCtx({
-      items: { source: [makeItem({ id: "item-42" })] },
-    });
-    expect(resolveAttrDef({ from: ["source"] }, ctx)).toEqual({
-      value: "item-42",
-      keepExisting: false,
-    });
-  });
-});
-
-// ── resolveFromRef ───────────────────────────────────────────────────────
-
-describe("resolveFromRef", () => {
-  it("returns undefined for empty parts", () => {
-    expect(resolveFromRef([], makeCtx())).toBeUndefined();
-  });
-
-  it("resolves inputs with single key", () => {
-    const ctx = makeCtx({ inputs: { Name: "Widget" } });
-    expect(resolveFromRef(["inputs", "Name"], ctx)).toBe("Widget");
-  });
-
-  it("resolves inputs with dot-joined key", () => {
-    const ctx = makeCtx({ inputs: { "a.b": "dot-value" } });
-    expect(resolveFromRef(["inputs", "a", "b"], ctx)).toBe("dot-value");
-  });
-
-  it("traverses nested input objects when dot-key not found", () => {
-    const ctx = makeCtx({ inputs: { meta: { nested: "deep" } } });
-    expect(resolveFromRef(["inputs", "meta", "nested"], ctx)).toBe("deep");
-  });
-
-  it("returns item id when only role is specified", () => {
-    const ctx = makeCtx({
-      items: { block: [makeItem({ id: "blk-1" })] },
-    });
-    expect(resolveFromRef(["block"], ctx)).toBe("blk-1");
-  });
-
-  it("returns item statusId for 'status' sub-path", () => {
-    const ctx = makeCtx({
-      items: { block: [makeItem({ statusId: "sts-99" })] },
-    });
-    expect(resolveFromRef(["block", "status"], ctx)).toBe("sts-99");
-  });
-
-  it("returns item id for 'id' sub-path", () => {
-    const ctx = makeCtx({
-      items: { block: [makeItem({ id: "blk-7" })] },
-    });
-    expect(resolveFromRef(["block", "id"], ctx)).toBe("blk-7");
-  });
-
-  it("returns item attribute value", () => {
-    const ctx = makeCtx({
-      items: {
-        block: [makeItem({ attributes: { weight: 50 } })],
-      },
-    });
-    expect(resolveFromRef(["block", "weight"], ctx)).toBe(50);
-  });
-
-  it("traverses nested item attributes", () => {
-    const ctx = makeCtx({
-      items: {
-        block: [makeItem({ attributes: { dims: { width: 10, height: 20 } } })],
-      },
-    });
-    expect(resolveFromRef(["block", "dims", "width"], ctx)).toBe(10);
-  });
-
-  it("returns undefined for unknown role", () => {
-    expect(resolveFromRef(["unknown"], makeCtx())).toBeUndefined();
-  });
-
-  it("returns undefined for unknown input key", () => {
-    expect(resolveFromRef(["inputs", "nope"], makeCtx())).toBeUndefined();
-  });
-});
-
-// ── traverseRest ─────────────────────────────────────────────────────────
-
-describe("traverseRest", () => {
-  it("returns the value itself for empty segments", () => {
-    expect(traverseRest("hello", [])).toBe("hello");
-  });
-
-  it("traverses a nested object", () => {
-    expect(traverseRest({ a: { b: 42 } }, ["a", "b"])).toBe(42);
-  });
-
-  it("returns undefined when a segment is missing", () => {
-    expect(traverseRest({ a: 1 }, ["b"])).toBeUndefined();
-  });
-
-  it("returns undefined when traversing through null", () => {
-    expect(traverseRest(null, ["a"])).toBeUndefined();
-  });
-
-  it("returns undefined when traversing through a primitive", () => {
-    expect(traverseRest(42, ["a"])).toBeUndefined();
-  });
-
-  it("handles deeply nested paths", () => {
-    const obj = { a: { b: { c: { d: "deep" } } } };
-    expect(traverseRest(obj, ["a", "b", "c", "d"])).toBe("deep");
   });
 });

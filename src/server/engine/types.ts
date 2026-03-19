@@ -1,6 +1,11 @@
 import type { ZodSchema } from "zod";
 import type { db as dbInstance } from "~/server/db";
-import type { item, operationTypeStep } from "~/server/db/schema";
+import type {
+  item,
+  ItemType,
+  ItemTypeStatusDefinition,
+  operationTypeStep,
+} from "~/server/db/schema";
 
 export type Tx = Parameters<
   Parameters<(typeof dbInstance)["transaction"]>[0]
@@ -16,7 +21,10 @@ export type ExecCtx = {
   /** User-provided field values */
   inputs: Record<string, unknown>;
   /** itemTypeId → display name (e.g. "Block", "Packaged Product") */
-  itemTypeNames: Map<string, string>;
+  itemTypes: Map<
+    string,
+    ItemType & { statusDefinitions: ItemTypeStatusDefinition[] }
+  >;
   /** Accumulate IDs for the result */
   itemsCreated: string[];
   itemsUpdated: Set<string>;

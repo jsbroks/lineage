@@ -27,6 +27,9 @@ export const itemTypeStatusDefinition = pgTable(
   (t) => [],
 );
 
+export type ItemTypeStatusDefinition =
+  typeof itemTypeStatusDefinition.$inferSelect;
+
 export const itemTypeStatusDefinitionRelations = relations(
   itemTypeStatusDefinition,
   ({ one }) => ({

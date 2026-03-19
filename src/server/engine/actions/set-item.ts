@@ -1,6 +1,4 @@
-import { and, eq } from "drizzle-orm";
-import { item, itemEvent, itemTypeStatusDefinition } from "~/server/db/schema";
-import { describeItems, getTargetItems } from "../context";
+import { getTargetItems } from "../context";
 import type { ActionHandler, ExecCtx, Item, Tx } from "../types";
 import { z } from "zod";
 import _ from "lodash";
@@ -15,22 +13,18 @@ const literalSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 
 const resolvableValueSchema = z.union([literalSchema, fromRefSchema]);
 
-const attrDefObjSchema = z.object({
-  from: z.array(z.string()),
-  keepExisting: z.boolean().optional(),
-});
-
-const attrDefSchema = z.union([literalSchema, attrDefObjSchema]);
-
 const configSchema = z.object({
   status: resolvableValueSchema.nullable().optional(),
-  attributes: z.record(z.string(), attrDefSchema).nullable().optional(),
+  attributes: z.record(z.string(), resolvableValueSchema).nullable().optional(),
 });
 
 // ── Inferred types ───────────────────────────────────────────────────────
 type LiteralValue = z.infer<typeof literalSchema>;
 type ResolvableValue = z.infer<typeof resolvableValueSchema>;
-type AttrDef = z.infer<typeof attrDefSchema>;
+
+const attrSchema = z.record(z.string(), literalSchema);
+
+type ItemChanges = Record<string, Partial<Omit<Item, "id">>>;
 
 /**
  * Composite action that can set status and/or multiple attributes on target
@@ -40,180 +34,97 @@ type AttrDef = z.infer<typeof attrDefSchema>;
  *   status: "Approved"                              // status name
  *   attributes:
  *     Key: value                                     // literal
- *     Key: { from: ["inputs", "Field"], keepExisting: true }  // array ref
+ *     Key: { from: ["inputs", "Field"] }  // array ref
  */
 export const setItem: ActionHandler = async (tx, step, configData, ctx) => {
   const config = configSchema.safeParse(configData);
-  if (!config.success) {
-    return `invalid config: ${config.error.message}`;
-  }
+  if (!config.success) return `Invalid config: ${config.error.message}`;
 
-  const targetItems = getTargetItems(step.target, ctx);
-  if (targetItems.length === 0)
+  const targets = getTargetItems(step.target, ctx);
+  if (targets.length === 0)
     return step.target
-      ? `no "${step.target}" provided`
-      : "no target role specified";
+      ? `Unknown able to update items type in "${step.target}"`
+      : "No item type specified for updating";
 
-  const changes: string[] = [];
+  const { status, attributes } = config.data;
+  const statusChanges = await applyStatus(tx, status, targets, ctx);
+  const attrChanges = await applyAttributes(tx, attributes, targets, ctx);
+  const changes = _.merge(statusChanges.changes, attrChanges.changes);
+  const countsChanges = Object.keys(changes).length;
 
-  // ── Status ──────────────────────────────────────────────────────────
-  const statusName = resolveValue(config.data.status, ctx);
-  if (typeof statusName === "string" && statusName.length > 0) {
-    const resolvedId = await resolveStatusId(
-      tx,
-      targetItems[0]!.itemTypeId,
-      statusName,
-    );
-
-    for (const t of targetItems) {
-      const oldStatus = t.statusId;
-      await tx
-        .update(item)
-        .set({ statusId: resolvedId, updatedAt: new Date() })
-        .where(eq(item.id, t.id));
-
-      await tx.insert(itemEvent).values({
-        itemId: t.id,
-        eventType: "status_change",
-        operationId: ctx.operationId,
-        oldStatus,
-        newStatus: resolvedId,
-        message: `${step.name}: → ${statusName}`,
-      });
-
-      t.statusId = resolvedId;
-      ctx.itemsUpdated.add(t.id);
-    }
-    changes.push(`status → ${statusName}`);
-  }
-
-  // ── Attributes ──────────────────────────────────────────────────────
-  if (config.data.attributes) {
-    const entries = Object.entries(config.data.attributes);
-
-    for (const t of targetItems) {
-      const attrs: Record<string, unknown> = {
-        ...((t.attributes ?? {}) as Record<string, unknown>),
-      };
-      let touched = false;
-
-      for (const [key, def] of entries) {
-        const { value, keepExisting } = resolveAttrDef(def, ctx);
-
-        if (keepExisting) {
-          const cur = attrs[key];
-          if (cur !== undefined && cur !== null && cur !== "") continue;
-        }
-
-        if (value !== undefined) {
-          attrs[key] = value;
-          touched = true;
-        }
-      }
-
-      if (touched) {
-        await tx
-          .update(item)
-          .set({ attributes: attrs, updatedAt: new Date() })
-          .where(eq(item.id, t.id));
-
-        (t as Record<string, unknown>).attributes = attrs;
-        ctx.itemsUpdated.add(t.id);
-      }
-    }
-
-    changes.push(entries.map(([k]) => k).join(", "));
-  }
-
-  return `set ${changes.join("; ")} on ${describeItems(targetItems, ctx)}`;
+  return `${countsChanges > 0 ? `${countsChanges} items updated.` : "No items updated."}`;
 };
 
-// ── Helpers ─────────────────────────────────────────────────────────────
-
-async function resolveStatusId(
+async function applyStatus(
   tx: Tx,
-  itemTypeId: string,
-  statusName: string,
-): Promise<string> {
-  const [def] = await tx
-    .select({ id: itemTypeStatusDefinition.id })
-    .from(itemTypeStatusDefinition)
-    .where(
-      and(
-        eq(itemTypeStatusDefinition.itemTypeId, itemTypeId),
-        eq(itemTypeStatusDefinition.name, statusName),
-      ),
-    )
-    .limit(1);
+  statusDef: ResolvableValue | null | undefined,
+  targets: Item[],
+  ctx: ExecCtx,
+): Promise<{ changes: ItemChanges; message: string }> {
+  const statusName = resolveValue(statusDef, ctx);
+  if (typeof statusName !== "string" || statusName.length === 0)
+    return { changes: {}, message: `invalid status: ${statusDef}` };
 
-  if (!def) throw new Error(`Status "${statusName}" not found for item type`);
-  return def.id;
-}
+  const changes: ItemChanges = {};
+  const itemTypeId = targets[0]!.itemTypeId;
+  const itemTypeStatus = ctx.itemTypes
+    .get(itemTypeId)
+    ?.statusDefinitions.find((sd) => sd.name === statusName);
+  if (!itemTypeStatus)
+    throw new Error(`Status "${statusName}" not found for item type`);
+  const resolvedId = itemTypeStatus.id;
 
-export function resolveFromRef(parts: string[], ctx: ExecCtx): unknown {
-  if (parts.length === 0) return undefined;
-
-  const [root, ...rest] = parts;
-
-  let value: unknown;
-  if (root === "inputs") {
-    const fullKey = rest.join(".");
-
-    value = ctx.inputs[fullKey];
-    if (value !== undefined || rest.length <= 1) return value;
-
-    value = ctx.inputs[rest[0]!];
-    return traverseRest(value, rest.slice(1));
+  for (const t of targets) {
+    changes[t.id] = { statusId: resolvedId, updatedAt: new Date() };
+    t.statusId = resolvedId;
+    ctx.itemsUpdated.add(t.id);
   }
 
-  const items = ctx.items[root!];
-  if (items && items.length > 0) {
-    const firstItem = items[0]!;
-    if (rest.length === 0) return firstItem.id;
-    if (rest[0] === "status") return firstItem.statusId;
-    if (rest[0] === "id") return firstItem.id;
-    const attrs = (firstItem.attributes ?? {}) as Record<string, unknown>;
-    value = attrs[rest[0]!];
-    return rest.length <= 1 ? value : traverseRest(value, rest.slice(1));
-  }
-
-  return undefined;
+  return { changes, message: `status → ${statusName}` };
 }
 
-export function traverseRest(value: unknown, segments: string[]): unknown {
-  let cur = value;
-  for (const seg of segments) {
-    if (cur === null || cur === undefined) return undefined;
-    if (typeof cur === "object") {
-      cur = (cur as Record<string, unknown>)[seg];
-    } else {
-      return undefined;
+async function applyAttributes(
+  _tx: Tx,
+  attrDefs: Record<string, ResolvableValue> | null | undefined,
+  targets: Item[],
+  ctx: ExecCtx,
+): Promise<{ changes: ItemChanges; message: string }> {
+  if (attrDefs == null) return { changes: {}, message: "" };
+
+  const changes: ItemChanges = {};
+  const entries = Object.entries(attrDefs);
+  const attrs = attrSchema.safeParse(attrDefs);
+  if (!attrs.success)
+    throw new Error(`invalid attributes: ${attrs.error.message}`);
+
+  for (const t of targets) {
+    const newAttrs = _.cloneDeep(attrs.data ?? {});
+    let touched = false;
+
+    for (const [key, def] of entries) {
+      const value = resolveValue(def, ctx);
+      if (value !== undefined) {
+        newAttrs[key] = value;
+        changes[t.id] = { attributes: newAttrs, updatedAt: new Date() };
+      }
+    }
+
+    if (touched) {
+      ctx.itemsUpdated.add(t.id);
     }
   }
-  return cur;
-}
 
-export function resolveAttrDef(
-  def: AttrDef,
-  ctx: ExecCtx,
-): { value: unknown; keepExisting: boolean } {
-  if (def === null) return { value: null, keepExisting: false };
-  if (typeof def !== "object") return { value: def, keepExisting: false };
-
-  return {
-    value: resolveFromRef(def.from, ctx),
-    keepExisting: def.keepExisting ?? false,
-  };
+  return { changes, message: entries.map(([k]) => k).join(", ") };
 }
 
 export function resolveValue(
   val: ResolvableValue | null | undefined,
   ctx: ExecCtx,
-) {
-  if (val === null || val === undefined) return val;
+): LiteralValue | undefined {
+  if (val == null) return val;
   if (typeof val !== "object") return val;
   if ("from" in val) {
     return _.get(ctx.inputs, val.from);
   }
-  return null;
+  return undefined;
 }

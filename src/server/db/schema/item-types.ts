@@ -9,6 +9,8 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { itemTypeStatusDefinition } from "./item-type-status";
+import { relations } from "drizzle-orm/relations";
 
 export const itemType = pgTable(
   "item_type",
@@ -26,6 +28,10 @@ export const itemType = pgTable(
   },
   (t) => [uniqueIndex().on(t.codePrefix)],
 );
+
+export const itemTypeRelations = relations(itemType, ({ many }) => ({
+  statusDefinitions: many(itemTypeStatusDefinition),
+}));
 
 export type ItemType = typeof itemType.$inferSelect;
 
