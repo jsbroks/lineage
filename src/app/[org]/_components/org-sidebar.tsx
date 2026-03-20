@@ -23,6 +23,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "~/components/ui/sidebar";
+import { ChatPanel } from "./chat-panel";
 
 type OrgSidebarProps = {
   org: string;
@@ -71,7 +72,10 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
   return (
     <Sidebar variant="inset" collapsible="icon">
       <SidebarHeader>
-        <div className="px-2 py-1 text-sm font-semibold">LA</div>
+        <div className="flex items-center justify-between px-2 py-1">
+          <span className="text-sm font-semibold">LA</span>
+          <ChatPanel />
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
