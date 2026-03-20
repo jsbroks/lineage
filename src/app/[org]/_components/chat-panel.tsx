@@ -4,6 +4,8 @@ import { useRef, useEffect, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { MessageCircle, Send, X, Loader2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
@@ -83,7 +85,7 @@ export function ChatPanel() {
 
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto px-4 py-3 space-y-4"
+          className="flex-1 space-y-4 overflow-y-auto px-4 py-3"
         >
           {messages.length === 0 && (
             <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 text-center text-sm">
@@ -107,14 +109,55 @@ export function ChatPanel() {
             >
               <div
                 className={cn(
-                  "max-w-[85%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap",
+                  "max-w-[85%] rounded-lg px-3 py-2 text-sm",
                   message.role === "user"
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary text-primary-foreground whitespace-pre-wrap"
                     : "bg-muted text-foreground",
                 )}
               >
                 {message.parts.map((part, i) => {
                   if (part.type === "text") {
+                    if (message.role === "assistant") {
+                      return (
+                        <ReactMarkdown
+                          key={i}
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: ({ children }) => (
+                              <p className="mb-2 last:mb-0">{children}</p>
+                            ),
+                            strong: ({ children }) => (
+                              <strong className="font-semibold">
+                                {children}
+                              </strong>
+                            ),
+                            ul: ({ children }) => (
+                              <ul className="mb-2 list-disc space-y-1 pl-4 last:mb-0">
+                                {children}
+                              </ul>
+                            ),
+                            ol: ({ children }) => (
+                              <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0">
+                                {children}
+                              </ol>
+                            ),
+                            li: ({ children }) => <li>{children}</li>,
+                            code: ({ children }) => (
+                              <code className="bg-foreground/10 rounded px-1 py-0.5 text-xs">
+                                {children}
+                              </code>
+                            ),
+                            pre: ({ children }) => (
+                              <pre className="bg-foreground/10 mb-2 overflow-x-auto rounded p-2 text-xs last:mb-0">
+                                {children}
+                              </pre>
+                            ),
+                          }}
+                        >
+                          {part.text}
+                        </ReactMarkdown>
+                      );
+                    }
                     return <span key={i}>{part.text}</span>;
                   }
                   return null;
@@ -123,14 +166,13 @@ export function ChatPanel() {
             </div>
           ))}
 
-          {isLoading &&
-            messages[messages.length - 1]?.role !== "assistant" && (
-              <div className="flex justify-start">
-                <div className="bg-muted rounded-lg px-3 py-2">
-                  <Loader2 className="text-muted-foreground size-4 animate-spin" />
-                </div>
+          {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
+            <div className="flex justify-start">
+              <div className="bg-muted rounded-lg px-3 py-2">
+                <Loader2 className="text-muted-foreground size-4 animate-spin" />
               </div>
-            )}
+            </div>
+          )}
         </div>
 
         <div className="border-t px-4 py-3">
@@ -142,7 +184,7 @@ export function ChatPanel() {
               onKeyDown={handleKeyDown}
               placeholder="Ask about your inventory..."
               rows={1}
-              className="flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              className="placeholder:text-muted-foreground flex-1 resize-none bg-transparent text-sm outline-none"
               disabled={isLoading}
             />
             <Button

@@ -1,7 +1,13 @@
+import { type Metadata } from "next";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Button } from "~/components/ui/button";
 import { Scan } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+};
+
 export default async function Home({
   params,
 }: {

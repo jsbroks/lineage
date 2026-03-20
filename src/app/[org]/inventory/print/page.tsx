@@ -1,4 +1,9 @@
+import { type Metadata } from "next";
 import { PrintLabelsPage } from "./_components/PrintLabelsPage";
+
+export const metadata: Metadata = {
+  title: "Print Labels",
+};
 
 type Props = {
   params: Promise<{ org: string }>;
