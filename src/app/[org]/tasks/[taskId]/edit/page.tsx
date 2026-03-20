@@ -70,7 +70,7 @@ export default function EditTaskTypePage() {
         name: s.name,
         action: s.action,
         target: s.target ?? "",
-        value: JSON.stringify(s.value ?? {}, null, 2),
+        value: JSON.stringify(s.config ?? {}, null, 2),
       })),
     };
   }, [data]);

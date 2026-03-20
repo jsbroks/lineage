@@ -69,7 +69,7 @@ export function getStepConfig(step: Step): {
   condition: unknown;
   config: Record<string, unknown>;
 } {
-  const raw = step.value;
+  const raw = step.config;
 
   if (raw === null || raw === undefined) {
     return { condition: null, config: {} };
@@ -100,7 +100,7 @@ export function describeItems(
   ctx: ExecCtx,
 ): string {
   if (items.length === 0) return "0 items";
-  const it = ctx.itemTypes.get(items[0]!.itemTypeId);
+  const it = ctx.itemTypes[items[0]!.itemTypeId];
   const name = it?.name ?? "item";
   const plural = items.length === 1 ? name : `${name}s`;
   return `${items.length} ${plural}`;

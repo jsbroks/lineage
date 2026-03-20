@@ -918,7 +918,7 @@ type StepsSectionProps = {
     name: string;
     action: string;
     target: string | null;
-    value: unknown;
+    config: unknown;
     sortOrder: number;
   }[];
 };
@@ -1061,7 +1061,7 @@ type StepFormData = {
   name: string;
   action: string;
   target: string | null;
-  value: unknown;
+  config: unknown;
   sortOrder: number;
 };
 
@@ -1082,7 +1082,7 @@ function StepForm({
   const [action, setAction] = useState(initial?.action ?? "");
   const [target, setTarget] = useState(initial?.target ?? "");
   const [valueText, setValueText] = useState(
-    initial?.value != null ? JSON.stringify(initial.value) : "",
+    initial?.config != null ? JSON.stringify(initial.config) : "",
   );
   const [sortOrder, setSortOrder] = useState(String(initial?.sortOrder ?? 0));
 
@@ -1100,7 +1100,7 @@ function StepForm({
       name: name.trim(),
       action,
       target: target.trim() || null,
-      value: parsedValue,
+      config: parsedValue,
       sortOrder: Number(sortOrder) || 0,
     });
   };

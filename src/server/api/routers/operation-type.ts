@@ -29,7 +29,7 @@ const addOperationTypeStepInput = z.object({
   name: z.string().min(1),
   action: z.string().min(1),
   target: z.string().nullable().optional(),
-  value: z.unknown().nullable().optional(),
+  config: z.unknown().nullable().optional(),
   sortOrder: z.number().int().optional(),
 });
 
@@ -38,7 +38,7 @@ const updateOperationTypeStepInput = z.object({
   name: z.string().min(1).optional(),
   action: z.string().min(1).optional(),
   target: z.string().nullable().optional(),
-  value: z.unknown().nullable().optional(),
+  config: z.unknown().nullable().optional(),
   sortOrder: z.number().int().optional(),
 });
 
@@ -306,7 +306,7 @@ export const operationTypeRouter = createTRPCRouter({
           name: input.name,
           action: input.action,
           target: input.target,
-          value: input.value,
+          config: input.config,
           sortOrder: input.sortOrder ?? 0,
         })
         .returning();
@@ -534,7 +534,7 @@ export const operationTypeRouter = createTRPCRouter({
             name: z.string().min(1),
             action: z.string().min(1),
             target: z.string().nullable().optional(),
-            value: z.unknown().nullable().optional(),
+            config: z.unknown().nullable().optional(),
             sortOrder: z.number().int().default(0),
           }),
         ),
@@ -564,7 +564,7 @@ export const operationTypeRouter = createTRPCRouter({
                 name: s.name,
                 action: s.action,
                 target: s.target ?? null,
-                value: s.value ?? {},
+                config: s.config ?? {},
                 sortOrder: s.sortOrder,
               })
               .where(eq(operationTypeStep.id, s.id));
@@ -574,7 +574,7 @@ export const operationTypeRouter = createTRPCRouter({
               name: s.name,
               action: s.action,
               target: s.target ?? null,
-              value: s.value ?? {},
+              config: s.config ?? {},
               sortOrder: s.sortOrder,
             });
           }
