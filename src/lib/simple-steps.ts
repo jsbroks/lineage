@@ -37,9 +37,9 @@ export type SimpleStepRow =
 
 function stepName(step: SimpleStepRow): string {
   if (step.kind === "change-status") {
-    return `Set status → ${step.statusName || "?"}`;
+    return `Set status → ${step.statusName ?? "?"}`;
   }
-  return `Set ${step.attrKey || "attribute"}`;
+  return `Set ${step.attrKey ?? "attribute"}`;
 }
 
 export function simpleStepsToStepRows(steps: SimpleStepRow[]): StepRow[] {
@@ -113,7 +113,11 @@ export function stepRowsToSimpleSteps(rows: StepRow[]): ConversionResult {
     if (hasAttrs) {
       const attrs = parsed.attributes as Record<string, unknown>;
       for (const [key, val] of Object.entries(attrs)) {
-        if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") {
+        if (
+          typeof val === "string" ||
+          typeof val === "number" ||
+          typeof val === "boolean"
+        ) {
           steps.push({
             kind: "set-attribute",
             targetRef: row.target,

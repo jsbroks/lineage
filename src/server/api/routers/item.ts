@@ -908,7 +908,7 @@ export const itemRouter = createTRPCRouter({
               groupByExprs.push({
                 field,
                 label: "Status",
-                expr: sql`${item.statusId}`,
+                expr: sql`${itemTypeStatusDefinition.name}`,
               });
               break;
             case "variant":
@@ -1063,6 +1063,7 @@ export const itemRouter = createTRPCRouter({
         }
       }
 
+      const needsStatusJoin = input.groupBy.includes("status");
       const needsVariantJoin = input.groupBy.includes("variant");
       const needsLocationJoin =
         input.groupBy.includes("location") || !!input.filters?.locationId;
@@ -1077,6 +1078,12 @@ export const itemRouter = createTRPCRouter({
 
       let query = ctx.db.select(selectCols).from(item).$dynamic();
 
+      if (needsStatusJoin) {
+        query = query.leftJoin(
+          itemTypeStatusDefinition,
+          eq(item.statusId, itemTypeStatusDefinition.id),
+        );
+      }
       if (needsVariantJoin) {
         query = query.leftJoin(
           itemTypeVariant,

@@ -36,7 +36,7 @@ type ItemChanges = Record<string, Partial<Omit<Item, "id">>>;
  *     Key: value                                     // literal
  *     Key: { from: ["inputs", "Field"] }  // array ref
  */
-export const setItem: ActionHandler = async (tx, step, configData, ctx) => {
+export const setItem: ActionHandler = async (_tx, step, configData, ctx) => {
   const config = configSchema.safeParse(configData);
   if (!config.success) return `Invalid config: ${config.error.message}`;
 
@@ -47,8 +47,8 @@ export const setItem: ActionHandler = async (tx, step, configData, ctx) => {
       : "No item type specified for updating";
 
   const { status, attributes } = config.data;
-  const statusChanges = await applyStatus(tx, status, targets, ctx);
-  const attrChanges = await applyAttributes(tx, attributes, targets, ctx);
+  const statusChanges = await applyStatus(status, targets, ctx);
+  const attrChanges = await applyAttributes(attributes, targets, ctx);
   const changes = _.merge(statusChanges.changes, attrChanges.changes);
   const countsChanges = Object.keys(changes).length;
 
@@ -56,7 +56,6 @@ export const setItem: ActionHandler = async (tx, step, configData, ctx) => {
 };
 
 async function applyStatus(
-  tx: Tx,
   statusDef: ResolvableValue | null | undefined,
   targets: Item[],
   ctx: ExecCtx,
@@ -84,7 +83,6 @@ async function applyStatus(
 }
 
 async function applyAttributes(
-  _tx: Tx,
   attrDefs: Record<string, ResolvableValue> | null | undefined,
   targets: Item[],
   ctx: ExecCtx,
