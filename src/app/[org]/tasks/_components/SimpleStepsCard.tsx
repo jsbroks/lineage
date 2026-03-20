@@ -11,7 +11,6 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -30,19 +29,15 @@ type SimpleStepsCardProps = {
   onUpdate: (steps: SimpleStepRow[]) => void;
 };
 
-function emptyChangeStatus(): SimpleStepRow {
-  return { kind: "change-status", targetRef: "", statusName: "" };
-}
-
-function emptySetAttribute(): SimpleStepRow {
-  return {
-    kind: "set-attribute",
-    targetRef: "",
-    attrKey: "",
-    source: "field",
-    fieldRef: "",
-  };
-}
+const EMPTY: SimpleStepRow = {
+  action: "change-status",
+  targetRef: "",
+  statusName: "",
+  attrKey: "",
+  source: "literal",
+  literalValue: "",
+  fieldRef: "",
+};
 
 export function SimpleStepsCard({
   steps,
@@ -63,18 +58,15 @@ export function SimpleStepsCard({
   };
 
   const updateStep = (idx: number, patch: Partial<SimpleStepRow>) => {
-    const next = steps.map((s, i) => (i === idx ? { ...s, ...patch } : s));
-    onUpdate(next as SimpleStepRow[]);
+    onUpdate(steps.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
   };
 
   const removeStep = (idx: number) => {
     onUpdate(steps.filter((_, i) => i !== idx));
   };
 
-  const addStep = (kind: "change-status" | "set-attribute") => {
-    const step =
-      kind === "change-status" ? emptyChangeStatus() : emptySetAttribute();
-    onUpdate([...steps, step]);
+  const addStep = (action: SimpleStepRow["action"]) => {
+    onUpdate([...steps, { ...EMPTY, action }]);
   };
 
   return (
@@ -111,7 +103,7 @@ export function SimpleStepsCard({
         <CardContent className="space-y-4">
           {steps.map((step, idx) => (
             <div key={idx} className="rounded-md border p-3">
-              {step.kind === "change-status" ? (
+              {step.action === "change-status" ? (
                 <ChangeStatusRow
                   step={step}
                   idx={idx}
@@ -150,7 +142,7 @@ function ChangeStatusRow({
   onUpdate,
   onRemove,
 }: {
-  step: Extract<SimpleStepRow, { kind: "change-status" }>;
+  step: SimpleStepRow;
   idx: number;
   inputItems: InputItemRow[];
   statuses: StatusInfo[];
@@ -206,7 +198,7 @@ function SetAttributeRow({
   onUpdate,
   onRemove,
 }: {
-  step: Extract<SimpleStepRow, { kind: "set-attribute" }>;
+  step: SimpleStepRow;
   idx: number;
   inputItems: InputItemRow[];
   inputFields: InputFieldRow[];
@@ -251,9 +243,9 @@ function SetAttributeRow({
             value={step.source}
             onValueChange={(val) => {
               if (val === "literal") {
-                onUpdate(idx, { source: "literal", literalValue: "" } as Partial<SimpleStepRow>);
+                onUpdate(idx, { source: "literal", literalValue: "", fieldRef: "" });
               } else {
-                onUpdate(idx, { source: "field", fieldRef: "" } as Partial<SimpleStepRow>);
+                onUpdate(idx, { source: "field", fieldRef: "", literalValue: "" });
               }
             }}
           >
@@ -270,7 +262,7 @@ function SetAttributeRow({
           {step.source === "field" ? (
             <Select
               value={step.fieldRef || undefined}
-              onValueChange={(val) => onUpdate(idx, { fieldRef: val } as Partial<SimpleStepRow>)}
+              onValueChange={(val) => onUpdate(idx, { fieldRef: val })}
             >
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue placeholder="Select field..." />
@@ -290,10 +282,8 @@ function SetAttributeRow({
             </Select>
           ) : (
             <Input
-              value={(step as Extract<SimpleStepRow, { source: "literal" }>).literalValue ?? ""}
-              onChange={(e) =>
-                onUpdate(idx, { literalValue: e.target.value } as Partial<SimpleStepRow>)
-              }
+              value={step.literalValue}
+              onChange={(e) => onUpdate(idx, { literalValue: e.target.value })}
               placeholder="Value"
               className="h-8 text-xs"
             />

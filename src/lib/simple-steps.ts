@@ -1,77 +1,70 @@
-import type {
-  InputItemRow,
-  InputFieldRow,
-  StepRow,
-} from "~/app/[org]/tasks/_components/OperationTypeForm";
+import type { StepRow } from "~/app/[org]/tasks/_components/OperationTypeForm";
 
-// ── Simple step intermediate model ─────────────────────────────────────
+// ── Simple step model ───────────────────────────────────────────────
+// Single flat type; the `action` field determines which properties
+// are relevant.  Maps 1:1 to an engine action of the same name.
 
-export type SimpleStepChangeStatus = {
-  kind: "change-status";
+export type SimpleStepRow = {
+  action: "change-status" | "set-attribute";
   targetRef: string;
+  /** change-status: the status name to apply */
   statusName: string;
-};
-
-export type SimpleStepSetAttributeLiteral = {
-  kind: "set-attribute";
-  targetRef: string;
+  /** set-attribute: the attribute key */
   attrKey: string;
-  source: "literal";
+  /** set-attribute: where the value comes from */
+  source: "literal" | "field";
+  /** set-attribute + literal: the fixed value */
   literalValue: string;
-};
-
-export type SimpleStepSetAttributeField = {
-  kind: "set-attribute";
-  targetRef: string;
-  attrKey: string;
-  source: "field";
+  /** set-attribute + field: the input field reference key */
   fieldRef: string;
 };
 
-export type SimpleStepRow =
-  | SimpleStepChangeStatus
-  | SimpleStepSetAttributeLiteral
-  | SimpleStepSetAttributeField;
-
-// ── Simple → StepRow conversion ────────────────────────────────────────
+// ── Simple → StepRow conversion ─────────────────────────────────────
 
 function stepName(step: SimpleStepRow): string {
-  if (step.kind === "change-status") {
-    return `Set status → ${step.statusName ?? "?"}`;
+  if (step.action === "change-status") {
+    return `Set status → ${step.statusName || "?"}`;
   }
-  return `Set ${step.attrKey ?? "attribute"}`;
+  return `Set ${step.attrKey || "attribute"}`;
+}
+
+function stepValue(step: SimpleStepRow): string {
+  if (step.action === "change-status") {
+    return JSON.stringify({ statusName: step.statusName });
+  }
+
+  const value =
+    step.source === "field"
+      ? { from: ["inputs", step.fieldRef] }
+      : step.literalValue;
+
+  return JSON.stringify({ attrKey: step.attrKey, value });
 }
 
 export function simpleStepsToStepRows(steps: SimpleStepRow[]): StepRow[] {
-  return steps.map((step) => {
-    if (step.kind === "change-status") {
-      return {
-        name: stepName(step),
-        action: "set-item",
-        target: step.targetRef,
-        value: JSON.stringify({ status: step.statusName }),
-      };
-    }
-
-    const attrValue =
-      step.source === "field"
-        ? { from: ["inputs", step.fieldRef] }
-        : step.literalValue;
-
-    return {
-      name: stepName(step),
-      action: "set-item",
-      target: step.targetRef,
-      value: JSON.stringify({ attributes: { [step.attrKey]: attrValue } }),
-    };
-  });
+  return steps.map((step) => ({
+    name: stepName(step),
+    action: step.action,
+    target: step.targetRef,
+    value: stepValue(step),
+  }));
 }
 
-// ── StepRow → Simple conversion ────────────────────────────────────────
+// ── StepRow → Simple conversion ─────────────────────────────────────
 
 export type ConversionResult = {
   steps: SimpleStepRow[];
   isFullyConvertible: boolean;
+};
+
+const EMPTY: SimpleStepRow = {
+  action: "change-status",
+  targetRef: "",
+  statusName: "",
+  attrKey: "",
+  source: "literal",
+  literalValue: "",
+  fieldRef: "",
 };
 
 export function stepRowsToSimpleSteps(rows: StepRow[]): ConversionResult {
@@ -79,11 +72,6 @@ export function stepRowsToSimpleSteps(rows: StepRow[]): ConversionResult {
   let isFullyConvertible = true;
 
   for (const row of rows) {
-    if (row.action !== "set-item") {
-      isFullyConvertible = false;
-      continue;
-    }
-
     let parsed: Record<string, unknown>;
     try {
       parsed = JSON.parse(row.value) as Record<string, unknown>;
@@ -92,64 +80,39 @@ export function stepRowsToSimpleSteps(rows: StepRow[]): ConversionResult {
       continue;
     }
 
-    const hasStatus = "status" in parsed && parsed.status != null;
-    const hasAttrs =
-      "attributes" in parsed &&
-      parsed.attributes != null &&
-      typeof parsed.attributes === "object";
-
-    if (hasStatus) {
-      if (typeof parsed.status === "string") {
-        steps.push({
-          kind: "change-status",
-          targetRef: row.target,
-          statusName: parsed.status,
-        });
+    if (row.action === "change-status") {
+      const name = parsed.statusName;
+      if (typeof name === "string") {
+        steps.push({ ...EMPTY, action: "change-status", targetRef: row.target, statusName: name });
       } else {
         isFullyConvertible = false;
       }
-    }
+    } else if (row.action === "set-attribute") {
+      const attrKey = parsed.attrKey;
+      const val = parsed.value;
+      if (typeof attrKey !== "string") {
+        isFullyConvertible = false;
+        continue;
+      }
 
-    if (hasAttrs) {
-      const attrs = parsed.attributes as Record<string, unknown>;
-      for (const [key, val] of Object.entries(attrs)) {
-        if (
-          typeof val === "string" ||
-          typeof val === "number" ||
-          typeof val === "boolean"
-        ) {
-          steps.push({
-            kind: "set-attribute",
-            targetRef: row.target,
-            attrKey: key,
-            source: "literal",
-            literalValue: String(val),
-          });
-        } else if (
-          val != null &&
-          typeof val === "object" &&
-          "from" in val &&
-          Array.isArray((val as { from: unknown }).from)
-        ) {
-          const fromArr = (val as { from: string[] }).from;
-          if (fromArr[0] === "inputs" && typeof fromArr[1] === "string") {
-            steps.push({
-              kind: "set-attribute",
-              targetRef: row.target,
-              attrKey: key,
-              source: "field",
-              fieldRef: fromArr[1],
-            });
-          } else {
-            isFullyConvertible = false;
-          }
+      if (
+        val != null &&
+        typeof val === "object" &&
+        "from" in val &&
+        Array.isArray((val as { from: unknown }).from)
+      ) {
+        const fromArr = (val as { from: string[] }).from;
+        if (fromArr[0] === "inputs" && typeof fromArr[1] === "string") {
+          steps.push({ ...EMPTY, action: "set-attribute", targetRef: row.target, attrKey, source: "field", fieldRef: fromArr[1] });
         } else {
           isFullyConvertible = false;
         }
+      } else if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") {
+        steps.push({ ...EMPTY, action: "set-attribute", targetRef: row.target, attrKey, source: "literal", literalValue: String(val) });
+      } else {
+        isFullyConvertible = false;
       }
-    }
-
-    if (!hasStatus && !hasAttrs) {
+    } else {
       isFullyConvertible = false;
     }
   }

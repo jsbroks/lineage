@@ -1,4 +1,3 @@
-import type { ZodSchema } from "zod";
 import type { db as dbInstance } from "~/server/db";
 import type {
   item,
@@ -16,15 +15,14 @@ export type Item = typeof item.$inferSelect;
 export type Step = typeof operationTypeStep.$inferSelect;
 
 export type ExecCtx = {
-  /** Items keyed by port role or alias (from create_item "as") */
   items: Record<string, Item[]>;
-  /** User-provided field values */
   inputs: Record<string, unknown>;
-  /** itemTypeId → display name (e.g. "Block", "Packaged Product") */
-  itemTypes: Map<
+
+  itemTypes: Record<
     string,
     ItemType & { statusDefinitions: ItemTypeStatusDefinition[] }
   >;
+
   /** Accumulate IDs for the result */
   itemsCreated: string[];
   itemsUpdated: Set<string>;
@@ -44,46 +42,17 @@ export type ExecuteOperationInput = {
   notes?: string | null;
 };
 
-export type StepResult = {
-  stepName: string;
+export type ActionResult = {
   action: string;
+  stepName: string;
   skipped: boolean;
   success: boolean;
   detail?: string;
 };
-
 export type ExecuteOperationResult = {
   operationId: string;
-  steps: StepResult[];
+  steps: ActionResult[];
   itemsCreated: string[];
   itemsUpdated: string[];
   lineageCreated: number;
 };
-
-export type ActionHandler = (
-  tx: Tx,
-  step: Step,
-  config: Record<string, unknown>,
-  ctx: ExecCtx,
-) => Promise<string>;
-
-export class ActionRegistry {
-  private handlers = new Map<string, ActionHandler>();
-
-  register(action: string, handler: ActionHandler): this {
-    this.handlers.set(action, handler);
-    return this;
-  }
-
-  get(action: string): ActionHandler | undefined {
-    return this.handlers.get(action);
-  }
-
-  has(action: string): boolean {
-    return this.handlers.has(action);
-  }
-
-  get actions(): string[] {
-    return [...this.handlers.keys()];
-  }
-}

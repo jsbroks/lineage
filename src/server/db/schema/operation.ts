@@ -1,14 +1,17 @@
 import {
+  integer,
   jsonb,
-  numeric,
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { operationType } from "./operation-types";
 import { location } from "./location";
+import { item } from "./item";
+import { relations } from "drizzle-orm";
 
 export const operation = pgTable(
   "operation",
@@ -36,3 +39,88 @@ export const operation = pgTable(
   ],
 );
 export type Operation = typeof operation.$inferSelect;
+
+export const operationRelation = relations(operation, ({ many, one }) => ({
+  type: one(operationType, {
+    fields: [operation.operationTypeId],
+    references: [operationType.id],
+  }),
+  items: many(operationInputItem),
+  fields: many(operationInputField),
+  steps: many(operationStep),
+}));
+
+export const operationInputItem = pgTable(
+  "operation_input_item",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    key: text("key").notNull(),
+    operationId: uuid("operation_id").references(() => operation.id, {
+      onDelete: "cascade",
+    }),
+    itemId: uuid("item_id").references(() => item.id, { onDelete: "cascade" }),
+  },
+  (t) => [uniqueIndex().on(t.operationId, t.key, t.itemId)],
+);
+
+export type OperationInputItem = typeof operationInputItem.$inferSelect;
+
+export const operationInputItemRelation = relations(
+  operationInputItem,
+  ({ one }) => ({
+    operation: one(operation, {
+      fields: [operationInputItem.operationId],
+      references: [operation.id],
+    }),
+    item: one(item, {
+      fields: [operationInputItem.itemId],
+      references: [item.id],
+    }),
+  }),
+);
+
+export const operationInputField = pgTable(
+  "operation_input_field",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    key: text("key").notNull(),
+    operationId: uuid("operation_id").references(() => operation.id, {
+      onDelete: "cascade",
+    }),
+    value: jsonb(),
+  },
+  (t) => [uniqueIndex().on(t.operationId, t.key)],
+);
+
+export type OperationInputField = typeof operationInputField.$inferSelect;
+export const operationInputFieldRelation = relations(
+  operationInputField,
+  ({ one }) => ({
+    operation: one(operation, {
+      fields: [operationInputField.operationId],
+      references: [operation.id],
+    }),
+  }),
+);
+
+export const operationStep = pgTable("operation_step", {
+  id: uuid().primaryKey().defaultRandom(),
+  operationId: uuid("operation_id").references(() => operation.id, {
+    onDelete: "cascade",
+  }),
+
+  name: text("name").notNull(),
+  action: text("action").notNull(),
+  target: text("target"),
+  config: jsonb("config").default({}),
+
+  sortOrder: integer("sort_order").notNull(),
+});
+
+export type OperationStep = typeof operationStep.$inferSelect;
+export const operationStepRelation = relations(operationStep, ({ one }) => ({
+  operation: one(operation, {
+    fields: [operationStep.operationId],
+    references: [operation.id],
+  }),
+}));

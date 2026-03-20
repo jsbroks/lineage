@@ -1,4 +1,5 @@
 export * from "./auth";
+export * from "./location";
 export * from "./operation-types";
 export * from "./operation";
 export * from "./item-types";

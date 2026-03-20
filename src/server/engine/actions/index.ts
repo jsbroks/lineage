@@ -1,4 +1,3 @@
-import { ActionRegistry } from "../types";
-import { setItem } from "./set-item";
+import { ActionRegistry } from "./actions";
 
-export const registry = new ActionRegistry().register("set-item", setItem);
+export const registry = new ActionRegistry();

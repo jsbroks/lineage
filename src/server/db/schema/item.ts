@@ -58,6 +58,8 @@ export const item = pgTable(
   (t) => [uniqueIndex().on(t.itemTypeId, t.code)],
 );
 
+export type Item = typeof item.$inferSelect;
+
 export const itemIdentifier = pgTable(
   "item_identifier",
   {
@@ -105,6 +107,8 @@ export const itemLineage = pgTable(
   (t) => [],
 );
 
+export type ItemLineage = typeof itemLineage.$inferSelect;
+
 export const itemEvent = pgTable(
   "item_event",
   {
@@ -135,3 +139,5 @@ export const itemEvent = pgTable(
     // index("idx_events_type").on(t.orgId, t.eventType),
   ],
 );
+
+export type ItemEvent = typeof itemEvent.$inferSelect;

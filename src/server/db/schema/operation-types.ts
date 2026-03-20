@@ -85,7 +85,7 @@ export const operationTypeStep = pgTable(
     name: text("name").notNull(),
     action: text("action").notNull(),
     target: text("target"),
-    value: jsonb("value").default({}),
+    config: jsonb("config").default({}),
 
     sortOrder: integer("sort_order").notNull(),
   },
