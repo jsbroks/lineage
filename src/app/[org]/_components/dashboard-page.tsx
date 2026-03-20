@@ -22,6 +22,7 @@ import { api } from "~/trpc/react";
 import { Icon } from "~/app/_components/IconPicker";
 import { cn } from "~/lib/utils";
 import { getColorClasses } from "~/app/_components/ColorSelector";
+import { AnomalyWidget } from "./anomaly-widget";
 
 export function DashboardPage({ org }: { org: string }) {
   const { data: inventoryRows, isLoading: loadingInventory } =
@@ -116,6 +117,9 @@ export function DashboardPage({ org }: { org: string }) {
           </div>
         )}
       </section>
+
+      {/* Anomaly Detection */}
+      <AnomalyWidget org={org} />
 
       {/* Two-column: Inventory by Type + Recent Operations */}
       <div className="grid gap-6 lg:grid-cols-5">

@@ -41,7 +41,12 @@ Write operations:
 - For bulk operations, mention how many items will be affected.
 - If a write tool returns an error, explain the issue and suggest corrections.
 - If the executeOperation tool says fields are needed, ask the user for those field values before calling the tool again.
-- Use updateAttributes to set or change custom attributes on items (e.g. "harvested_by", "substrate_recipe"). Each item type has defined attributes listed in the schema above — use the exact attribute key names.`,
+- Use updateAttributes to set or change custom attributes on items (e.g. "harvested_by", "substrate_recipe"). Each item type has defined attributes listed in the schema above — use the exact attribute key names.
+
+Anomaly detection:
+- Use detectAnomalies when the user asks about problems, issues, stuck items, things needing attention, throughput changes, or unusual patterns.
+- The tool checks three things: items stuck in a status much longer than peers, week-over-week throughput drops, and quantity outliers.
+- Present results clearly with specific item codes, statuses, and numbers. If no anomalies are found, say so.`,
     messages: await convertToModelMessages(messages),
     tools,
     stopWhen: stepCountIs(5),

@@ -117,7 +117,7 @@ export const operationStep = pgTable("operation_step", {
 
   sortOrder: integer("sort_order").notNull(),
 
-  success: boolean("sucess").notNull().default(true),
+  success: boolean("success").notNull().default(true),
   skipped: boolean("skipped").notNull().default(false),
   message: text("message"),
   details: jsonb("details")

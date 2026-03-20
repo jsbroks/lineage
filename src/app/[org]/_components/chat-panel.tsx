@@ -78,7 +78,7 @@ function ConfirmationCard({
 }) {
   if (state.status === "rejected") {
     return (
-      <div className="mt-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+      <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
         <p className="text-xs text-gray-500">Action cancelled</p>
       </div>
     );
@@ -86,7 +86,7 @@ function ConfirmationCard({
 
   if (state.status === "confirmed") {
     return (
-      <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
+      <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
         <div className="flex items-center gap-1.5">
           <Check className="size-3.5 text-emerald-600" />
           <p className="text-xs font-medium text-emerald-700">
@@ -99,7 +99,7 @@ function ConfirmationCard({
 
   if (state.status === "error") {
     return (
-      <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2">
+      <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2">
         <p className="text-xs text-red-700">Error: {state.error}</p>
       </div>
     );
@@ -111,7 +111,7 @@ function ConfirmationCard({
   const remaining = items.length - displayItems.length;
 
   return (
-    <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-3">
+    <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
       <div className="flex items-center gap-1.5 text-amber-800">
         <AlertTriangle className="size-3.5 shrink-0" />
         <span className="text-xs font-medium">Proposed Action</span>
@@ -344,118 +344,129 @@ export function ChatPanel() {
           </div>
         )}
 
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={cn(
-              "flex",
-              message.role === "user" ? "justify-end" : "justify-start",
-            )}
-          >
+        {messages.map((message) => {
+          const textParts = message.parts.filter((p) => p.type === "text");
+          const actionParts = message.parts.filter(
+            (p) =>
+              p.type.startsWith("tool-") &&
+              "state" in p &&
+              p.state === "output-available" &&
+              "output" in p &&
+              WRITE_TOOL_NAMES.has(p.type.slice(5)) &&
+              isPendingAction(p.output),
+          );
+
+          return (
             <div
+              key={message.id}
               className={cn(
-                "max-w-[85%] rounded-lg px-3 py-2 text-sm",
-                message.role === "user"
-                  ? "bg-primary text-primary-foreground whitespace-pre-wrap"
-                  : "text-foreground border bg-white",
+                "flex flex-col gap-2.5",
+                message.role === "user" ? "items-end" : "items-start",
               )}
             >
-              {message.parts.map((part, i) => {
-                if (part.type === "text") {
-                  if (message.role === "assistant") {
-                    return (
-                      <ReactMarkdown
-                        key={i}
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          p: ({ children }) => (
-                            <p className="mb-2 last:mb-0">{children}</p>
-                          ),
-                          strong: ({ children }) => (
-                            <strong className="font-semibold">
-                              {children}
-                            </strong>
-                          ),
-                          ul: ({ children }) => (
-                            <ul className="mb-2 list-disc space-y-1 pl-4 last:mb-0">
-                              {children}
-                            </ul>
-                          ),
-                          ol: ({ children }) => (
-                            <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0">
-                              {children}
-                            </ol>
-                          ),
-                          li: ({ children }) => <li>{children}</li>,
-                          code: ({ children }) => (
-                            <code className="bg-foreground/10 rounded px-1 py-0.5 text-xs">
-                              {children}
-                            </code>
-                          ),
-                          pre: ({ children }) => (
-                            <pre className="bg-foreground/10 mb-2 overflow-x-auto rounded p-2 text-xs last:mb-0">
-                              {children}
-                            </pre>
-                          ),
-                          table: ({ children }) => (
-                            <div className="my-2 last:mb-0">
-                              <Table className="text-xs">{children}</Table>
-                            </div>
-                          ),
-                          thead: ({ children }) => (
-                            <TableHeader>{children}</TableHeader>
-                          ),
-                          tbody: ({ children }) => (
-                            <TableBody>{children}</TableBody>
-                          ),
-                          tr: ({ children }) => <TableRow>{children}</TableRow>,
-                          th: ({ children }) => (
-                            <TableHead className="h-8 px-2 text-xs">
-                              {children}
-                            </TableHead>
-                          ),
-                          td: ({ children }) => (
-                            <TableCell className="px-2 py-1.5">
-                              {children}
-                            </TableCell>
-                          ),
-                        }}
-                      >
-                        {part.text}
-                      </ReactMarkdown>
-                    );
-                  }
-                  return <span key={i}>{part.text}</span>;
-                }
-                if (
-                  part.type.startsWith("tool-") &&
-                  "state" in part &&
-                  part.state === "output-available" &&
-                  "output" in part &&
-                  WRITE_TOOL_NAMES.has(part.type.slice(5)) &&
-                  isPendingAction(part.output)
-                ) {
-                  const toolCallId = (part as { toolCallId: string })
-                    .toolCallId;
-                  const result = part.output as PendingActionResult;
-                  const state: ActionState = actionStates[toolCallId] ?? {
-                    status: "pending",
-                  };
-                  return (
+              {textParts.length > 0 && (
+                <div
+                  className={cn(
+                    "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+                    message.role === "user"
+                      ? "bg-primary text-primary-foreground whitespace-pre-wrap"
+                      : "text-foreground border bg-white",
+                  )}
+                >
+                  {textParts.map((part, i) => {
+                    if (part.type !== "text") return null;
+                    if (message.role === "assistant") {
+                      return (
+                        <ReactMarkdown
+                          key={i}
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            p: ({ children }) => (
+                              <p className="mb-2 last:mb-0">{children}</p>
+                            ),
+                            strong: ({ children }) => (
+                              <strong className="font-semibold">
+                                {children}
+                              </strong>
+                            ),
+                            ul: ({ children }) => (
+                              <ul className="mb-2 list-disc space-y-1 pl-4 last:mb-0">
+                                {children}
+                              </ul>
+                            ),
+                            ol: ({ children }) => (
+                              <ol className="mb-2 list-decimal space-y-1 pl-4 last:mb-0">
+                                {children}
+                              </ol>
+                            ),
+                            li: ({ children }) => <li>{children}</li>,
+                            code: ({ children }) => (
+                              <code className="bg-foreground/10 rounded px-1 py-0.5 text-xs">
+                                {children}
+                              </code>
+                            ),
+                            pre: ({ children }) => (
+                              <pre className="bg-foreground/10 mb-2 overflow-x-auto rounded p-2 text-xs last:mb-0">
+                                {children}
+                              </pre>
+                            ),
+                            table: ({ children }) => (
+                              <div className="my-2 last:mb-0">
+                                <Table className="text-xs">{children}</Table>
+                              </div>
+                            ),
+                            thead: ({ children }) => (
+                              <TableHeader>{children}</TableHeader>
+                            ),
+                            tbody: ({ children }) => (
+                              <TableBody>{children}</TableBody>
+                            ),
+                            tr: ({ children }) => (
+                              <TableRow>{children}</TableRow>
+                            ),
+                            th: ({ children }) => (
+                              <TableHead className="h-8 px-2 text-xs">
+                                {children}
+                              </TableHead>
+                            ),
+                            td: ({ children }) => (
+                              <TableCell className="px-2 py-1.5">
+                                {children}
+                              </TableCell>
+                            ),
+                          }}
+                        >
+                          {part.text}
+                        </ReactMarkdown>
+                      );
+                    }
+                    return <span key={i}>{part.text}</span>;
+                  })}
+                </div>
+              )}
+
+              {actionParts.map((part, i) => {
+                const toolCallId = (part as { toolCallId: string })
+                  .toolCallId;
+                const result = (part as { output: PendingActionResult })
+                  .output;
+                const state: ActionState = actionStates[toolCallId] ?? {
+                  status: "pending",
+                };
+                return (
+                  <div key={`action-${i}`} className="max-w-[85%]">
                     <ConfirmationCard
-                      key={i}
                       action={result}
                       state={state}
                       onConfirm={() => executeAction(toolCallId, result)}
                       onReject={() => rejectAction(toolCallId)}
                     />
-                  );
-                }
-                return null;
+                  </div>
+                );
               })}
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {isLoading &&
           (() => {

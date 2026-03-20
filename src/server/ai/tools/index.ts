@@ -9,6 +9,7 @@ import { createMoveItemsTool } from "./move-items";
 import { createExecuteOperationTool } from "./execute-operation";
 import { createBulkUpdateStatusTool } from "./bulk-update-status";
 import { createUpdateAttributesTool } from "./update-attributes";
+import { createDetectAnomaliesTool } from "./detect-anomalies";
 
 export function createTools(ctx: SchemaContext) {
   return {
@@ -22,5 +23,6 @@ export function createTools(ctx: SchemaContext) {
     executeOperation: createExecuteOperationTool(ctx),
     bulkUpdateStatus: createBulkUpdateStatusTool(ctx),
     updateAttributes: createUpdateAttributesTool(ctx),
+    detectAnomalies: createDetectAnomaliesTool(ctx),
   };
 }
