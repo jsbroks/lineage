@@ -2,11 +2,7 @@
 
 import React, { useMemo } from "react";
 
-import type {
-  LabelContent,
-  LabelTemplate,
-  PrintItem,
-} from "../_lib/templates";
+import type { LabelContent, LabelTemplate, PrintItem } from "../_lib/templates";
 import { SingleLabel } from "./SingleLabel";
 
 interface LabelPreviewProps {

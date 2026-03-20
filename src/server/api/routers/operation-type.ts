@@ -409,15 +409,22 @@ export const operationTypeRouter = createTRPCRouter({
         const existing = await tx
           .select()
           .from(operationTypeInputItem)
-          .where(eq(operationTypeInputItem.operationTypeId, input.operationTypeId));
+          .where(
+            eq(operationTypeInputItem.operationTypeId, input.operationTypeId),
+          );
 
-        const incomingIds = new Set(input.ports.map((p) => p.id).filter(Boolean));
+        const incomingIds = new Set(
+          input.ports.map((p) => p.id).filter(Boolean),
+        );
         const toDelete = existing.filter((e) => !incomingIds.has(e.id));
 
         if (toDelete.length > 0) {
-          await tx
-            .delete(operationTypeInputItem)
-            .where(inArray(operationTypeInputItem.id, toDelete.map((d) => d.id)));
+          await tx.delete(operationTypeInputItem).where(
+            inArray(
+              operationTypeInputItem.id,
+              toDelete.map((d) => d.id),
+            ),
+          );
         }
 
         for (const p of input.ports) {
@@ -447,7 +454,9 @@ export const operationTypeRouter = createTRPCRouter({
         return tx
           .select()
           .from(operationTypeInputItem)
-          .where(eq(operationTypeInputItem.operationTypeId, input.operationTypeId));
+          .where(
+            eq(operationTypeInputItem.operationTypeId, input.operationTypeId),
+          );
       });
     }),
 
@@ -475,15 +484,22 @@ export const operationTypeRouter = createTRPCRouter({
         const existing = await tx
           .select()
           .from(operationTypeInputField)
-          .where(eq(operationTypeInputField.operationTypeId, input.operationTypeId));
+          .where(
+            eq(operationTypeInputField.operationTypeId, input.operationTypeId),
+          );
 
-        const incomingIds = new Set(input.fields.map((f) => f.id).filter(Boolean));
+        const incomingIds = new Set(
+          input.fields.map((f) => f.id).filter(Boolean),
+        );
         const toDelete = existing.filter((e) => !incomingIds.has(e.id));
 
         if (toDelete.length > 0) {
-          await tx
-            .delete(operationTypeInputField)
-            .where(inArray(operationTypeInputField.id, toDelete.map((d) => d.id)));
+          await tx.delete(operationTypeInputField).where(
+            inArray(
+              operationTypeInputField.id,
+              toDelete.map((d) => d.id),
+            ),
+          );
         }
 
         for (const f of input.fields) {
@@ -519,7 +535,9 @@ export const operationTypeRouter = createTRPCRouter({
         return tx
           .select()
           .from(operationTypeInputField)
-          .where(eq(operationTypeInputField.operationTypeId, input.operationTypeId))
+          .where(
+            eq(operationTypeInputField.operationTypeId, input.operationTypeId),
+          )
           .orderBy(asc(operationTypeInputField.sortOrder));
       });
     }),
@@ -547,13 +565,18 @@ export const operationTypeRouter = createTRPCRouter({
           .from(operationTypeStep)
           .where(eq(operationTypeStep.operationTypeId, input.operationTypeId));
 
-        const incomingIds = new Set(input.steps.map((s) => s.id).filter(Boolean));
+        const incomingIds = new Set(
+          input.steps.map((s) => s.id).filter(Boolean),
+        );
         const toDelete = existing.filter((e) => !incomingIds.has(e.id));
 
         if (toDelete.length > 0) {
-          await tx
-            .delete(operationTypeStep)
-            .where(inArray(operationTypeStep.id, toDelete.map((d) => d.id)));
+          await tx.delete(operationTypeStep).where(
+            inArray(
+              operationTypeStep.id,
+              toDelete.map((d) => d.id),
+            ),
+          );
         }
 
         for (const s of input.steps) {

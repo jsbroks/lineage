@@ -35,9 +35,7 @@ export function GeneralCard({ base, setBase }: GeneralCardProps) {
             <Input
               id="op-name"
               value={base.name}
-              onChange={(e) =>
-                setBase((p) => ({ ...p, name: e.target.value }))
-              }
+              onChange={(e) => setBase((p) => ({ ...p, name: e.target.value }))}
               required
               placeholder="Harvested"
             />

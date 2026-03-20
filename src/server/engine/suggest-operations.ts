@@ -134,6 +134,7 @@ export async function suggestOperations(
       const candidates = itemsByType.get(port.itemTypeId) ?? [];
       const qtyMin = Number(port.qtyMin ?? 0);
       const qtyMax = port.qtyMax ? Number(port.qtyMax) : null;
+      const isRequired = qtyMin > 0;
 
       // Resolve precondition status names to UUIDs
       let statusOk: Set<string> | null = null;
@@ -155,6 +156,22 @@ export async function suggestOperations(
       const matched = qtyMax ? fullyMatched.slice(0, qtyMax) : fullyMatched;
 
       const satisfied = matched.length >= qtyMin && matched.length > 0;
+
+      if (isRequired) {
+        if (satisfied) {
+          score += 3;
+        } else if (candidates.length > 0) {
+          score += 2;
+          allRequiredSatisfied = false;
+        } else {
+          score -= 10;
+          allRequiredSatisfied = false;
+        }
+      } else {
+        if (satisfied) {
+          score += 1;
+        }
+      }
 
       portMatches.push({
         referenceKey: port.referenceKey,

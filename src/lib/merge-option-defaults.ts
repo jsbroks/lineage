@@ -35,7 +35,10 @@ export function mergeVariantDefaults(
     if (existing.value !== undefined && existing.value !== null) {
       value = existing.value;
     }
-    if (existing.valueCurrency !== undefined && existing.valueCurrency !== null) {
+    if (
+      existing.valueCurrency !== undefined &&
+      existing.valueCurrency !== null
+    ) {
       valueCurrency = existing.valueCurrency;
     }
     if (existing.quantity !== undefined && existing.quantity !== null) {

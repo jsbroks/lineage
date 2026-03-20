@@ -28,11 +28,10 @@ export default function OperationsSettingsPage() {
     <div className="container mx-auto max-w-6xl px-6 py-8">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Task Types
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Task Types</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            Define the tasks your team performs (Harvest, Inoculate, Transfer, etc.)
+            Define the tasks your team performs (Harvest, Inoculate, Transfer,
+            etc.)
           </p>
         </div>
         <Button asChild size="sm" className="gap-1.5">

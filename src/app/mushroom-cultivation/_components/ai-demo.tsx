@@ -23,23 +23,26 @@ export function AiDemo() {
   const [isTyping, setIsTyping] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const runDemo = useCallback((q: string) => {
-    if (isTyping) return;
-    setSubmittedQuery(q);
-    setQuery("");
-    setVisibleChars(0);
-    setIsTyping(true);
+  const runDemo = useCallback(
+    (q: string) => {
+      if (isTyping) return;
+      setSubmittedQuery(q);
+      setQuery("");
+      setVisibleChars(0);
+      setIsTyping(true);
 
-    let i = 0;
-    intervalRef.current = setInterval(() => {
-      i += 1;
-      setVisibleChars(i);
-      if (i >= DEMO_RESPONSE.length) {
-        clearInterval(intervalRef.current!);
-        setIsTyping(false);
-      }
-    }, 12);
-  }, [isTyping]);
+      let i = 0;
+      intervalRef.current = setInterval(() => {
+        i += 1;
+        setVisibleChars(i);
+        if (i >= DEMO_RESPONSE.length) {
+          clearInterval(intervalRef.current!);
+          setIsTyping(false);
+        }
+      }, 12);
+    },
+    [isTyping],
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,16 +53,25 @@ export function AiDemo() {
   const renderedResponse = DEMO_RESPONSE.slice(0, visibleChars);
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden">
+    <div className="border-border bg-card overflow-hidden rounded-xl border">
       {/* Header */}
-      <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-background">
-            <path d="M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z" fill="currentColor" />
+      <div className="border-border flex items-center gap-2 border-b px-4 py-3">
+        <div className="bg-foreground flex h-6 w-6 items-center justify-center rounded-md">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            className="text-background"
+          >
+            <path
+              d="M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z"
+              fill="currentColor"
+            />
           </svg>
         </div>
         <span className="text-sm font-medium">Ask Lineage</span>
-        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+        <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-[10px] font-medium">
           AI
         </span>
       </div>
@@ -68,7 +80,7 @@ export function AiDemo() {
       <div className="min-h-[260px] px-4 py-4 sm:px-6">
         {!submittedQuery && !isTyping && (
           <div className="flex h-full min-h-[220px] flex-col items-center justify-center text-center">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               Ask a question about your grow operation
             </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -76,7 +88,7 @@ export function AiDemo() {
                 <button
                   key={q}
                   onClick={() => runDemo(q)}
-                  className="rounded-full border border-border bg-background px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-muted"
+                  className="border-border bg-background text-foreground hover:bg-muted rounded-full border px-3 py-1.5 text-xs transition-colors"
                 >
                   {q}
                 </button>
@@ -89,22 +101,31 @@ export function AiDemo() {
           <div className="space-y-4">
             {/* User message */}
             <div className="flex justify-end">
-              <div className="rounded-xl rounded-br-sm bg-foreground px-3.5 py-2 text-sm text-background">
+              <div className="bg-foreground text-background rounded-xl rounded-br-sm px-3.5 py-2 text-sm">
                 {submittedQuery}
               </div>
             </div>
 
             {/* AI response */}
             <div className="flex gap-3">
-              <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-foreground/10">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" className="text-foreground">
-                  <path d="M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z" fill="currentColor" />
+              <div className="bg-foreground/10 mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md">
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  className="text-foreground"
+                >
+                  <path
+                    d="M12 3L2 12h3v8h6v-6h2v6h6v-8h3L12 3z"
+                    fill="currentColor"
+                  />
                 </svg>
               </div>
-              <div className="text-sm leading-relaxed text-foreground min-w-0">
+              <div className="text-foreground min-w-0 text-sm leading-relaxed">
                 <FormattedResponse text={renderedResponse} />
                 {isTyping && (
-                  <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-foreground" />
+                  <span className="bg-foreground ml-0.5 inline-block h-4 w-0.5 animate-pulse" />
                 )}
               </div>
             </div>
@@ -113,21 +134,33 @@ export function AiDemo() {
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="border-t border-border px-4 py-3 sm:px-6">
+      <form
+        onSubmit={handleSubmit}
+        className="border-border border-t px-4 py-3 sm:px-6"
+      >
         <div className="flex gap-2">
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Ask about your harvest, inventory, yields…"
-            className="h-9 flex-1 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-2 focus:ring-ring/30"
+            className="border-border bg-background text-foreground placeholder:text-muted-foreground focus:border-ring focus:ring-ring/30 h-9 flex-1 rounded-md border px-3 text-sm outline-none focus:ring-2"
           />
           <button
             type="submit"
             disabled={!query.trim() || isTyping}
-            className="inline-flex h-9 items-center justify-center rounded-md bg-foreground px-3 text-sm font-medium text-background transition-colors hover:bg-foreground/80 disabled:opacity-40"
+            className="bg-foreground text-background hover:bg-foreground/80 inline-flex h-9 items-center justify-center rounded-md px-3 text-sm font-medium transition-colors disabled:opacity-40"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               <line x1="22" y1="2" x2="11" y2="13" />
               <polygon points="22 2 15 22 11 13 2 9 22 2" />
             </svg>

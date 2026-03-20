@@ -55,10 +55,7 @@ export function InputItemsCard({
       {inputItems.length > 0 && (
         <CardContent className="space-y-4">
           {inputItems.map((item, idx) => (
-            <div
-              key={idx}
-              className="space-y-3 rounded-md border p-3"
-            >
+            <div key={idx} className="space-y-3 rounded-md border p-3">
               <div className="flex items-start gap-3">
                 <div className="flex flex-1 flex-wrap items-center gap-3">
                   <div className="min-w-[140px] flex-1 space-y-1">
@@ -108,9 +105,7 @@ export function InputItemsCard({
                   <Label className="text-xs">Min Qty</Label>
                   <Input
                     value={item.qtyMin}
-                    onChange={(e) =>
-                      onUpdate(idx, { qtyMin: e.target.value })
-                    }
+                    onChange={(e) => onUpdate(idx, { qtyMin: e.target.value })}
                     placeholder="0"
                     className="h-8 text-xs"
                   />
@@ -119,9 +114,7 @@ export function InputItemsCard({
                   <Label className="text-xs">Max Qty</Label>
                   <Input
                     value={item.qtyMax}
-                    onChange={(e) =>
-                      onUpdate(idx, { qtyMax: e.target.value })
-                    }
+                    onChange={(e) => onUpdate(idx, { qtyMax: e.target.value })}
                     placeholder="∞"
                     className="h-8 text-xs"
                   />

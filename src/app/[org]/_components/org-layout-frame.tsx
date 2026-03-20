@@ -1,8 +1,7 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-
-import { SidebarInset, SidebarTrigger } from "~/components/ui/sidebar";
+import { SidebarInset } from "~/components/ui/sidebar";
+import { ChatPanel } from "./chat-panel";
 
 type OrgLayoutFrameProps = {
   children: React.ReactNode;
@@ -10,5 +9,10 @@ type OrgLayoutFrameProps = {
 };
 
 export function OrgLayoutFrame({ children }: OrgLayoutFrameProps) {
-  return <SidebarInset>{children}</SidebarInset>;
+  return (
+    <>
+      <SidebarInset className="min-w-0 flex-1">{children}</SidebarInset>
+      <ChatPanel />
+    </>
+  );
 }

@@ -30,7 +30,7 @@ type SimpleStepsCardProps = {
 };
 
 const EMPTY: SimpleStepRow = {
-  action: "change-status",
+  action: "set-item-status",
   targetRef: "",
   statusName: "",
   attrKey: "",
@@ -84,7 +84,7 @@ export function SimpleStepsCard({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => addStep("change-status")}
+              onClick={() => addStep("set-item-status")}
             >
               <Plus className="mr-1 size-3.5" /> Change status
             </Button>
@@ -92,7 +92,7 @@ export function SimpleStepsCard({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => addStep("set-attribute")}
+              onClick={() => addStep("set-item-attr")}
             >
               <Plus className="mr-1 size-3.5" /> Set attribute
             </Button>
@@ -103,7 +103,7 @@ export function SimpleStepsCard({
         <CardContent className="space-y-4">
           {steps.map((step, idx) => (
             <div key={idx} className="rounded-md border p-3">
-              {step.action === "change-status" ? (
+              {step.action === "set-item-status" ? (
                 <ChangeStatusRow
                   step={step}
                   idx={idx}
@@ -159,7 +159,9 @@ function ChangeStatusRow({
           <TargetSelect
             value={step.targetRef}
             inputItems={inputItems}
-            onChange={(val) => onUpdate(idx, { targetRef: val, statusName: "" })}
+            onChange={(val) =>
+              onUpdate(idx, { targetRef: val, statusName: "" })
+            }
           />
         </div>
         <span className="text-muted-foreground shrink-0 text-sm font-medium">
@@ -243,9 +245,17 @@ function SetAttributeRow({
             value={step.source}
             onValueChange={(val) => {
               if (val === "literal") {
-                onUpdate(idx, { source: "literal", literalValue: "", fieldRef: "" });
+                onUpdate(idx, {
+                  source: "literal",
+                  literalValue: "",
+                  fieldRef: "",
+                });
               } else {
-                onUpdate(idx, { source: "field", fieldRef: "", literalValue: "" });
+                onUpdate(idx, {
+                  source: "field",
+                  fieldRef: "",
+                  literalValue: "",
+                });
               }
             }}
           >

@@ -7,7 +7,7 @@ import {
 import type { StepRow } from "~/app/[org]/tasks/_components/OperationTypeForm";
 
 const EMPTY: SimpleStepRow = {
-  action: "change-status",
+  action: "set-item-status",
   targetRef: "",
   statusName: "",
   attrKey: "",
@@ -17,11 +17,11 @@ const EMPTY: SimpleStepRow = {
 };
 
 describe("simpleStepsToStepRows", () => {
-  it("converts a change-status step", () => {
+  it("converts a set-item-status step", () => {
     const simple: SimpleStepRow[] = [
       {
         ...EMPTY,
-        action: "change-status",
+        action: "set-item-status",
         targetRef: "Block",
         statusName: "Harvested",
       },
@@ -30,17 +30,17 @@ describe("simpleStepsToStepRows", () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toEqual({
       name: "Set status → Harvested",
-      action: "change-status",
+      action: "set-item-status",
       target: "Block",
-      value: JSON.stringify({ statusName: "Harvested" }),
+      value: JSON.stringify({ status: "Harvested" }),
     });
   });
 
-  it("converts a set-attribute literal step", () => {
+  it("converts a set-item-attr literal step", () => {
     const simple: SimpleStepRow[] = [
       {
         ...EMPTY,
-        action: "set-attribute",
+        action: "set-item-attr",
         targetRef: "Block",
         attrKey: "Weight",
         source: "literal",
@@ -49,18 +49,18 @@ describe("simpleStepsToStepRows", () => {
     ];
     const rows = simpleStepsToStepRows(simple);
     expect(rows).toHaveLength(1);
-    expect(rows[0]!.action).toBe("set-attribute");
+    expect(rows[0]!.action).toBe("set-item-attr");
     expect(JSON.parse(rows[0]!.value)).toEqual({
       attrKey: "Weight",
       value: "100",
     });
   });
 
-  it("converts a set-attribute field reference step", () => {
+  it("converts a set-item-attr field reference step", () => {
     const simple: SimpleStepRow[] = [
       {
         ...EMPTY,
-        action: "set-attribute",
+        action: "set-item-attr",
         targetRef: "Block",
         attrKey: "Harvested By",
         source: "field",
@@ -79,13 +79,13 @@ describe("simpleStepsToStepRows", () => {
     const simple: SimpleStepRow[] = [
       {
         ...EMPTY,
-        action: "change-status",
+        action: "set-item-status",
         targetRef: "Block",
         statusName: "Harvested",
       },
       {
         ...EMPTY,
-        action: "set-attribute",
+        action: "set-item-attr",
         targetRef: "Block",
         attrKey: "Weight",
         source: "field",
@@ -94,36 +94,36 @@ describe("simpleStepsToStepRows", () => {
     ];
     const rows = simpleStepsToStepRows(simple);
     expect(rows).toHaveLength(2);
-    expect(rows[0]!.action).toBe("change-status");
-    expect(rows[1]!.action).toBe("set-attribute");
+    expect(rows[0]!.action).toBe("set-item-status");
+    expect(rows[1]!.action).toBe("set-item-attr");
   });
 });
 
 describe("stepRowsToSimpleSteps", () => {
-  it("converts a change-status step row", () => {
+  it("converts a set-item-status step row", () => {
     const rows: StepRow[] = [
       {
         name: "Set status",
-        action: "change-status",
+        action: "set-item-status",
         target: "Block",
-        value: JSON.stringify({ statusName: "Harvested" }),
+        value: JSON.stringify({ status: "Harvested" }),
       },
     ];
     const result = stepRowsToSimpleSteps(rows);
     expect(result.isFullyConvertible).toBe(true);
     expect(result.steps).toHaveLength(1);
     expect(result.steps[0]).toMatchObject({
-      action: "change-status",
+      action: "set-item-status",
       targetRef: "Block",
       statusName: "Harvested",
     });
   });
 
-  it("converts a set-attribute literal step row", () => {
+  it("converts a set-item-attr literal step row", () => {
     const rows: StepRow[] = [
       {
         name: "Set weight",
-        action: "set-attribute",
+        action: "set-item-attr",
         target: "Block",
         value: JSON.stringify({ attrKey: "Weight", value: "100" }),
       },
@@ -132,7 +132,7 @@ describe("stepRowsToSimpleSteps", () => {
     expect(result.isFullyConvertible).toBe(true);
     expect(result.steps).toHaveLength(1);
     expect(result.steps[0]).toMatchObject({
-      action: "set-attribute",
+      action: "set-item-attr",
       targetRef: "Block",
       attrKey: "Weight",
       source: "literal",
@@ -140,11 +140,11 @@ describe("stepRowsToSimpleSteps", () => {
     });
   });
 
-  it("converts a set-attribute field-ref step row", () => {
+  it("converts a set-item-attr field-ref step row", () => {
     const rows: StepRow[] = [
       {
         name: "Set harvested by",
-        action: "set-attribute",
+        action: "set-item-attr",
         target: "Block",
         value: JSON.stringify({
           attrKey: "Harvested By",
@@ -155,7 +155,7 @@ describe("stepRowsToSimpleSteps", () => {
     const result = stepRowsToSimpleSteps(rows);
     expect(result.isFullyConvertible).toBe(true);
     expect(result.steps[0]).toMatchObject({
-      action: "set-attribute",
+      action: "set-item-attr",
       targetRef: "Block",
       attrKey: "Harvested By",
       source: "field",
@@ -167,7 +167,7 @@ describe("stepRowsToSimpleSteps", () => {
     const rows: StepRow[] = [
       {
         name: "Create",
-        action: "create-item",
+        action: "unknown-action",
         target: "Block",
         value: "{}",
       },
@@ -181,7 +181,7 @@ describe("stepRowsToSimpleSteps", () => {
     const rows: StepRow[] = [
       {
         name: "Bad",
-        action: "change-status",
+        action: "set-item-status",
         target: "Block",
         value: "not json",
       },
@@ -192,7 +192,12 @@ describe("stepRowsToSimpleSteps", () => {
 
   it("marks missing statusName as not fully convertible", () => {
     const rows: StepRow[] = [
-      { name: "Empty", action: "change-status", target: "Block", value: "{}" },
+      {
+        name: "Empty",
+        action: "set-item-status",
+        target: "Block",
+        value: "{}",
+      },
     ];
     const result = stepRowsToSimpleSteps(rows);
     expect(result.isFullyConvertible).toBe(false);
@@ -200,11 +205,11 @@ describe("stepRowsToSimpleSteps", () => {
 });
 
 describe("round-trip conversion", () => {
-  it("simple → step → simple preserves change-status", () => {
+  it("simple → step → simple preserves set-item-status", () => {
     const original: SimpleStepRow[] = [
       {
         ...EMPTY,
-        action: "change-status",
+        action: "set-item-status",
         targetRef: "Block",
         statusName: "Colonized",
       },
@@ -215,11 +220,11 @@ describe("round-trip conversion", () => {
     expect(steps).toEqual(original);
   });
 
-  it("simple → step → simple preserves set-attribute with field ref", () => {
+  it("simple → step → simple preserves set-item-attr with field ref", () => {
     const original: SimpleStepRow[] = [
       {
         ...EMPTY,
-        action: "set-attribute",
+        action: "set-item-attr",
         targetRef: "Block",
         attrKey: "Notes",
         source: "field",
@@ -232,11 +237,11 @@ describe("round-trip conversion", () => {
     expect(steps).toEqual(original);
   });
 
-  it("simple → step → simple preserves set-attribute with literal", () => {
+  it("simple → step → simple preserves set-item-attr with literal", () => {
     const original: SimpleStepRow[] = [
       {
         ...EMPTY,
-        action: "set-attribute",
+        action: "set-item-attr",
         targetRef: "Block",
         attrKey: "Grade",
         source: "literal",

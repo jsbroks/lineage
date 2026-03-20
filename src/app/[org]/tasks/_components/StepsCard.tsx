@@ -54,10 +54,7 @@ export function StepsCard({
       {steps.length > 0 && (
         <CardContent className="space-y-4">
           {steps.map((step, idx) => (
-            <div
-              key={idx}
-              className="space-y-3 rounded-md border p-3"
-            >
+            <div key={idx} className="space-y-3 rounded-md border p-3">
               <div className="flex items-start gap-3">
                 <GripVertical className="text-muted-foreground mt-7 size-4 shrink-0" />
                 <div className="flex flex-1 flex-wrap items-center gap-3">
@@ -65,9 +62,7 @@ export function StepsCard({
                     <Label className="text-xs">Step Name</Label>
                     <Input
                       value={step.name}
-                      onChange={(e) =>
-                        onUpdate(idx, { name: e.target.value })
-                      }
+                      onChange={(e) => onUpdate(idx, { name: e.target.value })}
                       placeholder="Set Item Status"
                     />
                   </div>
@@ -75,9 +70,7 @@ export function StepsCard({
                     <Label className="text-xs">Action</Label>
                     <Select
                       value={step.action}
-                      onValueChange={(val) =>
-                        onUpdate(idx, { action: val })
-                      }
+                      onValueChange={(val) => onUpdate(idx, { action: val })}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -87,12 +80,8 @@ export function StepsCard({
                         <SelectItem value="set-operation">
                           Set Operation
                         </SelectItem>
-                        <SelectItem value="set-lineage">
-                          Set Lineage
-                        </SelectItem>
-                        <SelectItem value="create-item">
-                          Create Item
-                        </SelectItem>
+                        <SelectItem value="set-lineage">Set Lineage</SelectItem>
+                        <SelectItem value="create-item">Create Item</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -101,9 +90,7 @@ export function StepsCard({
                     {inputItems.length > 0 ? (
                       <Select
                         value={step.target || undefined}
-                        onValueChange={(val) =>
-                          onUpdate(idx, { target: val })
-                        }
+                        onValueChange={(val) => onUpdate(idx, { target: val })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select target..." />
@@ -147,9 +134,7 @@ export function StepsCard({
                 <Label className="text-xs">Value (JSON)</Label>
                 <textarea
                   value={step.value}
-                  onChange={(e) =>
-                    onUpdate(idx, { value: e.target.value })
-                  }
+                  onChange={(e) => onUpdate(idx, { value: e.target.value })}
                   className="border-input bg-background min-h-16 w-full rounded-md border px-3 py-2 font-mono text-xs"
                   placeholder='{"status": "Approved", "attributes": {}}'
                 />

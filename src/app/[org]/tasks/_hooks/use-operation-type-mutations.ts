@@ -43,9 +43,7 @@ export function useOperationTypeMutations() {
           qtyMin: p.qtyMin.trim() || null,
           qtyMax: p.qtyMax.trim() || null,
           preconditionsStatuses:
-            p.preconditionsStatuses.length > 0
-              ? p.preconditionsStatuses
-              : null,
+            p.preconditionsStatuses.length > 0 ? p.preconditionsStatuses : null,
         })),
       });
     }
@@ -82,7 +80,7 @@ export function useOperationTypeMutations() {
             name: s.name.trim(),
             action: s.action,
             target: s.target.trim() || null,
-            value: parsedValue,
+            config: parsedValue,
             sortOrder: i,
           };
         }),

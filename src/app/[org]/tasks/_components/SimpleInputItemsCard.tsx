@@ -48,7 +48,11 @@ export function SimpleInputItemsCard({
     });
   };
 
-  const toggleStatus = (idx: number, item: InputItemRow, statusName: string) => {
+  const toggleStatus = (
+    idx: number,
+    item: InputItemRow,
+    statusName: string,
+  ) => {
     const current = item.preconditionsStatuses;
     const next = current.includes(statusName)
       ? current.filter((s) => s !== statusName)
@@ -71,12 +75,7 @@ export function SimpleInputItemsCard({
               Which item types does this task operate on?
             </CardDescription>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleAdd}
-          >
+          <Button type="button" variant="outline" size="sm" onClick={handleAdd}>
             <Plus className="mr-1 size-3.5" /> Add item type
           </Button>
         </div>
@@ -97,9 +96,7 @@ export function SimpleInputItemsCard({
                       <Label className="text-xs">Item Type</Label>
                       <Select
                         value={item.itemTypeId || undefined}
-                        onValueChange={(val) =>
-                          handleItemTypeChange(idx, val)
-                        }
+                        onValueChange={(val) => handleItemTypeChange(idx, val)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select item type..." />
@@ -127,13 +124,12 @@ export function SimpleInputItemsCard({
 
                 {availableStatuses.length > 0 && (
                   <div className="space-y-1.5">
-                    <Label className="text-xs">
-                      Must be in status
-                    </Label>
+                    <Label className="text-xs">Must be in status</Label>
                     <div className="flex flex-wrap gap-1.5">
                       {availableStatuses.map((s) => {
-                        const selected =
-                          item.preconditionsStatuses.includes(s.name);
+                        const selected = item.preconditionsStatuses.includes(
+                          s.name,
+                        );
                         return (
                           <button
                             key={s.id}

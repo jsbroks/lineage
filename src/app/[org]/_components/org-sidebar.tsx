@@ -6,6 +6,7 @@ import {
   ClipboardList,
   Home,
   MapPin,
+  MessageCircle,
   Package2,
   Printer,
   ScanBarcode,
@@ -23,7 +24,8 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "~/components/ui/sidebar";
-import { ChatPanel } from "./chat-panel";
+import { Button } from "~/components/ui/button";
+import { useChatPanel } from "./chat-panel-context";
 
 type OrgSidebarProps = {
   org: string;
@@ -31,6 +33,7 @@ type OrgSidebarProps = {
 
 export function OrgSidebar({ org }: OrgSidebarProps) {
   const pathname = usePathname();
+  const { toggle } = useChatPanel();
 
   const mainNav = [
     { label: "Home", href: `/${org}`, icon: Home },
@@ -74,7 +77,14 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
       <SidebarHeader>
         <div className="flex items-center justify-between px-2 py-1">
           <span className="text-sm font-semibold">LA</span>
-          <ChatPanel />
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            title="Ask Inventory"
+            onClick={toggle}
+          >
+            <MessageCircle className="size-4" />
+          </Button>
         </div>
       </SidebarHeader>
       <SidebarContent>

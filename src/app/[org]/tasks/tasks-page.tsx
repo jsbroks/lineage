@@ -59,7 +59,7 @@ export default function TasksPage() {
                 <TableRow key={op.id}>
                   <TableCell>
                     <div className="flex items-center gap-2.5">
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded bg-muted">
+                      <div className="bg-muted flex size-8 shrink-0 items-center justify-center rounded">
                         <Icon icon={op.icon} className="size-4" />
                       </div>
                       <Link

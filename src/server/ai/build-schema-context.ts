@@ -6,6 +6,9 @@ import {
   itemTypeAttributeDefinition,
   itemTypeStatusDefinition,
   location,
+  operationType,
+  operationTypeInputItem,
+  operationTypeInputField,
 } from "~/server/db/schema";
 
 export type SchemaContext = {
@@ -15,6 +18,7 @@ export type SchemaContext = {
   variants: Awaited<ReturnType<typeof loadVariants>>;
   locations: Awaited<ReturnType<typeof loadLocations>>;
   attributes: Awaited<ReturnType<typeof loadAttributes>>;
+  operationTypes: Awaited<ReturnType<typeof loadOperationTypes>>;
 };
 
 function loadItemTypes() {
@@ -46,15 +50,41 @@ function loadAttributes() {
     .orderBy(asc(itemTypeAttributeDefinition.sortOrder));
 }
 
+function loadOperationTypes() {
+  return db.select().from(operationType).orderBy(asc(operationType.name));
+}
+
+function loadOperationPorts() {
+  return db.select().from(operationTypeInputItem);
+}
+
+function loadOperationFields() {
+  return db
+    .select()
+    .from(operationTypeInputField)
+    .orderBy(asc(operationTypeInputField.sortOrder));
+}
+
 export async function buildSchemaContext(): Promise<SchemaContext> {
-  const [itemTypes, statuses, variants, locations, attributes] =
-    await Promise.all([
-      loadItemTypes(),
-      loadStatuses(),
-      loadVariants(),
-      loadLocations(),
-      loadAttributes(),
-    ]);
+  const [
+    itemTypes,
+    statuses,
+    variants,
+    locations,
+    attributes,
+    operationTypes,
+    opPorts,
+    opFields,
+  ] = await Promise.all([
+    loadItemTypes(),
+    loadStatuses(),
+    loadVariants(),
+    loadLocations(),
+    loadAttributes(),
+    loadOperationTypes(),
+    loadOperationPorts(),
+    loadOperationFields(),
+  ]);
 
   const statusesByType = new Map<string, typeof statuses>();
   for (const s of statuses) {
@@ -86,7 +116,12 @@ export async function buildSchemaContext(): Promise<SchemaContext> {
     let line = `- ${t.name}`;
     if (t.codePrefix) line += ` (prefix: ${t.codePrefix})`;
     if (typeStatuses.length > 0) {
-      line += ` — Statuses: ${typeStatuses.map((s) => s.name).join(", ")}`;
+      const statusLabels = typeStatuses.map((s) => {
+        if (s.isTerminal) return `${s.name} (terminal)`;
+        if (s.isInitial) return `${s.name} (initial)`;
+        return s.name;
+      });
+      line += ` — Statuses: ${statusLabels.join(", ")}`;
     }
     if (typeVariants.length > 0) {
       line += ` — Variants: ${typeVariants.map((v) => v.name).join(", ")}`;
@@ -104,6 +139,54 @@ export async function buildSchemaContext(): Promise<SchemaContext> {
     );
   }
 
+  if (operationTypes.length > 0) {
+    const portsByOp = new Map<string, typeof opPorts>();
+    for (const p of opPorts) {
+      const arr = portsByOp.get(p.operationTypeId) ?? [];
+      arr.push(p);
+      portsByOp.set(p.operationTypeId, arr);
+    }
+
+    const fieldsByOp = new Map<string, typeof opFields>();
+    for (const f of opFields) {
+      const arr = fieldsByOp.get(f.operationTypeId) ?? [];
+      arr.push(f);
+      fieldsByOp.set(f.operationTypeId, arr);
+    }
+
+    lines.push("");
+    lines.push("Operations:");
+    for (const op of operationTypes) {
+      let line = `- ${op.name}`;
+      if (op.description) line += ` — ${op.description}`;
+
+      const ports = portsByOp.get(op.id) ?? [];
+      if (ports.length > 0) {
+        const portLabels = ports.map((p) => {
+          const typeName =
+            itemTypes.find((t) => t.id === p.itemTypeId)?.name ?? "unknown";
+          const statusInfo =
+            p.preconditionsStatuses && p.preconditionsStatuses.length > 0
+              ? ` (${p.preconditionsStatuses.join("/")})`
+              : "";
+          return `${typeName}${statusInfo}`;
+        });
+        line += ` | Takes: ${portLabels.join(", ")}`;
+      }
+
+      const fields = fieldsByOp.get(op.id) ?? [];
+      if (fields.length > 0) {
+        const fieldLabels = fields.map(
+          (f) =>
+            `${f.label ?? f.referenceKey} (${f.type}${f.required ? ", required" : ""})`,
+        );
+        line += ` | Fields: ${fieldLabels.join(", ")}`;
+      }
+
+      lines.push(line);
+    }
+  }
+
   return {
     prompt: lines.join("\n"),
     itemTypes,
@@ -111,5 +194,6 @@ export async function buildSchemaContext(): Promise<SchemaContext> {
     variants,
     locations,
     attributes,
+    operationTypes,
   };
 }

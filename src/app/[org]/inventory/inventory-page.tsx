@@ -63,7 +63,6 @@ export default function InventoryPage() {
                 <TableHead>Asset</TableHead>
                 <TableHead className="text-center">Prepared</TableHead>
                 <TableHead className="text-center">Active</TableHead>
-                <TableHead className="text-center">Completed</TableHead>
                 <TableHead className="text-right">Qty</TableHead>
                 <TableHead className="text-right">Value</TableHead>
               </TableRow>
@@ -131,9 +130,6 @@ export default function InventoryPage() {
                     </TableCell>
                     <TableCell className="text-center">
                       {row.active || "–"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {row.completed || "–"}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {row.totalQuantity

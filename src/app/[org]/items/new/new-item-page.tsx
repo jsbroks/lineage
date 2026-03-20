@@ -109,7 +109,12 @@ export default function NewItemPage() {
 
   const previewCode = useMemo(() => {
     const nextNumber = Number(sequenceForm.nextNumber);
-    if (!sequenceForm.prefix || !Number.isInteger(nextNumber) || nextNumber <= 0) return "";
+    if (
+      !sequenceForm.prefix ||
+      !Number.isInteger(nextNumber) ||
+      nextNumber <= 0
+    )
+      return "";
     const paddedNumber = String(nextNumber).padStart(5, "0");
     return `${sequenceForm.prefix}-${paddedNumber}`;
   }, [sequenceForm.nextNumber, sequenceForm.prefix]);
@@ -200,9 +205,7 @@ export default function NewItemPage() {
         <Card>
           <CardHeader>
             <CardTitle>Recent Items</CardTitle>
-            <CardDescription>
-              Open an item to view its history.
-            </CardDescription>
+            <CardDescription>Open an item to view its history.</CardDescription>
           </CardHeader>
           <CardContent>
             {itemsLoading ? (
@@ -227,8 +230,6 @@ export default function NewItemPage() {
             )}
           </CardContent>
         </Card>
-
-        
 
         <Card>
           <CardHeader>
@@ -279,9 +280,7 @@ export default function NewItemPage() {
                       }
                       className="border-input bg-background w-full rounded-md border px-3 py-2"
                       placeholder={
-                        form.useSequence
-                          ? "Auto-generated"
-                          : "ITEM-0001"
+                        form.useSequence ? "Auto-generated" : "ITEM-0001"
                       }
                       disabled={form.useSequence}
                     />
@@ -361,8 +360,6 @@ export default function NewItemPage() {
                     />
                   </FieldContent>
                 </Field>
-
-                
 
                 {attributesError && (
                   <p className="text-destructive text-sm" role="alert">

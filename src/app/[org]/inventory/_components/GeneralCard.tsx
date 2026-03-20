@@ -23,7 +23,12 @@ type GeneralCardProps = {
   onCodePrefixChange: (value: string) => void;
 };
 
-export function GeneralCard({ base, setBase, onNameChange, onCodePrefixChange }: GeneralCardProps) {
+export function GeneralCard({
+  base,
+  setBase,
+  onNameChange,
+  onCodePrefixChange,
+}: GeneralCardProps) {
   return (
     <Card>
       <CardHeader>

@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { OperationContext, type Operation } from "./operation-context";
-import type { Item, OperationInputField, OperationInputItem } from "~/server/db/schema";
+import type {
+  Item,
+  OperationInputField,
+  OperationInputItem,
+} from "~/server/db/schema";
 
 function makeItem(overrides: Partial<Item> = {}): Item {
   return {

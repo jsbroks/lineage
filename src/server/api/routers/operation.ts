@@ -2,7 +2,7 @@ import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { operation } from "~/server/db/schema";
+import { operation, operationType } from "~/server/db/schema";
 import { registry } from "~/server/engine/actions";
 import type { OperationInputs } from "~/server/engine/operation-create";
 import { createAndExecute } from "~/server/engine/operation-execute";
@@ -65,6 +65,28 @@ export const operationRouter = createTRPCRouter({
       .orderBy(desc(operation.completedAt))
       .limit(100);
   }),
+
+  recentWithTypes: publicProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(50).default(10) }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db
+        .select({
+          id: operation.id,
+          status: operation.status,
+          completedAt: operation.completedAt,
+          notes: operation.notes,
+          operationTypeName: operationType.name,
+          operationTypeIcon: operationType.icon,
+          operationTypeColor: operationType.color,
+        })
+        .from(operation)
+        .innerJoin(
+          operationType,
+          eq(operation.operationTypeId, operationType.id),
+        )
+        .orderBy(desc(operation.completedAt))
+        .limit(input.limit);
+    }),
 
   getById: publicProcedure
     .input(z.object({ id: z.uuid() }))

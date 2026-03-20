@@ -19,6 +19,7 @@ import { SidebarTrigger } from "~/components/ui/sidebar";
 import { api } from "~/trpc/react";
 import { Icon } from "~/app/_components/IconPicker";
 
+import { AiDailySummary } from "./_components/AiDailySummary";
 import { InsightCards } from "./_components/InsightCards";
 import { QuickReport } from "./_components/QuickReport";
 import { ItemsTable } from "./_components/ItemsTable";
@@ -229,6 +230,8 @@ export default function ItemTypeDetailPage() {
             <p className="text-muted-foreground text-sm">{it.description}</p>
           )}
 
+          <AiDailySummary itemTypeId={typeId} />
+
           <InsightCards
             totalItems={totalItems}
             statusInsights={statusInsights}
@@ -291,9 +294,7 @@ export default function ItemTypeDetailPage() {
         open={bulkDeleteOpen}
         onOpenChange={setBulkDeleteOpen}
         selectedCount={selected.size}
-        onConfirm={() =>
-          bulkDelete.mutate({ itemIds: Array.from(selected) })
-        }
+        onConfirm={() => bulkDelete.mutate({ itemIds: Array.from(selected) })}
         isPending={bulkDelete.isPending}
       />
 

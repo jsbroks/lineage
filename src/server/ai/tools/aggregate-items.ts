@@ -92,9 +92,7 @@ export function createAggregateItemsTool(ctx: SchemaContext) {
         .from(itemTypeAttributeDefinition)
         .where(eq(itemTypeAttributeDefinition.itemTypeId, typeId));
       const allowedAttrKeys = new Set(attrDefs.map((d) => d.attrKey));
-      const attrTypeMap = new Map(
-        attrDefs.map((d) => [d.attrKey, d.dataType]),
-      );
+      const attrTypeMap = new Map(attrDefs.map((d) => [d.attrKey, d.dataType]));
 
       const BUILTIN_FIELDS = new Set([
         "status",

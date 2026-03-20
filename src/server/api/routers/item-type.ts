@@ -45,10 +45,7 @@ export const itemTypeRouter = createTRPCRouter({
       .from(itemTypeStatusDefinition)
       .orderBy(asc(itemTypeStatusDefinition.ordinal));
 
-    const statusesByType = new Map<
-      string,
-      (typeof statuses)[number][]
-    >();
+    const statusesByType = new Map<string, (typeof statuses)[number][]>();
     for (const s of statuses) {
       if (!statusesByType.has(s.itemTypeId)) {
         statusesByType.set(s.itemTypeId, []);
@@ -238,7 +235,12 @@ export const itemTypeRouter = createTRPCRouter({
           const assignedCounts = await tx
             .select({ variantId: item.variantId, total: count() })
             .from(item)
-            .where(inArray(item.variantId, toRemove.map((v) => v.id)))
+            .where(
+              inArray(
+                item.variantId,
+                toRemove.map((v) => v.id),
+              ),
+            )
             .groupBy(item.variantId);
 
           const assignedSet = new Set(
@@ -458,7 +460,9 @@ export const itemTypeRouter = createTRPCRouter({
         if (existingStatusIds.length > 0) {
           await tx
             .delete(itemTypeStatusTransition)
-            .where(inArray(itemTypeStatusTransition.fromStatusId, existingStatusIds));
+            .where(
+              inArray(itemTypeStatusTransition.fromStatusId, existingStatusIds),
+            );
         }
 
         for (const t of input.transitions) {
@@ -478,7 +482,10 @@ export const itemTypeRouter = createTRPCRouter({
                 .select()
                 .from(itemTypeStatusTransition)
                 .where(
-                  inArray(itemTypeStatusTransition.fromStatusId, existingStatusIds),
+                  inArray(
+                    itemTypeStatusTransition.fromStatusId,
+                    existingStatusIds,
+                  ),
                 )
             : [];
 

@@ -145,9 +145,7 @@ export default function OperationsPage() {
       </div>
 
       {/* Results view */}
-      {result && (
-        <ResultsView result={result} onReset={reset} />
-      )}
+      {result && <ResultsView result={result} onReset={reset} />}
 
       {!result && (
         <div className="space-y-6">
@@ -289,7 +287,6 @@ export default function OperationsPage() {
                           {suggestion.operationType.description}
                         </p>
                       )}
-                      
                     </button>
                   ))}
                 </div>
@@ -369,14 +366,10 @@ function FieldInputs({
   fieldValues,
   setFieldValues,
 }: {
-  opTypeData:
-    | RouterOutputs["operationType"]["getById"]
-    | undefined;
+  opTypeData: RouterOutputs["operationType"]["getById"] | undefined;
   isLoading: boolean;
   fieldValues: Record<string, unknown>;
-  setFieldValues: React.Dispatch<
-    React.SetStateAction<Record<string, unknown>>
-  >;
+  setFieldValues: React.Dispatch<React.SetStateAction<Record<string, unknown>>>;
 }) {
   if (isLoading) {
     return (
@@ -407,78 +400,75 @@ function FieldInputs({
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {fields.map((field) => (
-          <div key={field.id} className="space-y-1.5">
-            <label className="text-sm font-medium">
-              {field.label ?? field.referenceKey}
-              {field.required && (
-                <span className="text-destructive ml-0.5">*</span>
-              )}
-            </label>
-            {field.description && (
-              <p className="text-muted-foreground text-xs">
-                {field.description}
-              </p>
+        <div key={field.id} className="space-y-1.5">
+          <label className="text-sm font-medium">
+            {field.label ?? field.referenceKey}
+            {field.required && (
+              <span className="text-destructive ml-0.5">*</span>
             )}
+          </label>
+          {field.description && (
+            <p className="text-muted-foreground text-xs">{field.description}</p>
+          )}
 
-            {field.type === "select" && enumOpts(field) ? (
-              <Select
-                value={(fieldValues[field.referenceKey] as string) ?? ""}
-                onValueChange={(v) => updateField(field.referenceKey, v)}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder={`Select ${field.referenceKey}`} />
-                </SelectTrigger>
-                <SelectContent>
-                  {enumOpts(field)!.map((opt: string) => (
-                    <SelectItem key={opt} value={opt}>
-                      {opt}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : field.type === "boolean" ? (
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={!!fieldValues[field.referenceKey]}
-                  onChange={(e) =>
-                    updateField(field.referenceKey, e.target.checked)
-                  }
-                  className="size-4 rounded"
-                />
-                <span className="text-sm">Yes</span>
-              </label>
-            ) : field.type === "number" ||
-              field.type === "weight" ||
-              field.type === "temperature" ? (
-              <Input
-                type="number"
-                step="any"
-                placeholder={field.referenceKey}
-                value={(fieldValues[field.referenceKey] as string) ?? ""}
+          {field.type === "select" && enumOpts(field) ? (
+            <Select
+              value={(fieldValues[field.referenceKey] as string) ?? ""}
+              onValueChange={(v) => updateField(field.referenceKey, v)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={`Select ${field.referenceKey}`} />
+              </SelectTrigger>
+              <SelectContent>
+                {enumOpts(field)!.map((opt: string) => (
+                  <SelectItem key={opt} value={opt}>
+                    {opt}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : field.type === "boolean" ? (
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={!!fieldValues[field.referenceKey]}
                 onChange={(e) =>
-                  updateField(
-                    field.referenceKey,
-                    e.target.value ? Number(e.target.value) : "",
-                  )
+                  updateField(field.referenceKey, e.target.checked)
                 }
+                className="size-4 rounded"
               />
-            ) : field.type === "date" ||
-              field.type === "datetime" ? (
-              <Input
-                type={field.type === "datetime" ? "datetime-local" : "date"}
-                value={(fieldValues[field.referenceKey] as string) ?? ""}
-                onChange={(e) => updateField(field.referenceKey, e.target.value)}
-              />
-            ) : (
-              <Input
-                placeholder={field.referenceKey}
-                value={(fieldValues[field.referenceKey] as string) ?? ""}
-                onChange={(e) => updateField(field.referenceKey, e.target.value)}
-              />
-            )}
-          </div>
-        ))}
+              <span className="text-sm">Yes</span>
+            </label>
+          ) : field.type === "number" ||
+            field.type === "weight" ||
+            field.type === "temperature" ? (
+            <Input
+              type="number"
+              step="any"
+              placeholder={field.referenceKey}
+              value={(fieldValues[field.referenceKey] as string) ?? ""}
+              onChange={(e) =>
+                updateField(
+                  field.referenceKey,
+                  e.target.value ? Number(e.target.value) : "",
+                )
+              }
+            />
+          ) : field.type === "date" || field.type === "datetime" ? (
+            <Input
+              type={field.type === "datetime" ? "datetime-local" : "date"}
+              value={(fieldValues[field.referenceKey] as string) ?? ""}
+              onChange={(e) => updateField(field.referenceKey, e.target.value)}
+            />
+          ) : (
+            <Input
+              placeholder={field.referenceKey}
+              value={(fieldValues[field.referenceKey] as string) ?? ""}
+              onChange={(e) => updateField(field.referenceKey, e.target.value)}
+            />
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -527,9 +517,7 @@ function ResultsView({
             </div>
             <div className="flex-1">
               <h2 className="text-lg font-semibold">
-                {hasErrors
-                  ? "Task completed with errors"
-                  : "Done!"}
+                {hasErrors ? "Task completed with errors" : "Done!"}
               </h2>
               <p className="text-muted-foreground mt-0.5 text-sm">
                 {succeededCount} step(s) succeeded
@@ -545,25 +533,19 @@ function ResultsView({
                 {result.itemsCreated.length > 0 && (
                   <div className="flex items-center gap-1.5">
                     <Zap className="size-3.5 text-blue-500" />
-                    <span>
-                      {result.itemsCreated.length} created
-                    </span>
+                    <span>{result.itemsCreated.length} created</span>
                   </div>
                 )}
                 {result.itemsUpdated.length > 0 && (
                   <div className="flex items-center gap-1.5">
                     <Check className="size-3.5 text-green-500" />
-                    <span>
-                      {result.itemsUpdated.length} updated
-                    </span>
+                    <span>{result.itemsUpdated.length} updated</span>
                   </div>
                 )}
                 {result.lineageCreated > 0 && (
                   <div className="flex items-center gap-1.5">
                     <ChevronRight className="size-3.5 text-purple-500" />
-                    <span>
-                      {result.lineageCreated} connection(s)
-                    </span>
+                    <span>{result.lineageCreated} connection(s)</span>
                   </div>
                 )}
               </div>
@@ -591,9 +573,7 @@ function ResultsView({
                     </div>
                   </div>
                   <div className="min-w-0 flex-1">
-                    <span className="text-sm font-medium">
-                      {step.stepName}
-                    </span>
+                    <span className="text-sm font-medium">{step.stepName}</span>
                     {step.detail && (
                       <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">
                         {step.detail}

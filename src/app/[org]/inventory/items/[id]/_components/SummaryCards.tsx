@@ -43,9 +43,7 @@ export const ValueCard: React.FC<{
           ? `$${(value / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
           : "—"}
       </div>
-      {currency && (
-        <p className="text-muted-foreground text-xs">{currency}</p>
-      )}
+      {currency && <p className="text-muted-foreground text-xs">{currency}</p>}
     </CardContent>
   </Card>
 );

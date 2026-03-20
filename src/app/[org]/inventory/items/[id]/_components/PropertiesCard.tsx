@@ -79,11 +79,7 @@ export const PropertiesCard: React.FC<{
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Properties</CardTitle>
         {attrDefs.length > 0 && !editing && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setEditing(true)}
-          >
+          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
             <Pencil className="mr-1 size-3.5" /> Edit
           </Button>
         )}
@@ -113,10 +109,7 @@ export const PropertiesCard: React.FC<{
             onChange={setValues}
           />
         ) : (
-          <PropertiesReadOnly
-            attrDefs={attrDefs}
-            currentAttrs={currentAttrs}
-          />
+          <PropertiesReadOnly attrDefs={attrDefs} currentAttrs={currentAttrs} />
         )}
       </CardContent>
     </Card>
@@ -150,9 +143,7 @@ const PropertiesForm: React.FC<{
         <Label className="text-xs">
           {d.attrKey}
           {d.unit ? ` (${d.unit})` : ""}
-          {d.isRequired && (
-            <span className="text-destructive ml-0.5">*</span>
-          )}
+          {d.isRequired && <span className="text-destructive ml-0.5">*</span>}
         </Label>
         {d.dataType === "boolean" ? (
           <div className="flex items-center gap-2">

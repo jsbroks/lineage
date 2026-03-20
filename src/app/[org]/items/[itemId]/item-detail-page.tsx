@@ -246,7 +246,9 @@ export default function ItemDetailPage() {
           </CardHeader>
           <CardContent>
             {data.events.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No activity recorded yet.</p>
+              <p className="text-muted-foreground text-sm">
+                No activity recorded yet.
+              </p>
             ) : (
               <div className="relative pl-6">
                 <div className="bg-border absolute top-0 bottom-0 left-3 w-px" />

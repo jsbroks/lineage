@@ -10,7 +10,7 @@ import { resolveItemTypeId } from "./resolve";
 export function createStatusCountsTool(ctx: SchemaContext) {
   return tool({
     description:
-      "Get a count of items in each status for a given item type. Great for inventory overviews.",
+      "Get a count of items in each status for a given item type. Focus on non-terminal (in-progress) statuses for inventory overviews — terminal/completed counts grow monotonically and are not useful as insights or percentages.",
     inputSchema: z.object({
       itemTypeName: z.string().describe("Name of the item type"),
     }),

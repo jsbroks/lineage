@@ -184,7 +184,10 @@ export function ItemTypeForm({
     setBase((prev) => {
       const next = { ...prev, name: value };
       if (!codePrefixTouched.current) {
-        next.codePrefix = determineItemTypeCode({ name: value, slug: slugify(value) });
+        next.codePrefix = determineItemTypeCode({
+          name: value,
+          slug: slugify(value),
+        });
       }
       return next;
     });

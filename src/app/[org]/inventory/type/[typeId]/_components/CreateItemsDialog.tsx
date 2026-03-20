@@ -184,7 +184,7 @@ export const CreateItemsDialog: React.FC<CreateItemsDialogProps> = ({
             <>
               <Separator />
               <div className="space-y-3">
-                <Label className="text-muted-foreground text-xs uppercase tracking-wide">
+                <Label className="text-muted-foreground text-xs tracking-wide uppercase">
                   Attributes
                 </Label>
                 {attrDefs.map((d) => (

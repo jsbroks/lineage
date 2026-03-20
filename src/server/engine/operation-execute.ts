@@ -9,14 +9,22 @@ import type { Tx } from "./types";
 import * as schema from "../db/schema";
 import { createOperation, type OperationInputs } from "./operation-create";
 import { createItem } from "./actions/create-item";
+import { incrementAttribute } from "./actions/increment-attribute";
+import { recordEvent } from "./actions/record-event";
 import { setItemAttr } from "./actions/set-item-attr";
 import { setItemStatus } from "./actions/set-item-status";
+import { setLineage } from "./actions/set-lineage";
+import { setOperation } from "./actions/set-operation";
 import _ from "lodash";
 
 const actionsRegistry = new ActionRegistry()
   .register(createItem)
+  .register(incrementAttribute)
+  .register(recordEvent)
   .register(setItemAttr)
-  .register(setItemStatus);
+  .register(setItemStatus)
+  .register(setLineage)
+  .register(setOperation);
 
 export type ExecuteResult = {
   operationId: string;
@@ -78,10 +86,48 @@ export const createAndExecute = async (
         },
       });
 
+    const now = new Date();
+    const events: {
+      itemId: string;
+      eventType: string;
+      operationId: string;
+      oldStatus?: string | null;
+      newStatus?: string | null;
+      payload?: Record<string, unknown>;
+      message?: string;
+    }[] = [];
+
     await Promise.all(
-      Object.entries(itemOps.updates).map(([id, values]) =>
-        tx.update(schema.item).set(values).where(eq(schema.item.id, id)),
-      ),
+      Object.entries(itemOps.updates).map(([id, values]) => {
+        const original = ctx.items[id];
+        if (
+          original &&
+          values.statusId &&
+          values.statusId !== original.statusId
+        ) {
+          events.push({
+            itemId: id,
+            eventType: "status_change",
+            operationId: operation.id,
+            oldStatus: original.statusId,
+            newStatus: values.statusId,
+            message: "Status changed via operation",
+          });
+        }
+        if (original && values.attributes) {
+          events.push({
+            itemId: id,
+            eventType: "attribute_change",
+            operationId: operation.id,
+            payload: values.attributes as Record<string, unknown>,
+            message: "Attributes updated via operation",
+          });
+        }
+        return tx
+          .update(schema.item)
+          .set({ ...values, updatedAt: now })
+          .where(eq(schema.item.id, id));
+      }),
     );
 
     if (itemOps.creates.length > 0) {
@@ -92,10 +138,28 @@ export const createAndExecute = async (
       itemsCreated.push(...created.map((c) => c.id));
     }
     if (itemOps.links.length > 0) {
-      const created = await tx
-        .insert(schema.itemLineage)
-        .values(itemOps.links)
-        .returning({ id: schema.itemLineage.id });
+      await tx.insert(schema.itemLineage).values(itemOps.links);
+    }
+
+    for (const evt of itemOps.events) {
+      events.push({
+        itemId: evt.itemId,
+        eventType: evt.eventType,
+        operationId: operation.id,
+        message: evt.message,
+        payload: evt.payload,
+      });
+    }
+
+    if (events.length > 0) {
+      await tx.insert(schema.itemEvent).values(events);
+    }
+
+    if (Object.keys(itemOps.operationUpdate).length > 0) {
+      await tx
+        .update(schema.operation)
+        .set(itemOps.operationUpdate)
+        .where(eq(schema.operation.id, operation.id));
     }
   }
 

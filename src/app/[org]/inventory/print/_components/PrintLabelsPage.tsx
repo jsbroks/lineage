@@ -33,10 +33,16 @@ interface PrintLabelsPageProps {
   initialTypeId?: string;
 }
 
-export const PrintLabelsPage: React.FC<PrintLabelsPageProps> = ({ org, initialTypeId }) => {
+export const PrintLabelsPage: React.FC<PrintLabelsPageProps> = ({
+  org,
+  initialTypeId,
+}) => {
   const [template, setTemplate] = useState<LabelTemplate>(() => {
     const savedId = loadSavedTemplate();
-    return (savedId && LABEL_TEMPLATES.find((t) => t.id === savedId)) || LABEL_TEMPLATES[0]!;
+    return (
+      (savedId && LABEL_TEMPLATES.find((t) => t.id === savedId)) ||
+      LABEL_TEMPLATES[0]!
+    );
   });
 
   const [content, setContent] = useState<LabelContent>(() => {
@@ -72,8 +78,7 @@ export const PrintLabelsPage: React.FC<PrintLabelsPageProps> = ({ org, initialTy
       .filter((p): p is PrintItem => !!p);
   }, [printItems, itemIdArray]);
 
-  const origin =
-    typeof window !== "undefined" ? window.location.origin : "";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   const handlePrint = useCallback(() => {
     const style = document.getElementById("print-page-style");
@@ -121,7 +126,7 @@ export const PrintLabelsPage: React.FC<PrintLabelsPageProps> = ({ org, initialTy
     <>
       <style id="print-page-style" />
       <div className="flex h-full min-h-0 flex-col overflow-hidden print:block print:h-auto print:overflow-visible">
-        <header className="shrink-0 flex items-center gap-2 border-b px-4 py-2 print:hidden">
+        <header className="flex shrink-0 items-center gap-2 border-b px-4 py-2 print:hidden">
           <SidebarTrigger />
           <Breadcrumb>
             <BreadcrumbList>

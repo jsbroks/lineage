@@ -70,8 +70,17 @@ type ActionResultItems = {
   link: Omit<ItemLineage, "id">[];
 };
 
+export type ActionResultEvent = {
+  itemId: string;
+  eventType: string;
+  message?: string;
+  payload?: Record<string, unknown>;
+};
+
 export class ActionResult {
   items: ActionResultItems = { create: [], update: {}, link: [] };
+  events: ActionResultEvent[] = [];
+  operationUpdate: Record<string, unknown> = {};
 
   success: boolean = true;
   skipped: boolean = false;
@@ -86,11 +95,17 @@ export class ActionResult {
       _.cloneDeep(changes),
     );
   }
+
+  addEvent(event: ActionResultEvent) {
+    this.events.push(event);
+  }
 }
 
 export const combineItemOps = (results: ActionResult[]) => {
   const creates = results.flatMap((r) => r.items.create);
   const links = results.flatMap((r) => r.items.link);
+  const events = results.flatMap((r) => r.events);
+  const operationUpdate = _.merge({}, ...results.map((r) => r.operationUpdate));
   return {
     updates: _.chain(results)
       .map((r) => r.items.update)
@@ -101,6 +116,8 @@ export const combineItemOps = (results: ActionResult[]) => {
       .value(),
     creates,
     links,
+    events,
+    operationUpdate,
   };
 };
 

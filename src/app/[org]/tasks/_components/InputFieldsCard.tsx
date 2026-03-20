@@ -72,9 +72,7 @@ export function InputFieldsCard({
                   <Label className="text-xs">Label</Label>
                   <Input
                     value={field.label}
-                    onChange={(e) =>
-                      onUpdate(idx, { label: e.target.value })
-                    }
+                    onChange={(e) => onUpdate(idx, { label: e.target.value })}
                     placeholder="Harvest By"
                   />
                 </div>

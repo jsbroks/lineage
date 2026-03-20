@@ -88,6 +88,30 @@ export const itemRouter = createTRPCRouter({
     return ctx.db.select().from(item).orderBy(desc(item.createdAt));
   }),
 
+  recentActivity: publicProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(50).default(20) }))
+    .query(async ({ ctx, input }) => {
+      const events = await ctx.db
+        .select({
+          id: itemEvent.id,
+          itemId: itemEvent.itemId,
+          message: itemEvent.message,
+          eventType: itemEvent.eventType,
+          recordedAt: itemEvent.recordedAt,
+          itemCode: item.code,
+          itemTypeName: itemType.name,
+          itemTypeIcon: itemType.icon,
+          itemTypeColor: itemType.color,
+        })
+        .from(itemEvent)
+        .innerJoin(item, eq(itemEvent.itemId, item.id))
+        .innerJoin(itemType, eq(item.itemTypeId, itemType.id))
+        .orderBy(desc(itemEvent.recordedAt))
+        .limit(input.limit);
+
+      return events;
+    }),
+
   getByCode: publicProcedure
     .input(z.object({ code: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
@@ -111,7 +135,10 @@ export const itemRouter = createTRPCRouter({
         .limit(1);
 
       const [status] = await ctx.db
-        .select({ name: itemTypeStatusDefinition.name, color: itemTypeStatusDefinition.color })
+        .select({
+          name: itemTypeStatusDefinition.name,
+          color: itemTypeStatusDefinition.color,
+        })
         .from(itemTypeStatusDefinition)
         .where(eq(itemTypeStatusDefinition.id, currentItem.statusId))
         .limit(1);
@@ -676,11 +703,54 @@ export const itemRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const oldItems = await ctx.db
+        .select({ id: item.id, statusId: item.statusId })
+        .from(item)
+        .where(inArray(item.id, input.itemIds));
+
       const updated = await ctx.db
         .update(item)
         .set({ statusId: input.status, updatedAt: new Date() })
         .where(inArray(item.id, input.itemIds))
         .returning({ id: item.id });
+
+      if (updated.length > 0) {
+        const statusIds = [
+          ...new Set([input.status, ...oldItems.map((i) => i.statusId)]),
+        ];
+        const statusDefs = await ctx.db
+          .select({
+            id: itemTypeStatusDefinition.id,
+            name: itemTypeStatusDefinition.name,
+          })
+          .from(itemTypeStatusDefinition)
+          .where(inArray(itemTypeStatusDefinition.id, statusIds));
+        const nameMap = new Map(statusDefs.map((s) => [s.id, s.name]));
+        const newName = nameMap.get(input.status) ?? "unknown";
+
+        const oldStatusMap = new Map(oldItems.map((i) => [i.id, i.statusId]));
+
+        await ctx.db.insert(itemEvent).values(
+          updated
+            .filter((u) => oldStatusMap.get(u.id) !== input.status)
+            .map((u) => {
+              const oldStatusId = oldStatusMap.get(u.id);
+              const oldName = oldStatusId
+                ? (nameMap.get(oldStatusId) ?? "unknown")
+                : null;
+              return {
+                itemId: u.id,
+                eventType: "status_changed",
+                oldStatus: oldStatusId ?? null,
+                newStatus: input.status,
+                message: oldName
+                  ? `Status changed from ${oldName} to ${newName}.`
+                  : `Status set to ${newName}.`,
+                payload: {},
+              };
+            }),
+        );
+      }
 
       return { updated: updated.length };
     }),
@@ -693,12 +763,72 @@ export const itemRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const oldItems = await ctx.db
+        .select({ id: item.id, variantId: item.variantId })
+        .from(item)
+        .where(inArray(item.id, input.itemIds));
+      const oldVariantMap = new Map(oldItems.map((i) => [i.id, i.variantId]));
+
+      const allVariantIds = [
+        ...new Set(
+          [input.variantId, ...oldItems.map((i) => i.variantId)].filter(
+            (v): v is string => v !== null,
+          ),
+        ),
+      ];
+      const variantDefs =
+        allVariantIds.length > 0
+          ? await ctx.db
+              .select({ id: itemTypeVariant.id, name: itemTypeVariant.name })
+              .from(itemTypeVariant)
+              .where(inArray(itemTypeVariant.id, allVariantIds))
+          : [];
+      const variantNameMap = new Map(variantDefs.map((v) => [v.id, v.name]));
+
+      const insertVariantEvents = async (updatedIds: string[]) => {
+        const changed = updatedIds.filter(
+          (id) => oldVariantMap.get(id) !== input.variantId,
+        );
+        if (changed.length === 0) return;
+
+        const newName = input.variantId
+          ? (variantNameMap.get(input.variantId) ?? "unknown")
+          : null;
+
+        await ctx.db.insert(itemEvent).values(
+          changed.map((id) => {
+            const oldVarId = oldVariantMap.get(id) ?? null;
+            const oldName = oldVarId
+              ? (variantNameMap.get(oldVarId) ?? "unknown")
+              : null;
+            const message =
+              oldName && newName
+                ? `Variant changed from ${oldName} to ${newName}.`
+                : newName
+                  ? `Variant set to ${newName}.`
+                  : oldName
+                    ? `Variant ${oldName} removed.`
+                    : `Variant cleared.`;
+            return {
+              itemId: id,
+              eventType: "variant_changed",
+              message,
+              payload: {
+                oldVariantId: oldVarId,
+                newVariantId: input.variantId,
+              },
+            };
+          }),
+        );
+      };
+
       if (!input.variantId) {
         const updated = await ctx.db
           .update(item)
           .set({ variantId: null, updatedAt: new Date() })
           .where(inArray(item.id, input.itemIds))
           .returning({ id: item.id });
+        await insertVariantEvents(updated.map((u) => u.id));
         return { updated: updated.length };
       }
 
@@ -728,6 +858,7 @@ export const itemRouter = createTRPCRouter({
           .set({ variantId: input.variantId, updatedAt: new Date() })
           .where(inArray(item.id, input.itemIds))
           .returning({ id: item.id });
+        await insertVariantEvents(updated.map((u) => u.id));
         return { updated: updated.length };
       }
 
@@ -753,7 +884,7 @@ export const itemRouter = createTRPCRouter({
           .from(item)
           .where(inArray(item.id, input.itemIds));
 
-        let updated = 0;
+        const updatedIds: string[] = [];
         for (const it of items) {
           const existing = (it.attributes ?? {}) as Record<string, unknown>;
           await ctx.db
@@ -763,9 +894,10 @@ export const itemRouter = createTRPCRouter({
               attributes: { ...variantAttrs, ...existing },
             })
             .where(eq(item.id, it.id));
-          updated++;
+          updatedIds.push(it.id);
         }
-        return { updated };
+        await insertVariantEvents(updatedIds);
+        return { updated: updatedIds.length };
       }
 
       const updated = await ctx.db
@@ -773,6 +905,7 @@ export const itemRouter = createTRPCRouter({
         .set(defaults as typeof item.$inferInsert)
         .where(inArray(item.id, input.itemIds))
         .returning({ id: item.id });
+      await insertVariantEvents(updated.map((u) => u.id));
       return { updated: updated.length };
     }),
 
@@ -790,15 +923,49 @@ export const itemRouter = createTRPCRouter({
         .where(inArray(item.id, input.itemIds));
 
       let updatedCount = 0;
+      const eventRows: {
+        itemId: string;
+        eventType: string;
+        message: string;
+        payload: Record<string, unknown>;
+      }[] = [];
+
       for (const existing of items) {
-        const oldAttrs =
-          (existing.attributes as Record<string, unknown>) ?? {};
+        const oldAttrs = (existing.attributes as Record<string, unknown>) ?? {};
         const merged = { ...oldAttrs, ...input.attributes };
         await ctx.db
           .update(item)
           .set({ attributes: merged, updatedAt: new Date() })
           .where(eq(item.id, existing.id));
         updatedCount++;
+
+        const changes: Record<string, { from: unknown; to: unknown }> = {};
+        for (const key of Object.keys(input.attributes)) {
+          const oldVal = oldAttrs[key] ?? null;
+          const newVal = input.attributes[key] ?? null;
+          if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+            changes[key] = { from: oldVal, to: newVal };
+          }
+        }
+
+        if (Object.keys(changes).length > 0) {
+          const changedKeys = Object.keys(changes);
+          const summary =
+            changedKeys.length <= 3
+              ? changedKeys.join(", ")
+              : `${changedKeys.slice(0, 3).join(", ")} +${changedKeys.length - 3} more`;
+
+          eventRows.push({
+            itemId: existing.id,
+            eventType: "attributes_updated",
+            message: `${summary} updated.`,
+            payload: { changes },
+          });
+        }
+      }
+
+      if (eventRows.length > 0) {
+        await ctx.db.insert(itemEvent).values(eventRows);
       }
 
       return { updated: updatedCount };

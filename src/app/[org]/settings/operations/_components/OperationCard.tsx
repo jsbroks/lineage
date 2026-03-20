@@ -22,10 +22,7 @@ const PortRow: React.FC<PortRowProps> = ({ port, itemType }) => {
   return (
     <div key={port.id}>
       {itemType.name}{" "}
-      <Badge
-        variant="ghost"
-        className="bg-muted text-xs text-muted-foreground"
-      >
+      <Badge variant="ghost" className="bg-muted text-muted-foreground text-xs">
         {port.referenceKey}
       </Badge>
     </div>

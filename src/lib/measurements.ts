@@ -111,12 +111,8 @@ export function normalize(m: Measurement): Measurement {
  * Format a measurement for display.
  * Rounds to `precision` decimal places (default 2).
  */
-export function formatMeasurement(
-  m: Measurement,
-  precision = 2,
-): string {
-  const rounded =
-    Math.round(m.value * 10 ** precision) / 10 ** precision;
+export function formatMeasurement(m: Measurement, precision = 2): string {
+  const rounded = Math.round(m.value * 10 ** precision) / 10 ** precision;
   return `${rounded} ${m.unit}`;
 }
 

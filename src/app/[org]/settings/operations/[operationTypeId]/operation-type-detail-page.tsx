@@ -111,11 +111,7 @@ export default function OperationTypeDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (
-      !window.confirm(
-        `Delete "${opType?.name}" and all its configuration?`,
-      )
-    )
+    if (!window.confirm(`Delete "${opType?.name}" and all its configuration?`))
       return;
     await deleteMutation.mutateAsync({ id: params.operationTypeId });
   };
@@ -130,9 +126,7 @@ export default function OperationTypeDetailPage() {
 
   if (!isNew && !opType) {
     return (
-      <div className="text-destructive p-8 text-sm">
-        Task type not found.
-      </div>
+      <div className="text-destructive p-8 text-sm">Task type not found.</div>
     );
   }
 
@@ -333,7 +327,9 @@ function PortsSection({
                 className="border-border flex items-center justify-between rounded-md border px-3 py-2"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{port.referenceKey}</span>
+                  <span className="text-sm font-medium">
+                    {port.referenceKey}
+                  </span>
                   <Badge variant="outline" className="text-xs">
                     {itemTypes.find((it) => it.id === port.itemTypeId)?.name ??
                       "Unknown"}
@@ -593,7 +589,11 @@ function PortForm({
       </div>
 
       <div className="mt-3">
-        <Button type="submit" size="sm" disabled={saving || !referenceKey.trim()}>
+        <Button
+          type="submit"
+          size="sm"
+          disabled={saving || !referenceKey.trim()}
+        >
           {saving ? "Saving..." : initial ? "Update Port" : "Add Port"}
         </Button>
       </div>
@@ -699,7 +699,9 @@ function FieldsSection({ operationTypeId, fields }: FieldsSectionProps) {
               >
                 <div className="flex items-center gap-2">
                   <GripVertical className="text-muted-foreground/50 size-3.5" />
-                  <span className="font-mono text-sm">{field.referenceKey}</span>
+                  <span className="font-mono text-sm">
+                    {field.referenceKey}
+                  </span>
                   <Badge variant="outline" className="text-xs">
                     {field.type}
                   </Badge>
@@ -898,7 +900,11 @@ function FieldForm({
         </label>
       </div>
       <div className="mt-3">
-        <Button type="submit" size="sm" disabled={saving || !referenceKey.trim()}>
+        <Button
+          type="submit"
+          size="sm"
+          disabled={saving || !referenceKey.trim()}
+        >
           {saving ? "Saving..." : initial ? "Update Field" : "Add Field"}
         </Button>
       </div>

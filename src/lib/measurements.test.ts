@@ -117,7 +117,7 @@ describe("convertRaw", () => {
   });
 
   it("throws on unknown unit", () => {
-    expect(() => convertRaw(1, "furlongs", "kg")).toThrow('Unknown unit');
+    expect(() => convertRaw(1, "furlongs", "kg")).toThrow("Unknown unit");
   });
 
   it("throws on incompatible units", () => {
