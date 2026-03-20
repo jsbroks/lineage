@@ -21,7 +21,7 @@ type Action<T extends Record<string, unknown>> = {
 
 export function createAction<T extends Record<string, unknown>>(
   opts: CreateActionOptions<T>,
-): { name: string; handler: ActionHandler<any> } {
+): Action<any> {
   const { schema, handler } = opts;
   return {
     ...opts,
@@ -31,7 +31,7 @@ export function createAction<T extends Record<string, unknown>>(
         const ar = new ActionResult();
         ar.skipped = true;
         ar.message = `Invalid config: ${parsed.error.message}`;
-        ar.details = parsed.error.issues;
+        ar.details = { issues: parsed.error.issues };
         return ar;
       }
 
@@ -76,7 +76,7 @@ export class ActionResult {
   success: boolean = true;
   skipped: boolean = false;
   message: string = "";
-  details: object = {};
+  details: Record<string, unknown> = {};
 
   constructor() {}
 
@@ -87,6 +87,22 @@ export class ActionResult {
     );
   }
 }
+
+export const combineItemOps = (results: ActionResult[]) => {
+  const creates = results.flatMap((r) => r.items.create);
+  const links = results.flatMap((r) => r.items.link);
+  return {
+    updates: _.chain(results)
+      .map((r) => r.items.update)
+      .reduce<Record<string, Partial<Omit<Item, "id">>>>(
+        (acc, updates) => _.merge(acc, updates),
+        {},
+      )
+      .value(),
+    creates,
+    links,
+  };
+};
 
 export class ActionRegistry {
   private handlers = new Map<string, Action<any>>();

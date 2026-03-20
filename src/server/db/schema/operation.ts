@@ -1,4 +1,5 @@
 import {
+  boolean,
   integer,
   jsonb,
   pgTable,
@@ -115,6 +116,14 @@ export const operationStep = pgTable("operation_step", {
   config: jsonb("config").default({}),
 
   sortOrder: integer("sort_order").notNull(),
+
+  success: boolean("sucess").notNull().default(true),
+  skipped: boolean("skipped").notNull().default(false),
+  message: text("message"),
+  details: jsonb("details")
+    .notNull()
+    .$type<Record<string, unknown>>()
+    .default({}),
 });
 
 export type OperationStep = typeof operationStep.$inferSelect;

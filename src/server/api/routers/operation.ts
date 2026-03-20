@@ -4,8 +4,12 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { operation } from "~/server/db/schema";
 import { registry } from "~/server/engine/actions";
-import { executeOperation } from "~/server/engine/operation-execute";
+import type { OperationInputs } from "~/server/engine/operation-create";
+import { createAndExecute } from "~/server/engine/operation-execute";
+
 import { suggestOperations } from "~/server/engine/suggest-operations";
+import * as schema from "~/server/db/schema";
+import { TRPCError } from "@trpc/server";
 
 const executeInput = z.object({
   operationTypeId: z.uuid(),
@@ -28,16 +32,29 @@ export const operationRouter = createTRPCRouter({
   execute: publicProcedure
     .input(executeInput)
     .mutation(async ({ ctx, input }) => {
-      console.log(input);
       return ctx.db.transaction(async (tx) => {
-        return executeOperation(tx, {
-          operationTypeId: input.operationTypeId,
+        const inputs: OperationInputs = {
           items: input.items,
           fields: input.fields,
-          performedBy: input.performedBy,
-          locationId: input.locationId,
-          notes: input.notes,
+        };
+        const operationType = await tx.query.operationType.findFirst({
+          where: eq(schema.operationType.id, input.operationTypeId),
         });
+        if (!operationType) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Operation type not found",
+          });
+        }
+
+        const result = await createAndExecute(tx, operationType, inputs);
+        if (!result) {
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: "Failed to create operation",
+          });
+        }
+        return result;
       });
     }),
 

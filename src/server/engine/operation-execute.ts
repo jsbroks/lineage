@@ -1,97 +1,140 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   ActionRegistry,
-  ActionResult as ActionResultClass,
+  ActionResult,
+  combineItemOps,
 } from "./actions/actions";
 import { OperationContext } from "./operation-context";
-import type {
-  Tx,
-  ExecuteOperationInput,
-  ExecuteOperationResult,
-  ActionResult,
-} from "./types";
+import type { Tx } from "./types";
 import * as schema from "../db/schema";
 import { createOperation, type OperationInputs } from "./operation-create";
+import { createItem } from "./actions/create-item";
+import { setItemAttr } from "./actions/set-item-attr";
+import { setItemStatus } from "./actions/set-item-status";
+import _ from "lodash";
 
-const actionsRegistry = new ActionRegistry();
+const actionsRegistry = new ActionRegistry()
+  .register(createItem)
+  .register(setItemAttr)
+  .register(setItemStatus);
 
-export const executeOperation = async (
-  tx: Tx,
-  input: ExecuteOperationInput,
-): Promise<ExecuteOperationResult> => {
-  const operationType = await tx.query.operationType.findFirst({
-    where: eq(schema.operationType.id, input.operationTypeId),
-  });
-  if (!operationType) {
-    throw new Error(`Operation type not found: ${input.operationTypeId}`);
-  }
-
-  const operation = await createOperation(tx, operationType, {
-    items: input.items,
-    fields: input.fields,
-  });
-  if (!operation) {
-    throw new Error("Failed to create operation");
-  }
-
-  const ctx = await OperationContext.create(tx, operation.id);
-  const classResults = execute(ctx);
-
-  const steps: ActionResult[] = ctx.operation.steps.map((step, i) => ({
-    action: step.action,
-    stepName: step.name,
-    skipped: classResults[i]?.skipped ?? false,
-    success: classResults[i]?.success ?? false,
-    detail: classResults[i]?.message || undefined,
-  }));
-
-  return {
-    operationId: operation.id,
-    steps,
-    itemsCreated: classResults.flatMap((r) =>
-      r.items.create.map((c) => c.itemTypeId),
-    ),
-    itemsUpdated: classResults.flatMap((r) => Object.keys(r.items.update)),
-    lineageCreated: classResults.reduce(
-      (sum, r) => sum + r.items.link.length,
-      0,
-    ),
-  };
+export type ExecuteResult = {
+  operationId: string;
+  steps: {
+    stepName: string;
+    action: string;
+    skipped: boolean;
+    success: boolean;
+    detail?: string;
+  }[];
+  itemsCreated: string[];
+  itemsUpdated: string[];
+  lineageCreated: number;
 };
 
 export const createAndExecute = async (
   tx: Tx,
   operationType: schema.OperationType,
   inputs: OperationInputs,
-) => {
+): Promise<ExecuteResult | null> => {
   const operation = await createOperation(tx, operationType, inputs);
   if (!operation) {
     return null;
   }
 
   const ctx = await OperationContext.create(tx, operation.id);
-  return execute(ctx);
+  const results = execute(ctx);
+
+  const itemOps = combineItemOps(results.map(({ result }) => result));
+  const itemsCreated = [];
+  const itemsUpdated = Object.keys(itemOps.updates);
+  const lineageCreated = itemOps.links.length;
+
+  if (results.length > 0) {
+    await tx
+      .insert(schema.operationStep)
+      .values(
+        results.map(({ step, result }) => ({
+          id: step.id,
+          operationId: step.operationId,
+          name: step.name,
+          action: step.action,
+          target: step.target,
+          config: step.config,
+          sortOrder: step.sortOrder,
+          success: result.success,
+          skipped: result.skipped,
+          message: result.message,
+          details: result.details,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [schema.operationStep.id],
+        set: {
+          success: sql`excluded.success`,
+          skipped: sql`excluded.skipped`,
+          message: sql`excluded.message`,
+          details: sql`excluded.details`,
+        },
+      });
+
+    await Promise.all(
+      Object.entries(itemOps.updates).map(([id, values]) =>
+        tx.update(schema.item).set(values).where(eq(schema.item.id, id)),
+      ),
+    );
+
+    if (itemOps.creates.length > 0) {
+      const created = await tx
+        .insert(schema.item)
+        .values(itemOps.creates)
+        .returning({ id: schema.item.id });
+      itemsCreated.push(...created.map((c) => c.id));
+    }
+    if (itemOps.links.length > 0) {
+      const created = await tx
+        .insert(schema.itemLineage)
+        .values(itemOps.links)
+        .returning({ id: schema.itemLineage.id });
+    }
+  }
+
+  const executeResult: ExecuteResult = {
+    operationId: operation.id,
+    steps: results.map(({ step, result }) => ({
+      stepName: step.name,
+      action: step.action,
+      skipped: result.skipped,
+      success: result.success,
+      detail: result.message || undefined,
+    })),
+    itemsCreated: itemsCreated.length > 0 ? itemsCreated : [],
+    itemsUpdated: itemsUpdated.length > 0 ? itemsUpdated : [],
+    lineageCreated: lineageCreated > 0 ? lineageCreated : 0,
+  };
+
+  return executeResult;
 };
 
 export const execute = (
   ctx: OperationContext,
   actions: ActionRegistry = actionsRegistry,
 ) => {
-  const results: ActionResultClass[] = [];
+  const results: { result: ActionResult; step: schema.OperationStep }[] = [];
   for (const step of ctx.operation.steps) {
     const { action } = step;
     const handler = actions.get(action);
     if (!handler) {
-      const ar = new ActionResultClass();
-      ar.success = false;
-      ar.skipped = true;
-      ar.message = `Unknown action: ${action}`;
-      results.push(ar);
+      const result = new ActionResult();
+      result.success = false;
+      result.skipped = true;
+      result.message = `Unknown action: ${action}`;
+      results.push({ result, step });
       continue;
     }
 
     const result = handler(ctx, step);
-    results.push(result);
+    results.push({ result, step });
   }
   return results;
 };

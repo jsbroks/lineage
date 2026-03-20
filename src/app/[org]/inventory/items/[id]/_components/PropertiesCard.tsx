@@ -126,17 +126,17 @@ export const PropertiesCard: React.FC<{
 const PropertiesEmptyState: React.FC<{
   currentAttrs: Record<string, unknown>;
 }> = ({ currentAttrs }) => (
-  <p className="text-muted-foreground text-sm">
-    No custom attributes defined for this item type.
+  <div className="text-muted-foreground text-sm">
+    <p>No custom attributes defined for this item type.</p>
     {Object.keys(currentAttrs).length > 0 && (
-      <span className="mt-2 block">
+      <div className="mt-2">
         <span className="font-medium">Raw data:</span>
         <pre className="bg-muted mt-1 overflow-auto rounded-md p-2 text-xs">
           {JSON.stringify(currentAttrs, null, 2)}
         </pre>
-      </span>
+      </div>
     )}
-  </p>
+  </div>
 );
 
 const PropertiesForm: React.FC<{
