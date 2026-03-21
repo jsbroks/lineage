@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
+import { MarketingNav } from "../_components/marketing-nav";
 
 export const metadata: Metadata = {
   title: "Pricing | Lineage",
@@ -44,6 +45,10 @@ const TIERS = [
       "Unlimited users",
       "Unlimited items",
       "AI-powered insights",
+      "Shopify integration",
+      "QuickBooks & Xero sync",
+      "Label printer support (DYMO, Rollo, Brother)",
+      "Webhook & Zapier automation",
       "Priority support",
     ],
   },
@@ -91,31 +96,7 @@ const FAQS = [
 export default function PricingPage() {
   return (
     <div className="bg-background min-h-screen">
-      {/* Nav */}
-      <nav className="border-border/50 border-b">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
-          <Link href="/" className="text-lg font-semibold tracking-tight">
-            Lineage
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link
-              href="/mushroom-cultivation"
-              className="text-muted-foreground hover:text-foreground hidden text-sm transition-colors sm:block"
-            >
-              Features
-            </Link>
-            <Link
-              href="#faq"
-              className="text-muted-foreground hover:text-foreground hidden text-sm transition-colors sm:block"
-            >
-              FAQ
-            </Link>
-            <Button asChild size="sm">
-              <Link href="/">Get Started</Link>
-            </Button>
-          </div>
-        </div>
-      </nav>
+      <MarketingNav />
 
       {/* Hero */}
       <section className="mx-auto max-w-5xl px-6 pt-24 pb-16 text-center">
@@ -230,7 +211,7 @@ export default function PricingPage() {
       {/* Footer */}
       <footer className="border-border/50 border-t">
         <div className="text-muted-foreground mx-auto flex max-w-5xl items-center justify-between px-6 py-6 text-sm">
-          <span>Lineage</span>
+          <span className="font-display text-base italic">Lineage</span>
           <span className="hidden sm:block">
             Traceability-first inventory for growers.
           </span>

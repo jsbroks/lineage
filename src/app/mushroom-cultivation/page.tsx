@@ -2,6 +2,7 @@ import { type Metadata } from "next";
 import Link from "next/link";
 import { Button } from "~/components/ui/button";
 import { AiDemo } from "./_components/ai-demo";
+import { MarketingNav } from "../_components/marketing-nav";
 
 export const metadata: Metadata = {
   title: "Mushroom Cultivation Tracking Software | Lineage",
@@ -469,31 +470,7 @@ const FEATURES = [
 export default function MushroomCultivationPage() {
   return (
     <div className="bg-background min-h-screen">
-      {/* Nav */}
-      <nav className="border-border/50 border-b">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
-          <Link href="/" className="text-lg font-semibold tracking-tight">
-            Lineage
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link
-              href="#features"
-              className="text-muted-foreground hover:text-foreground hidden text-sm transition-colors sm:block"
-            >
-              Features
-            </Link>
-            <Link
-              href="#pipeline"
-              className="text-muted-foreground hover:text-foreground hidden text-sm transition-colors sm:block"
-            >
-              Pipeline
-            </Link>
-            <Button asChild size="sm">
-              <Link href="/">Get Started</Link>
-            </Button>
-          </div>
-        </div>
-      </nav>
+      <MarketingNav />
 
       {/* Hero */}
       <section className="mx-auto max-w-5xl px-6 pt-24 pb-8">
@@ -645,7 +622,7 @@ export default function MushroomCultivationPage() {
       {/* Footer */}
       <footer className="border-border/50 border-t">
         <div className="text-muted-foreground mx-auto flex max-w-5xl items-center justify-between px-6 py-6 text-sm">
-          <span>Lineage</span>
+          <span className="font-display text-base italic">Lineage</span>
           <span className="hidden sm:block">
             Traceability-first inventory for growers.
           </span>

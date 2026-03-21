@@ -15,6 +15,36 @@ import {
 
 export const maxDuration = 15;
 
+/**
+ * Resolve relative date expressions (e.g. "-5d", "-1w", "-2m") to ISO date
+ * strings. Returns the input unchanged if it's already a valid date.
+ */
+function resolveRelativeDate(value: string): string {
+  const match = value.match(/^-(\d+)([dwmy])$/i);
+  if (!match) return value;
+
+  const amount = parseInt(match[1], 10);
+  const unit = match[2].toLowerCase();
+  const date = new Date();
+
+  switch (unit) {
+    case "d":
+      date.setDate(date.getDate() - amount);
+      break;
+    case "w":
+      date.setDate(date.getDate() - amount * 7);
+      break;
+    case "m":
+      date.setMonth(date.getMonth() - amount);
+      break;
+    case "y":
+      date.setFullYear(date.getFullYear() - amount);
+      break;
+  }
+
+  return date.toISOString().split("T")[0]!;
+}
+
 export async function POST(req: Request) {
   const { itemTypeId, prompt } = (await req.json()) as {
     itemTypeId: string;
@@ -62,7 +92,10 @@ export async function POST(req: Request) {
   // Build a rich, structured context for the LLM
   const lines: string[] = [];
 
-  lines.push(`=== ITEM TYPE ===`);
+  lines.push(`=== TODAY'S DATE ===`);
+  lines.push(`${new Date().toISOString().split("T")[0]}`);
+
+  lines.push(`\n=== ITEM TYPE ===`);
   lines.push(`Name: ${it.name}`);
   if (it.description) lines.push(`Description: ${it.description}`);
   if (it.codePrefix) lines.push(`Code prefix: ${it.codePrefix}`);
@@ -115,13 +148,18 @@ export async function POST(req: Request) {
     lines.push(
       `These are accessed via the "attr:<exactKey>" prefix. Keys are CASE-SENSITIVE.`,
     );
+    lines.push(
+      `IMPORTANT: These attributes can be used for FILTERING via filterAttrFilters. When the user mentions a person, category, or value that matches an attribute's options, use filterAttrFilters to filter by it.`,
+    );
     for (const a of attrDefs) {
       let line = `- Key: "${a.attrKey}" → use as "attr:${a.attrKey}"`;
       line += ` | type: ${a.dataType}`;
       if (a.unit) line += ` | unit: ${a.unit}`;
       if (a.isRequired) line += ` | required`;
-      if (a.dataType === "select" && Array.isArray(a.options))
+      if (a.dataType === "select" && Array.isArray(a.options)) {
         line += ` | options: ${(a.options as string[]).join(", ")}`;
+        line += ` | filterable: use filterAttrFilters with op "eq" and one of these exact option values`;
+      }
       lines.push(line);
     }
   }
@@ -200,7 +238,11 @@ export async function POST(req: Request) {
                 "Exact attribute key from the custom attributes list (case-sensitive, no 'attr:' prefix).",
               ),
             op: z.enum(["eq", "gte", "lte"]),
-            value: z.string(),
+            value: z
+              .string()
+              .describe(
+                "The filter value. For date attributes, MUST be a full ISO date string (e.g. '2026-03-16'), computed from today's date. NEVER use relative expressions like '-5d'. For select attributes, use the exact option value.",
+              ),
           }),
         )
         .describe("Attribute filters, or empty array for none"),
@@ -223,7 +265,11 @@ CRITICAL RULES:
 4. For filter IDs, use the exact UUIDs from the schema. Use "" for no filter.
 5. Always include at least one groupBy and one metric.
 6. DEFAULT to op: "sum" unless the user explicitly asks for a different operation (e.g. "average", "count", "min", "max"). Only use "count" when the user says "how many", "count", or "number of".
-7. Generate a short descriptive title.`,
+7. Generate a short descriptive title.
+8. SEMANTIC MATCHING: When the user mentions a concept, person, or action, match it to the CLOSEST relevant attribute by meaning — not just by exact name. For example, if the user says "harvested by Justin" and there is an attribute "Harvested By" with option "Justin", create a filterAttrFilters entry with key "Harvested By", op "eq", value "Justin". Similarly, "picked by Sarah" could match a "Picked By" attribute.
+9. ATTRIBUTE FILTERING: When the user mentions a specific name or value alongside an action/concept, check the custom attributes and their options for a semantic match. Use filterAttrFilters with op "eq" and the EXACT option value (preserving casing from the options list). This is how you filter data by who did something, what category it belongs to, etc.
+10. When using filterAttrFilters, always use the exact option value casing as shown in the attribute's options list (e.g. "Justin" not "justin").
+11. DATE FILTERS: For date attributes, ALWAYS output a fully resolved ISO date string (e.g. "2026-03-16"). NEVER output relative expressions like "-5d", "-1w", "last week", etc. Use today's date from the schema to compute the correct absolute date. For example, if today is 2026-03-21 and the user says "last 5 days", use gte with value "2026-03-16".`,
   });
 
   // Safety net: fix any casing mismatches on attr keys
@@ -269,9 +315,37 @@ CRITICAL RULES:
   if (object.filterVariantId) filters.variantId = object.filterVariantId;
   if (object.filterLocationId) filters.locationId = object.filterLocationId;
   if (object.filterAttrFilters.length > 0) {
+    const selectOptionsMap = new Map(
+      attrDefs
+        .filter((a) => a.dataType === "select" && Array.isArray(a.options))
+        .map((a) => [
+          a.attrKey.toLowerCase(),
+          new Map(
+            (a.options as string[]).map((o) => [o.toLowerCase(), o]),
+          ),
+        ]),
+    );
+
+    const attrDataTypeMap = new Map(
+      attrDefs.map((a) => [a.attrKey.toLowerCase(), a.dataType]),
+    );
+
     filters.attrFilters = object.filterAttrFilters.map((af) => {
-      const correct = attrKeyMap.get(af.key.toLowerCase());
-      return { ...af, key: correct ?? af.key };
+      const correctKey = attrKeyMap.get(af.key.toLowerCase());
+      const key = correctKey ?? af.key;
+      let value = af.value;
+
+      const opts = selectOptionsMap.get(key.toLowerCase());
+      if (opts) {
+        const correctValue = opts.get(value.toLowerCase());
+        if (correctValue) value = correctValue;
+      }
+
+      if (attrDataTypeMap.get(key.toLowerCase()) === "date") {
+        value = resolveRelativeDate(value);
+      }
+
+      return { ...af, key, value };
     });
   }
 

@@ -1,7 +1,7 @@
 import "~/styles/globals.css";
 
 import { type Metadata } from "next";
-import { Geist, Inter } from "next/font/google";
+import { Geist, Inter, Instrument_Serif } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import { cn } from "~/lib/utils";
@@ -23,11 +23,25 @@ const geist = Geist({
   variable: "--font-geist-sans",
 });
 
+const instrumentSerif = Instrument_Serif({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-instrument-serif",
+});
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={cn(geist.variable, "font-sans", inter.variable)}>
+    <html
+      lang="en"
+      className={cn(
+        geist.variable,
+        "font-sans",
+        inter.variable,
+        instrumentSerif.variable,
+      )}
+    >
       <body>
         <TRPCReactProvider>{children}</TRPCReactProvider>
       </body>
