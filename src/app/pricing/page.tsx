@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
-import { MarketingNav } from "../_components/marketing-nav";
+import { MarketingNav } from "../_components/MarketingNav";
 
 export const metadata: Metadata = {
   title: "Pricing | Lineage",

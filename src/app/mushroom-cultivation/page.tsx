@@ -2,7 +2,7 @@ import { type Metadata } from "next";
 import Link from "next/link";
 import { Button } from "~/components/ui/button";
 import { AiDemo } from "./_components/ai-demo";
-import { MarketingNav } from "../_components/marketing-nav";
+import { MarketingNav } from "../_components/MarketingNav";
 
 export const metadata: Metadata = {
   title: "Mushroom Cultivation Tracking Software | Lineage",

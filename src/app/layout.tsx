@@ -3,6 +3,7 @@ import "~/styles/globals.css";
 import { type Metadata } from "next";
 import { Geist, Inter, Instrument_Serif } from "next/font/google";
 
+import { ChatwootWidget } from "~/components/chatwoot";
 import { TRPCReactProvider } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 
@@ -43,7 +44,9 @@ export default function RootLayout({
       )}
     >
       <body>
-        <TRPCReactProvider>{children}</TRPCReactProvider>
+        <TRPCReactProvider>
+          <ChatwootWidget>{children}</ChatwootWidget>
+        </TRPCReactProvider>
       </body>
     </html>
   );

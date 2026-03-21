@@ -23,8 +23,8 @@ function resolveRelativeDate(value: string): string {
   const match = value.match(/^-(\d+)([dwmy])$/i);
   if (!match) return value;
 
-  const amount = parseInt(match[1], 10);
-  const unit = match[2].toLowerCase();
+  const amount = parseInt(match[1]!, 10);
+  const unit = match[2]!.toLowerCase();
   const date = new Date();
 
   switch (unit) {
@@ -320,9 +320,7 @@ CRITICAL RULES:
         .filter((a) => a.dataType === "select" && Array.isArray(a.options))
         .map((a) => [
           a.attrKey.toLowerCase(),
-          new Map(
-            (a.options as string[]).map((o) => [o.toLowerCase(), o]),
-          ),
+          new Map((a.options as string[]).map((o) => [o.toLowerCase(), o])),
         ]),
     );
 

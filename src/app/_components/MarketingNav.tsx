@@ -1,6 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { HugeiconsIcon } from "@hugeicons/react";
+import {
+  QrCodeScanIcon,
+  WorkflowSquare03Icon,
+  Settings05Icon,
+  Layers01Icon,
+  SparklesIcon,
+  ChartBarIncreasingIcon,
+  MushroomIcon,
+  OrganicFoodIcon,
+  EcoLabIcon,
+  CannabisIcon,
+  BarrelIcon,
+  Factory02Icon,
+} from "@hugeicons/core-free-icons";
 import { Button } from "~/components/ui/button";
 import {
   NavigationMenu,
@@ -11,66 +26,85 @@ import {
   NavigationMenuTrigger,
 } from "~/components/ui/navigation-menu";
 
-const FEATURES = [
+type NavItem = {
+  icon: typeof QrCodeScanIcon;
+  title: string;
+  description: string;
+  href: string;
+};
+
+const FEATURES: NavItem[] = [
   {
+    icon: QrCodeScanIcon,
     title: "Scan-first Tracking",
     description: "QR and barcode scanning from your phone.",
     href: "/#features",
   },
   {
+    icon: WorkflowSquare03Icon,
     title: "Full Lineage",
     description: "Trace any item back to its source materials.",
     href: "/#features",
   },
   {
+    icon: Settings05Icon,
     title: "Configurable Workflows",
     description: "Custom types, statuses, and operation steps.",
     href: "/#features",
   },
   {
+    icon: Layers01Icon,
     title: "Batch Operations",
     description: "Create and update items in bulk.",
     href: "/#features",
   },
   {
+    icon: SparklesIcon,
     title: "Smart Suggestions",
     description: "Auto-suggest the next operation from a scan.",
     href: "/#features",
   },
   {
+    icon: ChartBarIncreasingIcon,
     title: "Real-time Inventory",
     description: "Dashboards, quick reports, and aggregations.",
     href: "/#features",
   },
 ];
 
-const WHO_ITS_FOR = [
+const WHO_ITS_FOR: NavItem[] = [
   {
+    icon: MushroomIcon,
     title: "Mushroom Cultivators",
     description: "Track blocks from inoculation to harvest.",
     href: "/mushroom-cultivation",
   },
   {
+    icon: OrganicFoodIcon,
     title: "Craft Food Producers",
     description: "Lot traceability for small-batch food and beverage.",
     href: "/mushroom-cultivation",
   },
   {
+    icon: EcoLabIcon,
     title: "Labs & R&D Teams",
     description: "Sample lineage, experiments, and test batches.",
     href: "/mushroom-cultivation",
   },
   {
+    icon: CannabisIcon,
     title: "Cannabis & Hemp Growers",
     description: "Seed-to-sale tracking and compliance.",
     href: "/mushroom-cultivation",
   },
   {
+    icon: BarrelIcon,
     title: "Craft Beverage Makers",
     description: "Batch tracking for breweries, distilleries, and wineries.",
     href: "/mushroom-cultivation",
   },
   {
+    icon: Factory02Icon,
     title: "Small-batch Manufacturers",
     description: "From raw materials to finished goods for makers.",
     href: "/mushroom-cultivation",
@@ -84,14 +118,13 @@ const dropdownContentStyles = "right-0 left-auto md:w-[460px]";
 
 const dropdownListStyles = "grid w-[460px] grid-cols-2 gap-0.5 p-1.5";
 
-const dropdownItemStyles =
-  "hover:bg-accent flex flex-col items-start justify-start rounded-md px-3 py-2.5 no-underline transition-colors select-none";
-
 function DropdownItem({
+  icon,
   title,
   description,
   href,
 }: {
+  icon: typeof QrCodeScanIcon;
   title: string;
   description: string;
   href: string;
@@ -99,13 +132,21 @@ function DropdownItem({
   return (
     <li>
       <NavigationMenuLink asChild>
-        <Link href={href} className={dropdownItemStyles}>
-          <div className="text-foreground text-left text-[13px] font-medium">
-            {title}
+        <Link
+          href={href}
+          className="hover:bg-accent flex items-start gap-3 rounded-md px-3 py-2.5 no-underline transition-colors select-none"
+        >
+          <div className="text-muted-foreground mt-0.5 shrink-0">
+            <HugeiconsIcon icon={icon} size={16} strokeWidth={1.5} />
           </div>
-          <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
-            {description}
-          </p>
+          <div>
+            <div className="text-foreground text-[13px] font-medium">
+              {title}
+            </div>
+            <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">
+              {description}
+            </p>
+          </div>
         </Link>
       </NavigationMenuLink>
     </li>

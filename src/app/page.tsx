@@ -1,7 +1,7 @@
 import { type Metadata } from "next";
 import Link from "next/link";
 import { Button } from "~/components/ui/button";
-import { MarketingNav } from "./_components/marketing-nav";
+import { MarketingNav } from "./_components/MarketingNav";
 
 export const metadata: Metadata = {
   title: "Lineage — Traceability-first inventory tracking",
