@@ -42,7 +42,7 @@ export function ReviewApply({
     [vertical, answers],
   );
 
-  const applyMutation = api.onboarding.apply.useMutation({
+  const applyMutation = api.onboarding.applySetup.useMutation({
     onSuccess: () => router.push(`/${org}`),
   });
 

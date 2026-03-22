@@ -26,14 +26,14 @@ const WORKFLOW_OPTIONS: WorkflowOption[] = [
     key: "blockTracking",
     title: "Individual block tracking",
     description:
-      "Track each grow block/bag from inoculation through fruiting and harvest. Creates the Grow Block item type with full lifecycle operations.",
+      "Track each grow unit (block, bag, or bed) from inoculation through fruiting and harvest. Creates the Grow Unit item type with full lifecycle operations.",
     icon: <Bug className="size-5" />,
   },
   {
     key: "trayTracking",
     title: "Harvest tray tracking",
     description:
-      "Pack harvested mushrooms into tracked trays for sale or distribution. Creates the Harvest Tray item type with a close-tray operation.",
+      "Pack harvested mushrooms into tracked containers (trays, boxes, or crates) for sale or distribution. Creates the Harvest Container item type with a close operation.",
     icon: <Package className="size-5" />,
   },
   {
@@ -68,11 +68,18 @@ export function WorkflowConfigurator({ answers, onNext, onBack }: StepProps) {
 
       <div className="flex flex-col gap-3">
         {WORKFLOW_OPTIONS.map((opt) => (
-          <button
+          <div
             key={opt.key}
-            type="button"
+            role="button"
+            tabIndex={0}
             onClick={() => toggle(opt.key)}
-            className={`flex items-start gap-4 rounded-lg border p-4 text-left transition-all ${
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                toggle(opt.key);
+              }
+            }}
+            className={`flex cursor-pointer items-start gap-4 rounded-lg border p-4 text-left transition-all ${
               flags[opt.key]
                 ? "border-primary bg-primary/5 ring-primary/20 ring-2"
                 : "border-border hover:border-muted-foreground/40 hover:bg-muted/50"
@@ -90,7 +97,7 @@ export function WorkflowConfigurator({ answers, onNext, onBack }: StepProps) {
                 {opt.description}
               </div>
             </div>
-          </button>
+          </div>
         ))}
       </div>
 

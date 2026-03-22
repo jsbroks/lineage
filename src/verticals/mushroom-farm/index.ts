@@ -1,6 +1,6 @@
 import type { VerticalDefinition } from "../types";
 import { buildMushroomFarmSeedData } from "./seed-data";
-import { VarietyPicker } from "./steps/SpeciesPicker";
+import { VarietyPicker } from "./steps/VarietyPicker";
 import { WorkflowConfigurator } from "./steps/WorkflowConfigurator";
 
 export const mushroomFarmVertical: VerticalDefinition = {

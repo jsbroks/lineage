@@ -317,7 +317,7 @@ export const onboardingRouter = createTRPCRouter({
     return { dismissed: true };
   }),
 
-  apply: protectedProcedure
+  applySetup: protectedProcedure
     .input(
       z.object({
         verticalKey: z.string().min(1),
