@@ -211,13 +211,11 @@ export default function OperationTypeDetailPage() {
 
         {!isNew && opType && (
           <>
-            <PortsSection
+            <InputsSection
               operationTypeId={opType.id}
-              ports={opType.ports}
+              inputs={opType.inputs}
               itemTypes={itemTypes}
-              org={params.org}
             />
-            <FieldsSection operationTypeId={opType.id} fields={opType.fields} />
             <StepsSection operationTypeId={opType.id} steps={opType.steps} />
           </>
         )}
@@ -227,57 +225,67 @@ export default function OperationTypeDetailPage() {
 }
 
 // ---------------------------------------------------------------------------
-// Ports Section
+// Inputs Section (unified items + fields)
 // ---------------------------------------------------------------------------
 
-type PortsSectionProps = {
+type InputEntry = {
+  id: string;
   operationTypeId: string;
-  ports: {
-    id: string;
-    operationTypeId: string;
+  referenceKey: string;
+  label: string | null;
+  description: string | null;
+  type: string;
+  required: boolean;
+  options: Record<string, unknown> | null;
+  defaultValue: unknown;
+  sortOrder: number;
+  itemConfig: {
     itemTypeId: string;
-    referenceKey: string;
-    qtyMin: string | null;
-    qtyMax: string | null;
+    minCount: number;
+    maxCount: number | null;
     preconditionsStatuses: string[] | null;
-  }[];
-  itemTypes: { id: string; name: string }[];
-  org: string;
+  } | null;
 };
 
-function PortsSection({
+type InputsSectionProps = {
+  operationTypeId: string;
+  inputs: InputEntry[];
+  itemTypes: { id: string; name: string }[];
+};
+
+function InputsSection({
   operationTypeId,
-  ports,
+  inputs,
   itemTypes,
-}: PortsSectionProps) {
+}: InputsSectionProps) {
   const utils = api.useUtils();
 
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const addMutation = api.operationType.addPort.useMutation({
+  const addMutation = api.operationType.addInput.useMutation({
     onSuccess: async () => {
       await utils.operationType.getById.invalidate({ id: operationTypeId });
-      setAdding(false);
+      setAdding(null);
     },
   });
 
-  const updateMutation = api.operationType.updatePort.useMutation({
+  const updateMutation = api.operationType.updateInput.useMutation({
     onSuccess: async () => {
       await utils.operationType.getById.invalidate({ id: operationTypeId });
       setEditingId(null);
     },
   });
 
-  const deleteMutation = api.operationType.deletePort.useMutation({
+  const deleteMutation = api.operationType.deleteInput.useMutation({
     onSuccess: async () => {
       await utils.operationType.getById.invalidate({ id: operationTypeId });
     },
   });
 
-  const handleDeletePort = async (portId: string, referenceKey: string) => {
-    if (!window.confirm(`Delete port "${referenceKey}"?`)) return;
-    await deleteMutation.mutateAsync({ id: portId });
+  const handleDelete = async (id: string, key: string) => {
+    if (!window.confirm(`Delete input "${key}"?`)) return;
+    await deleteMutation.mutateAsync({ id });
   };
 
   return (
@@ -285,74 +293,86 @@ function PortsSection({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Input Items</CardTitle>
+            <CardTitle>Inputs</CardTitle>
             <CardDescription>
-              Define what categories of items this task uses.
+              Item types and data fields used by this task.
             </CardDescription>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setAdding(true)}
-            className="gap-1"
-          >
-            <Plus className="size-3.5" />
-            Add
-          </Button>
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAdding("items")}
+              className="gap-1"
+            >
+              <Plus className="size-3.5" />
+              Item Input
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAdding("string")}
+              className="gap-1"
+            >
+              <Plus className="size-3.5" />
+              Field
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
-        {ports.length === 0 && !adding && (
+        {inputs.length === 0 && !adding && (
           <p className="text-muted-foreground py-3 text-center text-xs">
-            No input items configured.
+            No inputs configured.
           </p>
         )}
 
         <div className="space-y-2">
-          {ports.map((port) =>
-            editingId === port.id ? (
-              <PortForm
-                key={port.id}
+          {inputs.map((inp) =>
+            editingId === inp.id ? (
+              <InputForm
+                key={inp.id}
                 itemTypes={itemTypes}
-                initial={port}
+                initial={inp}
                 onSave={async (data) => {
-                  await updateMutation.mutateAsync({ id: port.id, ...data });
+                  await updateMutation.mutateAsync({ id: inp.id, ...data });
                 }}
                 onCancel={() => setEditingId(null)}
                 saving={updateMutation.isPending}
               />
             ) : (
               <div
-                key={port.id}
+                key={inp.id}
                 className="border-border flex items-center justify-between rounded-md border px-3 py-2"
               >
                 <div className="flex items-center gap-2">
+                  <GripVertical className="text-muted-foreground/50 size-3.5" />
                   <span className="text-sm font-medium">
-                    {port.referenceKey}
+                    {inp.referenceKey}
                   </span>
                   <Badge variant="outline" className="text-xs">
-                    {itemTypes.find((it) => it.id === port.itemTypeId)?.name ??
-                      "Unknown"}
+                    {inp.type === "items"
+                      ? itemTypes.find(
+                          (it) => it.id === inp.itemConfig?.itemTypeId,
+                        )?.name ?? "Item"
+                      : inp.type}
                   </Badge>
-                  {port.qtyMin && Number(port.qtyMin) > 0 ? (
+                  {(inp.required ||
+                    (inp.itemConfig && inp.itemConfig.minCount > 0)) && (
                     <Badge
                       variant="ghost"
                       className="bg-blue-300/20 text-xs text-blue-600"
                     >
                       Required
                     </Badge>
-                  ) : (
-                    <Badge variant="ghost" className="text-xs">
-                      Optional
-                    </Badge>
                   )}
-                  {port.preconditionsStatuses &&
-                    port.preconditionsStatuses.length > 0 && (
+                  {inp.itemConfig?.preconditionsStatuses &&
+                    inp.itemConfig.preconditionsStatuses.length > 0 && (
                       <Badge
                         variant="ghost"
                         className="bg-blue-300/20 text-xs text-blue-600"
                       >
-                        {port.preconditionsStatuses.join(", ")}
+                        {inp.itemConfig.preconditionsStatuses.join(", ")}
                       </Badge>
                     )}
                 </div>
@@ -361,7 +381,7 @@ function PortsSection({
                     variant="ghost"
                     size="sm"
                     className="h-7 w-7 p-0"
-                    onClick={() => setEditingId(port.id)}
+                    onClick={() => setEditingId(inp.id)}
                   >
                     <Pencil className="size-3" />
                   </Button>
@@ -369,7 +389,7 @@ function PortsSection({
                     variant="ghost"
                     size="sm"
                     className="text-destructive h-7 w-7 p-0"
-                    onClick={() => handleDeletePort(port.id, port.referenceKey)}
+                    onClick={() => handleDelete(inp.id, inp.referenceKey)}
                   >
                     <Trash2 className="size-3" />
                   </Button>
@@ -379,15 +399,16 @@ function PortsSection({
           )}
 
           {adding && (
-            <PortForm
+            <InputForm
               itemTypes={itemTypes}
+              defaultType={adding}
               onSave={async (data) => {
                 await addMutation.mutateAsync({
                   operationTypeId,
                   ...data,
                 });
               }}
-              onCancel={() => setAdding(false)}
+              onCancel={() => setAdding(null)}
               saving={addMutation.isPending}
             />
           )}
@@ -398,45 +419,72 @@ function PortsSection({
 }
 
 // ---------------------------------------------------------------------------
-// Port Form (inline)
+// Input Form (inline — handles both item and field types)
 // ---------------------------------------------------------------------------
 
-type PortFormData = {
-  itemTypeId: string;
+type InputFormData = {
   referenceKey: string;
-  qtyMin: string | null;
-  qtyMax: string | null;
-  preconditionsStatuses: string[] | null;
+  label: string | null;
+  description: string | null;
+  type: string;
+  required: boolean;
+  sortOrder: number;
+  options: Record<string, unknown> | null;
+  defaultValue: unknown;
+  itemTypeId?: string;
+  minCount?: number;
+  maxCount?: number | null;
+  preconditionsStatuses?: string[] | null;
 };
 
-function PortForm({
+function InputForm({
   itemTypes,
   initial,
+  defaultType,
   onSave,
   onCancel,
   saving,
 }: {
   itemTypes: { id: string; name: string }[];
-  initial?: PortFormData;
-  onSave: (data: PortFormData) => Promise<void>;
+  initial?: InputEntry;
+  defaultType?: string;
+  onSave: (data: InputFormData) => Promise<void>;
   onCancel: () => void;
   saving: boolean;
 }) {
+  const resolvedType = initial?.type ?? defaultType ?? "string";
   const [referenceKey, setReferenceKey] = useState(initial?.referenceKey ?? "");
-  const [itemTypeId, setItemTypeId] = useState(
-    initial?.itemTypeId ?? itemTypes[0]?.id ?? "",
+  const [label, setLabel] = useState(initial?.label ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [inputType, setInputType] = useState(resolvedType);
+  const [required, setRequired] = useState(initial?.required ?? false);
+  const [sortOrder, setSortOrder] = useState(String(initial?.sortOrder ?? 0));
+  const [enumText, setEnumText] = useState(
+    ((initial?.options as { enum?: string[] } | null)?.enum ?? []).join(", "),
   );
-  const [qtyMin, setQtyMin] = useState(initial?.qtyMin ?? "");
-  const [qtyMax, setQtyMax] = useState(initial?.qtyMax ?? "");
+
+  const [itemTypeId, setItemTypeId] = useState(
+    initial?.itemConfig?.itemTypeId ?? itemTypes[0]?.id ?? "",
+  );
+  const [qtyMin, setQtyMin] = useState(
+    String(initial?.itemConfig?.minCount ?? ""),
+  );
+  const [qtyMax, setQtyMax] = useState(
+    initial?.itemConfig?.maxCount != null
+      ? String(initial.itemConfig.maxCount)
+      : "",
+  );
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(
-    initial?.preconditionsStatuses ?? [],
+    initial?.itemConfig?.preconditionsStatuses ?? [],
   );
   const [statusInput, setStatusInput] = useState("");
+
+  const isItems = inputType === "items";
 
   const { data: availableStatuses = [] } =
     api.operationType.statusesForItemType.useQuery(
       { itemTypeId },
-      { enabled: !!itemTypeId },
+      { enabled: !!itemTypeId && isItems },
     );
 
   const toggleStatus = (name: string) => {
@@ -447,365 +495,32 @@ function PortForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSave({
-      itemTypeId,
-      referenceKey: referenceKey.trim(),
-      qtyMin: qtyMin.trim() || null,
-      qtyMax: qtyMax.trim() || null,
-      preconditionsStatuses:
-        selectedStatuses.length > 0 ? selectedStatuses : null,
-    });
-  };
-
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="border-border bg-muted/30 rounded-md border p-3"
-    >
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs font-medium tracking-wider uppercase">
-          {initial ? "Edit" : "New"} input item
-        </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-6 w-6 p-0"
-          onClick={onCancel}
-        >
-          <X className="size-3.5" />
-        </Button>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Reference Key</label>
-          <Input
-            required
-            placeholder="primary"
-            value={referenceKey}
-            onChange={(e) => setReferenceKey(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Category</label>
-          <Select value={itemTypeId} onValueChange={setItemTypeId}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent>
-              {itemTypes.map((it) => (
-                <SelectItem key={it.id} value={it.id}>
-                  {it.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="space-y-1">
-            <label className="text-xs font-medium">Qty Min</label>
-            <Input
-              placeholder="0"
-              value={qtyMin}
-              onChange={(e) => setQtyMin(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium">Qty Max</label>
-            <Input
-              placeholder="—"
-              value={qtyMax}
-              onChange={(e) => setQtyMax(e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-3 space-y-1 sm:col-span-2">
-        <label className="text-xs font-medium">Status Preconditions</label>
-        <p className="text-muted-foreground text-xs">
-          Only items in these statuses will be accepted. Leave empty for any
-          status.
-        </p>
-        {availableStatuses.length > 0 ? (
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {availableStatuses.map((s) => (
-              <button
-                key={s.name}
-                type="button"
-                onClick={() => toggleStatus(s.name)}
-                className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
-                  selectedStatuses.includes(s.name)
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground hover:border-primary/50"
-                }`}
-              >
-                {s.name}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-1.5">
-            <Input
-              placeholder="e.g. printed, approved"
-              value={statusInput}
-              onChange={(e) => setStatusInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === ",") {
-                  e.preventDefault();
-                  const val = statusInput.trim().replace(/,+$/, "").trim();
-                  if (val && !selectedStatuses.includes(val)) {
-                    setSelectedStatuses((prev) => [...prev, val]);
-                  }
-                  setStatusInput("");
-                }
-              }}
-            />
-            {selectedStatuses.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {selectedStatuses.map((s) => (
-                  <span
-                    key={s}
-                    className="border-primary bg-primary/10 text-primary flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium"
-                  >
-                    {s}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSelectedStatuses((prev) =>
-                          prev.filter((x) => x !== s),
-                        )
-                      }
-                      className="hover:text-destructive ml-0.5"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="mt-3">
-        <Button
-          type="submit"
-          size="sm"
-          disabled={saving || !referenceKey.trim()}
-        >
-          {saving ? "Saving..." : initial ? "Update Port" : "Add Port"}
-        </Button>
-      </div>
-    </form>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Fields Section
-// ---------------------------------------------------------------------------
-
-type FieldsSectionProps = {
-  operationTypeId: string;
-  fields: {
-    id: string;
-    operationTypeId: string;
-    referenceKey: string;
-    label: string | null;
-    description: string | null;
-    type: string;
-    required: boolean;
-    options: Record<string, unknown> | null;
-    defaultValue: unknown;
-    sortOrder: number;
-  }[];
-};
-
-function FieldsSection({ operationTypeId, fields }: FieldsSectionProps) {
-  const utils = api.useUtils();
-
-  const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-
-  const addMutation = api.operationType.addField.useMutation({
-    onSuccess: async () => {
-      await utils.operationType.getById.invalidate({ id: operationTypeId });
-      setAdding(false);
-    },
-  });
-
-  const updateMutation = api.operationType.updateField.useMutation({
-    onSuccess: async () => {
-      await utils.operationType.getById.invalidate({ id: operationTypeId });
-      setEditingId(null);
-    },
-  });
-
-  const deleteMutation = api.operationType.deleteField.useMutation({
-    onSuccess: async () => {
-      await utils.operationType.getById.invalidate({ id: operationTypeId });
-    },
-  });
-
-  const handleDelete = async (id: string, key: string) => {
-    if (!window.confirm(`Delete field "${key}"?`)) return;
-    await deleteMutation.mutateAsync({ id });
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Information to Collect</CardTitle>
-            <CardDescription>
-              Data fields captured during this task.
-            </CardDescription>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setAdding(true)}
-            className="gap-1"
-          >
-            <Plus className="size-3.5" />
-            Add Field
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        {fields.length === 0 && !adding && (
-          <p className="text-muted-foreground py-4 text-center text-sm">
-            No fields configured yet. Add one to collect data during this task.
-          </p>
-        )}
-
-        <div className="space-y-2">
-          {fields.map((field) =>
-            editingId === field.id ? (
-              <FieldForm
-                key={field.id}
-                initial={field}
-                onSave={async (data) => {
-                  await updateMutation.mutateAsync({ id: field.id, ...data });
-                }}
-                onCancel={() => setEditingId(null)}
-                saving={updateMutation.isPending}
-              />
-            ) : (
-              <div
-                key={field.id}
-                className="border-border flex items-center justify-between rounded-md border px-3 py-2"
-              >
-                <div className="flex items-center gap-2">
-                  <GripVertical className="text-muted-foreground/50 size-3.5" />
-                  <span className="font-mono text-sm">
-                    {field.referenceKey}
-                  </span>
-                  <Badge variant="outline" className="text-xs">
-                    {field.type}
-                  </Badge>
-                  {field.required && (
-                    <Badge
-                      variant="ghost"
-                      className="bg-blue-300/20 text-xs text-blue-600"
-                    >
-                      Required
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={() => setEditingId(field.id)}
-                  >
-                    <Pencil className="size-3" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive h-7 w-7 p-0"
-                    onClick={() => handleDelete(field.id, field.referenceKey)}
-                  >
-                    <Trash2 className="size-3" />
-                  </Button>
-                </div>
-              </div>
-            ),
-          )}
-
-          {adding && (
-            <FieldForm
-              onSave={async (data) => {
-                await addMutation.mutateAsync({
-                  operationTypeId,
-                  ...data,
-                });
-              }}
-              onCancel={() => setAdding(false)}
-              saving={addMutation.isPending}
-            />
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Field Form (inline)
-// ---------------------------------------------------------------------------
-
-type FieldFormData = {
-  referenceKey: string;
-  label: string | null;
-  description: string | null;
-  type: string;
-  required: boolean;
-  options: Record<string, unknown> | null;
-  sortOrder: number;
-};
-
-function FieldForm({
-  initial,
-  onSave,
-  onCancel,
-  saving,
-}: {
-  initial?: FieldFormData;
-  onSave: (data: FieldFormData) => Promise<void>;
-  onCancel: () => void;
-  saving: boolean;
-}) {
-  const [referenceKey, setReferenceKey] = useState(initial?.referenceKey ?? "");
-  const [label, setLabel] = useState(initial?.label ?? "");
-  const [description, setDescription] = useState(initial?.description ?? "");
-  const [fieldType, setFieldType] = useState(initial?.type ?? "text");
-  const [required, setRequired] = useState(initial?.required ?? false);
-  const [sortOrder, setSortOrder] = useState(String(initial?.sortOrder ?? 0));
-  const [enumText, setEnumText] = useState(
-    ((initial?.options as { enum?: string[] } | null)?.enum ?? []).join(", "),
-  );
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
     const enumOptions =
-      fieldType === "select" && enumText.trim()
+      inputType === "select" && enumText.trim()
         ? enumText
             .split(",")
             .map((s) => s.trim())
             .filter(Boolean)
         : null;
+
     await onSave({
       referenceKey: referenceKey.trim(),
       label: label.trim() || null,
       description: description.trim() || null,
-      type: fieldType,
+      type: inputType,
       required,
-      options: enumOptions ? { enum: enumOptions } : null,
       sortOrder: Number(sortOrder) || 0,
+      options: enumOptions ? { enum: enumOptions } : null,
+      defaultValue: null,
+      ...(isItems
+        ? {
+            itemTypeId,
+            minCount: parseInt(qtyMin, 10) || 0,
+            maxCount: qtyMax.trim() ? parseInt(qtyMax, 10) || null : null,
+            preconditionsStatuses:
+              selectedStatuses.length > 0 ? selectedStatuses : null,
+          }
+        : {}),
     });
   };
 
@@ -816,7 +531,7 @@ function FieldForm({
     >
       <div className="mb-3 flex items-center justify-between">
         <span className="text-xs font-medium tracking-wider uppercase">
-          {initial ? "Edit" : "New"} field
+          {initial ? "Edit" : "New"} {isItems ? "item input" : "field"}
         </span>
         <Button
           type="button"
@@ -833,18 +548,19 @@ function FieldForm({
           <label className="text-xs font-medium">Reference Key</label>
           <Input
             required
-            placeholder="weight_kg"
+            placeholder={isItems ? "primary" : "weight_kg"}
             value={referenceKey}
             onChange={(e) => setReferenceKey(e.target.value)}
           />
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium">Field Type</label>
-          <Select value={fieldType} onValueChange={setFieldType}>
+          <label className="text-xs font-medium">Type</label>
+          <Select value={inputType} onValueChange={setInputType}>
             <SelectTrigger className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="items">Item Input</SelectItem>
               {FIELD_TYPES.map((ft) => (
                 <SelectItem key={ft} value={ft}>
                   {ft}
@@ -853,34 +569,78 @@ function FieldForm({
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1 sm:col-span-2">
-          <label className="text-xs font-medium">Label</label>
-          <Input
-            placeholder="Optional display label"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1 sm:col-span-2">
-          <label className="text-xs font-medium">Description</label>
-          <Input
-            placeholder="Optional description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-        {fieldType === "select" && (
-          <div className="space-y-1 sm:col-span-2">
-            <label className="text-xs font-medium">
-              Options (comma-separated)
-            </label>
-            <Input
-              placeholder="option1, option2, option3"
-              value={enumText}
-              onChange={(e) => setEnumText(e.target.value)}
-            />
-          </div>
+
+        {isItems && (
+          <>
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Item Category</label>
+              <Select value={itemTypeId} onValueChange={setItemTypeId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {itemTypes.map((it) => (
+                    <SelectItem key={it.id} value={it.id}>
+                      {it.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Qty Min</label>
+                <Input
+                  placeholder="0"
+                  value={qtyMin}
+                  onChange={(e) => setQtyMin(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Qty Max</label>
+                <Input
+                  placeholder="—"
+                  value={qtyMax}
+                  onChange={(e) => setQtyMax(e.target.value)}
+                />
+              </div>
+            </div>
+          </>
         )}
+
+        {!isItems && (
+          <>
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-xs font-medium">Label</label>
+              <Input
+                placeholder="Optional display label"
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-xs font-medium">Description</label>
+              <Input
+                placeholder="Optional description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+            {inputType === "select" && (
+              <div className="space-y-1 sm:col-span-2">
+                <label className="text-xs font-medium">
+                  Options (comma-separated)
+                </label>
+                <Input
+                  placeholder="option1, option2, option3"
+                  value={enumText}
+                  onChange={(e) => setEnumText(e.target.value)}
+                />
+              </div>
+            )}
+          </>
+        )}
+
         <div className="space-y-1">
           <label className="text-xs font-medium">Sort Order</label>
           <Input
@@ -899,13 +659,89 @@ function FieldForm({
           Required
         </label>
       </div>
+
+      {isItems && (
+        <div className="mt-3 space-y-1 sm:col-span-2">
+          <label className="text-xs font-medium">Status Preconditions</label>
+          <p className="text-muted-foreground text-xs">
+            Only items in these statuses will be accepted. Leave empty for any
+            status.
+          </p>
+          {availableStatuses.length > 0 ? (
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {availableStatuses.map((s) => (
+                <button
+                  key={s.name}
+                  type="button"
+                  onClick={() => toggleStatus(s.name)}
+                  className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                    selectedStatuses.includes(s.name)
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:border-primary/50"
+                  }`}
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <Input
+                placeholder="e.g. printed, approved"
+                value={statusInput}
+                onChange={(e) => setStatusInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === ",") {
+                    e.preventDefault();
+                    const val = statusInput.trim().replace(/,+$/, "").trim();
+                    if (val && !selectedStatuses.includes(val)) {
+                      setSelectedStatuses((prev) => [...prev, val]);
+                    }
+                    setStatusInput("");
+                  }
+                }}
+              />
+              {selectedStatuses.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedStatuses.map((s) => (
+                    <span
+                      key={s}
+                      className="border-primary bg-primary/10 text-primary flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium"
+                    >
+                      {s}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedStatuses((prev) =>
+                            prev.filter((x) => x !== s),
+                          )
+                        }
+                        className="hover:text-destructive ml-0.5"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="mt-3">
         <Button
           type="submit"
           size="sm"
           disabled={saving || !referenceKey.trim()}
         >
-          {saving ? "Saving..." : initial ? "Update Field" : "Add Field"}
+          {saving
+            ? "Saving..."
+            : initial
+              ? "Update Input"
+              : isItems
+                ? "Add Item Input"
+                : "Add Field"}
         </Button>
       </div>
     </form>

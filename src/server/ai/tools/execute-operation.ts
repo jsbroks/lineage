@@ -6,8 +6,8 @@ import { db } from "~/server/db";
 import {
   item,
   operationType,
-  operationTypeInputItem,
-  operationTypeInputField,
+  operationTypeInput,
+  operationTypeInputItemConfig,
 } from "~/server/db/schema";
 import type { SchemaContext } from "../build-schema-context";
 import type { PendingAction } from "./pending-action";
@@ -44,16 +44,30 @@ export function createExecuteOperationTool(ctx: SchemaContext) {
         };
       }
 
-      const ports = await db
+      const allInputs = await db
         .select()
-        .from(operationTypeInputItem)
-        .where(eq(operationTypeInputItem.operationTypeId, opType.id));
+        .from(operationTypeInput)
+        .where(eq(operationTypeInput.operationTypeId, opType.id))
+        .orderBy(asc(operationTypeInput.sortOrder));
 
-      const inputFields = await db
-        .select()
-        .from(operationTypeInputField)
-        .where(eq(operationTypeInputField.operationTypeId, opType.id))
-        .orderBy(asc(operationTypeInputField.sortOrder));
+      const itemInputs = allInputs.filter((i) => i.type === "items");
+      const fieldInputs = allInputs.filter((i) => i.type !== "items");
+
+      const itemConfigs =
+        itemInputs.length > 0
+          ? await db
+              .select()
+              .from(operationTypeInputItemConfig)
+              .where(
+                inArray(
+                  operationTypeInputItemConfig.inputId,
+                  itemInputs.map((i) => i.id),
+                ),
+              )
+          : [];
+      const configByInputId = new Map(
+        itemConfigs.map((c) => [c.inputId, c]),
+      );
 
       const matchedItems = await db
         .select()
@@ -70,25 +84,32 @@ export function createExecuteOperationTool(ctx: SchemaContext) {
         return { error: `Items not found: ${notFound.join(", ")}` };
       }
 
-      const itemsMap: Record<string, string[]> = {};
-      for (const port of ports) {
+      const inputsMap: Record<string, unknown> = {};
+      for (const inp of itemInputs) {
+        const cfg = configByInputId.get(inp.id);
+        if (!cfg) continue;
         const matching = matchedItems.filter(
-          (i) => i.itemTypeId === port.itemTypeId,
+          (i) => i.itemTypeId === cfg.itemTypeId,
         );
         if (matching.length > 0) {
-          itemsMap[port.referenceKey] = matching.map((i) => i.id);
+          inputsMap[inp.referenceKey] = matching.map((i) => i.id);
         }
       }
 
-      const matchedIds = new Set(Object.values(itemsMap).flat());
+      const matchedIds = new Set(
+        Object.values(inputsMap)
+          .filter(Array.isArray)
+          .flat() as string[],
+      );
       const unmatched = matchedItems.filter((i) => !matchedIds.has(i.id));
       if (unmatched.length > 0) {
-        const portDesc = ports
-          .map((p) => {
-            const typeName = ctx.itemTypes.find(
-              (t) => t.id === p.itemTypeId,
-            )?.name;
-            return `${p.referenceKey} (${typeName ?? "unknown"})`;
+        const portDesc = itemInputs
+          .map((inp) => {
+            const cfg = configByInputId.get(inp.id);
+            const typeName = cfg
+              ? ctx.itemTypes.find((t) => t.id === cfg.itemTypeId)?.name
+              : "unknown";
+            return `${inp.referenceKey} (${typeName ?? "unknown"})`;
           })
           .join(", ");
         return {
@@ -96,7 +117,7 @@ export function createExecuteOperationTool(ctx: SchemaContext) {
         };
       }
 
-      const requiredFields = inputFields.filter((f) => f.required);
+      const requiredFields = fieldInputs.filter((f) => f.required);
       const missingFields = requiredFields.filter(
         (f) => !fields || !(f.referenceKey in fields),
       );
@@ -111,7 +132,7 @@ export function createExecuteOperationTool(ctx: SchemaContext) {
             type: f.type,
             description: f.description,
           })),
-          allFields: inputFields.map((f) => ({
+          allFields: fieldInputs.map((f) => ({
             key: f.referenceKey,
             label: f.label ?? f.referenceKey,
             type: f.type,
@@ -122,12 +143,11 @@ export function createExecuteOperationTool(ctx: SchemaContext) {
         };
       }
 
-      const fieldValues: Record<string, unknown> = {};
-      for (const f of inputFields) {
+      for (const f of fieldInputs) {
         if (fields && f.referenceKey in fields) {
-          fieldValues[f.referenceKey] = fields[f.referenceKey];
+          inputsMap[f.referenceKey] = fields[f.referenceKey];
         } else if (f.defaultValue !== null) {
-          fieldValues[f.referenceKey] = f.defaultValue;
+          inputsMap[f.referenceKey] = f.defaultValue;
         }
       }
 
@@ -143,10 +163,11 @@ export function createExecuteOperationTool(ctx: SchemaContext) {
       const changes: Record<string, string> = {
         operation: opType.name,
       };
-      for (const [key, value] of Object.entries(fieldValues)) {
-        const label =
-          inputFields.find((f) => f.referenceKey === key)?.label ?? key;
-        changes[label] = String(value);
+      for (const f of fieldInputs) {
+        const val = inputsMap[f.referenceKey];
+        if (val !== undefined) {
+          changes[f.label ?? f.referenceKey] = String(val);
+        }
       }
 
       const pendingAction: PendingAction = {
@@ -156,8 +177,7 @@ export function createExecuteOperationTool(ctx: SchemaContext) {
         changes,
         payload: {
           operationTypeId: opType.id,
-          items: itemsMap,
-          fields: fieldValues,
+          inputs: inputsMap,
           notes: notes ?? null,
         },
         requiresConfirmation: true,

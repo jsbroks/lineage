@@ -308,23 +308,21 @@ operation_types:
       name is auto-generated from the date and a sequence number.
 
     inputs:
-      items:
-        - key: substrate
-          item_type: substrate
-          required: true
-          qty: { min: 1, max: 1 }
-          preconditions:
-            status: [active]
-
-      fields:
-        estimated_block_count:
-          description: Expected number of blocks in this batch
-          type: integer
-          required: true
-        default_bag_weight_lb:
-          description: Default bag weight in pounds
-          type: number
-          required: true
+      - key: substrate
+        type: items
+        item_type: substrate
+        required: true
+        qty: { min: 1, max: 1 }
+        preconditions:
+          status: [active]
+      - key: estimated_block_count
+        type: integer
+        description: Expected number of blocks in this batch
+        required: true
+      - key: default_bag_weight_lb
+        type: number
+        description: Default bag weight in pounds
+        required: true
 
     steps:
       - name: Create batch
@@ -356,40 +354,38 @@ operation_types:
       The dashboard shows an alert for unpasteurized batches.
 
     inputs:
-      items:
-        - key: batch
-          item_type: batch
-          required: true
-          qty: { min: 1, max: 1 }
-          preconditions:
-            status: [created]
-
-      fields:
-        pasteurization_date:
-          description: Date pasteurization was performed
-          type: date
-          required: false
-          default: today
-        pasteurization_temp:
-          description: Pasteurization temperature
-          type: string
-          required: false
-        pasteurization_duration:
-          description: Duration of pasteurization
-          type: string
-          required: false
-        pasteurization_method:
-          description: Method used (e.g. steam, lime bath, cold water)
-          type: string
-          required: false
-        pasteurization_notes:
-          description: Additional notes about the pasteurization
-          type: text
-          required: false
-        confirm:
-          description: Confirm that pasteurization is complete
-          type: boolean
-          required: true
+      - key: batch
+        type: items
+        item_type: batch
+        required: true
+        qty: { min: 1, max: 1 }
+        preconditions:
+          status: [created]
+      - key: pasteurization_date
+        type: date
+        description: Date pasteurization was performed
+        required: false
+        default: today
+      - key: pasteurization_temp
+        type: string
+        description: Pasteurization temperature
+        required: false
+      - key: pasteurization_duration
+        type: string
+        description: Duration of pasteurization
+        required: false
+      - key: pasteurization_method
+        type: string
+        description: Method used (e.g. steam, lime bath, cold water)
+        required: false
+      - key: pasteurization_notes
+        type: text
+        description: Additional notes about the pasteurization
+        required: false
+      - key: confirm
+        type: boolean
+        description: Confirm that pasteurization is complete
+        required: true
 
     steps:
       - name: Record pasteurization details
@@ -430,33 +426,31 @@ operation_types:
     needs: [create_batch]
 
     inputs:
-      items:
-        - key: batch
-          item_type: batch
-          required: true
-          qty: { min: 1, max: 1 }
-          preconditions:
-            status: [pasteurized, inoculating]
-
-      fields:
-        block_count:
-          description: Number of new block labels to print
-          type: integer
-          required: true
-        label_template:
-          description: Label template to use (e.g. Avery 5160)
-          type: string
-          required: false
-        custom_text:
-          description: Optional text to show on labels
-          type: string
-          required: false
-        mode:
-          description: Whether creating new blocks or reprinting existing labels
-          type: enum
-          options: [new, existing]
-          required: true
-          default: new
+      - key: batch
+        type: items
+        item_type: batch
+        required: true
+        qty: { min: 1, max: 1 }
+        preconditions:
+          status: [pasteurized, inoculating]
+      - key: block_count
+        type: integer
+        description: Number of new block labels to print
+        required: true
+      - key: label_template
+        type: string
+        description: Label template to use (e.g. Avery 5160)
+        required: false
+      - key: custom_text
+        type: string
+        description: Optional text to show on labels
+        required: false
+      - key: mode
+        type: enum
+        description: Whether creating new blocks or reprinting existing labels
+        options: [new, existing]
+        required: true
+        default: new
 
     steps:
       - name: Create block records
@@ -540,31 +534,30 @@ operation_types:
     needs: [print_block_labels]
 
     inputs:
-      items:
-        - key: block
-          item_type: block
-          scan: qr_code
-          required: true
-          qty: { min: 1 }
-          preconditions:
-            status: [uninoculated]
-        - key: spawn
-          item_type: spawn
-          required: true
-          qty: { min: 1, max: 1 }
-          preconditions:
-            status: [available, low_stock]
-
-      fields:
-        location:
-          description: Inoculation room
-          type: location
-          required: true
-        inoculation_date:
-          description: Date of inoculation
-          type: date
-          required: false
-          default: today
+      - key: block
+        type: items
+        item_type: block
+        scan: qr_code
+        required: true
+        qty: { min: 1 }
+        preconditions:
+          status: [uninoculated]
+      - key: spawn
+        type: items
+        item_type: spawn
+        required: true
+        qty: { min: 1, max: 1 }
+        preconditions:
+          status: [available, low_stock]
+      - key: location
+        type: location
+        description: Inoculation room
+        required: true
+      - key: inoculation_date
+        type: date
+        description: Date of inoculation
+        required: false
+        default: today
 
     steps:
       - name: Set block variety from spawn
@@ -619,28 +612,26 @@ operation_types:
     needs: [inoculate]
 
     inputs:
-      items:
-        - key: block
-          item_type: block
-          scan: qr_code
-          required: true
-          qty: { min: 1, max: 1 }
-          preconditions:
-            status: [inoculated, colonizing, fruiting, harvesting]
-
-      fields:
-        destination:
-          description: Target location (scanned via QR)
-          type: location
-          scan: qr_code
-          required: true
-        destination_room_type:
-          description: >
-            Inferred from the scanned location's room type.
-            Determines the block's new status.
-          type: enum
-          options: [pasteurization, inoculation, colonization, fruiting, storage]
-          auto: true
+      - key: block
+        type: items
+        item_type: block
+        scan: qr_code
+        required: true
+        qty: { min: 1, max: 1 }
+        preconditions:
+          status: [inoculated, colonizing, fruiting, harvesting]
+      - key: destination
+        type: location
+        description: Target location (scanned via QR)
+        scan: qr_code
+        required: true
+      - key: destination_room_type
+        type: enum
+        description: >
+          Inferred from the scanned location's room type.
+          Determines the block's new status.
+        options: [pasteurization, inoculation, colonization, fruiting, storage]
+        auto: true
 
     steps:
       - name: Update block location
@@ -677,26 +668,24 @@ operation_types:
     needs: [inoculate]
 
     inputs:
-      fields:
-        destination:
-          description: Target location (scanned first via QR)
-          type: location
-          scan: qr_code
-          required: true
-        destination_room_type:
-          description: Inferred from the scanned location's room type
-          type: enum
-          options: [pasteurization, inoculation, colonization, fruiting, storage]
-          auto: true
-
-      items:
-        - key: blocks
-          item_type: block
-          scan: qr_code
-          required: true
-          qty: { min: 1 }
-          preconditions:
-            status: [inoculated, colonizing, fruiting, harvesting]
+      - key: destination
+        type: location
+        description: Target location (scanned first via QR)
+        scan: qr_code
+        required: true
+      - key: destination_room_type
+        type: enum
+        description: Inferred from the scanned location's room type
+        options: [pasteurization, inoculation, colonization, fruiting, storage]
+        auto: true
+      - key: blocks
+        type: items
+        item_type: block
+        scan: qr_code
+        required: true
+        qty: { min: 1 }
+        preconditions:
+          status: [inoculated, colonizing, fruiting, harvesting]
 
     steps:
       - name: Update block locations
@@ -731,35 +720,33 @@ operation_types:
       pin formation has begun. Can be done at any active block status.
 
     inputs:
-      items:
-        - key: blocks
-          item_type: block
-          scan: qr_code
-          required: true
-          qty: { min: 1 }
-          preconditions:
-            status: [inoculated, colonizing, fruiting, harvesting]
-
-      fields:
-        observation:
-          description: Observation notes
-          type: text
-          required: true
-        contamination:
-          description: Whether contamination was detected
-          type: boolean
-          required: false
-          default: false
-        pin_formation:
-          description: Whether pin formation has begun
-          type: boolean
-          required: false
-          default: false
-        observation_date:
-          description: Date of observation
-          type: date
-          required: true
-          default: today
+      - key: blocks
+        type: items
+        item_type: block
+        scan: qr_code
+        required: true
+        qty: { min: 1 }
+        preconditions:
+          status: [inoculated, colonizing, fruiting, harvesting]
+      - key: observation
+        type: text
+        description: Observation notes
+        required: true
+      - key: contamination
+        type: boolean
+        description: Whether contamination was detected
+        required: false
+        default: false
+      - key: pin_formation
+        type: boolean
+        description: Whether pin formation has begun
+        required: false
+        default: false
+      - key: observation_date
+        type: date
+        description: Date of observation
+        required: true
+        default: today
 
     steps:
       - name: Log observation
@@ -790,32 +777,31 @@ operation_types:
     needs: [inoculate]
 
     inputs:
-      items:
-        - key: blocks
-          item_type: block
-          scan: qr_code
-          required: true
-          qty: { min: 1 }
-          preconditions:
-            status: [fruiting, harvesting]
-        - key: tray
-          item_type: tray
-          scan: qr_code
-          required: false
-          qty: { min: 0, max: 1 }
-          preconditions:
-            status: [open]
-
-      fields:
-        weight:
-          description: Net weight of this harvest
-          type: number
-          required: true
-        harvest_date:
-          description: Date of harvest
-          type: date
-          required: false
-          default: today
+      - key: blocks
+        type: items
+        item_type: block
+        scan: qr_code
+        required: true
+        qty: { min: 1 }
+        preconditions:
+          status: [fruiting, harvesting]
+      - key: tray
+        type: items
+        item_type: tray
+        scan: qr_code
+        required: false
+        qty: { min: 0, max: 1 }
+        preconditions:
+          status: [open]
+      - key: weight
+        type: number
+        description: Net weight of this harvest
+        required: true
+      - key: harvest_date
+        type: date
+        description: Date of harvest
+        required: false
+        default: today
 
     steps:
       - name: Link harvest to tray
@@ -879,14 +865,14 @@ operation_types:
     needs: [harvest]
 
     inputs:
-      items:
-        - key: blocks
-          item_type: block
-          scan: qr_code
-          required: true
-          qty: { min: 1 }
-          preconditions:
-            status: [harvesting]
+      - key: blocks
+        type: items
+        item_type: block
+        scan: qr_code
+        required: true
+        qty: { min: 1 }
+        preconditions:
+          status: [harvesting]
 
     steps:
       - name: Mark blocks as spent
@@ -909,30 +895,28 @@ operation_types:
       going through the full lifecycle.
 
     inputs:
-      items:
-        - key: blocks
-          item_type: block
-          scan: qr_code
-          required: true
-          qty: { min: 1 }
-          preconditions:
-            status: [uninoculated, inoculated, colonizing, fruiting, harvesting, spent]
-
-      fields:
-        reason:
-          description: Reason for disposal
-          type: enum
-          options: [spent, contaminated, damaged, other]
-          required: true
-        notes:
-          description: Additional notes
-          type: text
-          required: false
-        disposal_date:
-          description: Date of disposal
-          type: date
-          required: true
-          default: today
+      - key: blocks
+        type: items
+        item_type: block
+        scan: qr_code
+        required: true
+        qty: { min: 1 }
+        preconditions:
+          status: [uninoculated, inoculated, colonizing, fruiting, harvesting, spent]
+      - key: reason
+        type: enum
+        description: Reason for disposal
+        options: [spent, contaminated, damaged, other]
+        required: true
+      - key: notes
+        type: text
+        description: Additional notes
+        required: false
+      - key: disposal_date
+        type: date
+        description: Date of disposal
+        required: true
+        default: today
 
     steps:
       - name: Record disposal
@@ -963,20 +947,18 @@ operation_types:
       ready for shipment. Closed trays can be reopened if needed.
 
     inputs:
-      items:
-        - key: tray
-          item_type: tray
-          scan: qr_code
-          required: true
-          qty: { min: 1, max: 1 }
-          preconditions:
-            status: [open]
-
-      fields:
-        final_weight:
-          description: Verified final weight of the tray
-          type: number
-          required: false
+      - key: tray
+        type: items
+        item_type: tray
+        scan: qr_code
+        required: true
+        qty: { min: 1, max: 1 }
+        preconditions:
+          status: [open]
+      - key: final_weight
+        type: number
+        description: Verified final weight of the tray
+        required: false
 
     steps:
       - name: Update verified weight
@@ -1011,28 +993,27 @@ operation_types:
       environmental data with block performance.
 
     inputs:
-      fields:
-        location:
-          description: Room or location to record metrics for
-          type: location
-          required: true
-        temperature_c:
-          description: Temperature in Celsius
-          type: number
-          required: false
-        co2_ppm:
-          description: CO2 level in parts per million
-          type: number
-          required: false
-        humidity_pct:
-          description: Relative humidity percentage
-          type: number
-          required: false
-        recorded_at:
-          description: Date and time of the reading
-          type: datetime
-          required: true
-          default: now
+      - key: location
+        type: location
+        description: Room or location to record metrics for
+        required: true
+      - key: temperature_c
+        type: number
+        description: Temperature in Celsius
+        required: false
+      - key: co2_ppm
+        type: number
+        description: CO2 level in parts per million
+        required: false
+      - key: humidity_pct
+        type: number
+        description: Relative humidity percentage
+        required: false
+      - key: recorded_at
+        type: datetime
+        description: Date and time of the reading
+        required: true
+        default: now
 
     steps:
       - name: Log room metrics

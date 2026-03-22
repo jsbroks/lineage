@@ -5,19 +5,19 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import {
   operationType,
-  operationTypeInputField,
-  operationTypeInputItem,
+  operationTypeInput,
+  operationTypeInputItemConfig,
   operationTypeStep,
   itemTypeStatusDefinition,
 } from "~/server/db/schema";
 
-const createOperationTypeInput = z.object({
+const createOperationTypeSchema = z.object({
   name: z.string().min(1),
   description: z.string().nullable().optional(),
   icon: z.string().nullable().optional(),
 });
 
-const updateOperationTypeInput = z.object({
+const updateOperationTypeSchema = z.object({
   id: z.uuid(),
   name: z.string().min(1).optional(),
   description: z.string().nullable().optional(),
@@ -42,46 +42,20 @@ const updateOperationTypeStepInput = z.object({
   sortOrder: z.number().int().optional(),
 });
 
-const addOperationTypePortInput = z.object({
-  operationTypeId: z.uuid(),
-  itemTypeId: z.uuid(),
-  referenceKey: z.string().min(1),
-  qtyMin: z.string().nullable().optional(),
-  qtyMax: z.string().nullable().optional(),
-  preconditionsStatuses: z.array(z.string()).nullable().optional(),
-});
-
-const updateOperationTypePortInput = z.object({
-  id: z.uuid(),
-  itemTypeId: z.uuid().optional(),
-  referenceKey: z.string().min(1).optional(),
-  qtyMin: z.string().nullable().optional(),
-  qtyMax: z.string().nullable().optional(),
-  preconditionsStatuses: z.array(z.string()).nullable().optional(),
-});
-
-const addOperationTypeFieldInput = z.object({
-  operationTypeId: z.uuid(),
+const inputSchema = z.object({
+  id: z.uuid().optional(),
   referenceKey: z.string().min(1),
   label: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
   type: z.string().min(1),
   required: z.boolean().optional(),
+  sortOrder: z.number().int().default(0),
   options: z.record(z.string(), z.unknown()).nullable().optional(),
   defaultValue: z.unknown().nullable().optional(),
-  sortOrder: z.number().int().optional(),
-});
-
-const updateOperationTypeFieldInput = z.object({
-  id: z.uuid(),
-  referenceKey: z.string().min(1).optional(),
-  label: z.string().nullable().optional(),
-  description: z.string().nullable().optional(),
-  type: z.string().min(1).optional(),
-  required: z.boolean().optional(),
-  options: z.record(z.string(), z.unknown()).nullable().optional(),
-  defaultValue: z.unknown().nullable().optional(),
-  sortOrder: z.number().int().optional(),
+  itemTypeId: z.uuid().optional(),
+  minCount: z.number().int().optional(),
+  maxCount: z.number().int().nullable().optional(),
+  preconditionsStatuses: z.array(z.string()).nullable().optional(),
 });
 
 export const operationTypeRouter = createTRPCRouter({
@@ -114,17 +88,24 @@ export const operationTypeRouter = createTRPCRouter({
         });
       }
 
-      const [ports, fields, steps] = await Promise.all([
+      const [allInputs, itemConfigs, steps] = await Promise.all([
         ctx.db
           .select()
-          .from(operationTypeInputItem)
-          .where(eq(operationTypeInputItem.operationTypeId, input.id))
-          .orderBy(asc(operationTypeInputItem.referenceKey)),
+          .from(operationTypeInput)
+          .where(eq(operationTypeInput.operationTypeId, input.id))
+          .orderBy(asc(operationTypeInput.sortOrder)),
         ctx.db
           .select()
-          .from(operationTypeInputField)
-          .where(eq(operationTypeInputField.operationTypeId, input.id))
-          .orderBy(asc(operationTypeInputField.sortOrder)),
+          .from(operationTypeInputItemConfig)
+          .where(
+            inArray(
+              operationTypeInputItemConfig.inputId,
+              ctx.db
+                .select({ id: operationTypeInput.id })
+                .from(operationTypeInput)
+                .where(eq(operationTypeInput.operationTypeId, input.id)),
+            ),
+          ),
         ctx.db
           .select()
           .from(operationTypeStep)
@@ -132,18 +113,30 @@ export const operationTypeRouter = createTRPCRouter({
           .orderBy(asc(operationTypeStep.sortOrder)),
       ]);
 
-      return { ...op, ports, fields, steps };
+      const configByInputId = new Map(
+        itemConfigs.map((c) => [c.inputId, c]),
+      );
+
+      const inputs = allInputs.map((inp) => ({
+        ...inp,
+        itemConfig: configByInputId.get(inp.id) ?? null,
+      }));
+
+      return { ...op, inputs, steps };
     }),
 
-  listPorts: publicProcedure.query(async ({ ctx }) => {
-    return ctx.db
-      .select()
-      .from(operationTypeInputItem)
-      .orderBy(asc(operationTypeInputItem.referenceKey));
-  }),
+  listInputs: publicProcedure
+    .input(z.object({ operationTypeId: z.uuid() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db
+        .select()
+        .from(operationTypeInput)
+        .where(eq(operationTypeInput.operationTypeId, input.operationTypeId))
+        .orderBy(asc(operationTypeInput.sortOrder));
+    }),
 
   create: publicProcedure
-    .input(createOperationTypeInput)
+    .input(createOperationTypeSchema)
     .mutation(async ({ ctx, input }) => {
       const [createdOperationType] = await ctx.db
         .insert(operationType)
@@ -158,7 +151,7 @@ export const operationTypeRouter = createTRPCRouter({
     }),
 
   update: publicProcedure
-    .input(updateOperationTypeInput)
+    .input(updateOperationTypeSchema)
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
       const [updated] = await ctx.db
@@ -177,113 +170,223 @@ export const operationTypeRouter = createTRPCRouter({
       return updated;
     }),
 
-  addPort: publicProcedure
-    .input(addOperationTypePortInput)
+  addInput: publicProcedure
+    .input(
+      z.object({
+        operationTypeId: z.uuid(),
+      }).and(inputSchema),
+    )
     .mutation(async ({ ctx, input }) => {
-      const [createdPort] = await ctx.db
-        .insert(operationTypeInputItem)
-        .values({
-          operationTypeId: input.operationTypeId,
-          itemTypeId: input.itemTypeId,
-          referenceKey: input.referenceKey,
-          qtyMin: input.qtyMin,
-          qtyMax: input.qtyMax,
-          preconditionsStatuses: input.preconditionsStatuses,
-        })
-        .returning();
-
-      return createdPort;
-    }),
-
-  updatePort: publicProcedure
-    .input(updateOperationTypePortInput)
-    .mutation(async ({ ctx, input }) => {
-      const { id, ...data } = input;
-      const [updated] = await ctx.db
-        .update(operationTypeInputItem)
-        .set(data)
-        .where(eq(operationTypeInputItem.id, id))
-        .returning();
-
-      if (!updated) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Operation type port not found",
-        });
-      }
-
-      return updated;
-    }),
-
-  listFields: publicProcedure
-    .input(z.object({ operationTypeId: z.uuid() }))
-    .query(async ({ ctx, input }) => {
-      return ctx.db
-        .select()
-        .from(operationTypeInputField)
-        .where(
-          eq(operationTypeInputField.operationTypeId, input.operationTypeId),
-        )
-        .orderBy(asc(operationTypeInputField.sortOrder));
-    }),
-
-  addField: publicProcedure
-    .input(addOperationTypeFieldInput)
-    .mutation(async ({ ctx, input }) => {
-      const [createdField] = await ctx.db
-        .insert(operationTypeInputField)
+      const [created] = await ctx.db
+        .insert(operationTypeInput)
         .values({
           operationTypeId: input.operationTypeId,
           referenceKey: input.referenceKey,
-          label: input.label,
-          description: input.description,
+          label: input.label ?? null,
+          description: input.description ?? null,
           type: input.type,
-          required: input.required,
-          options: input.options,
-          defaultValue: input.defaultValue,
-          sortOrder: input.sortOrder ?? 0,
+          required: input.required ?? false,
+          sortOrder: input.sortOrder,
+          options: input.options ?? null,
+          defaultValue: input.defaultValue ?? null,
         })
         .returning();
 
-      return createdField;
+      if (input.type === "items" && input.itemTypeId && created) {
+        await ctx.db.insert(operationTypeInputItemConfig).values({
+          inputId: created.id,
+          itemTypeId: input.itemTypeId,
+          minCount: input.minCount ?? 0,
+          maxCount: input.maxCount ?? null,
+          preconditionsStatuses: input.preconditionsStatuses ?? null,
+        });
+      }
+
+      return created;
     }),
 
-  updateField: publicProcedure
-    .input(updateOperationTypeFieldInput)
+  updateInput: publicProcedure
+    .input(inputSchema.required({ id: true }))
     .mutation(async ({ ctx, input }) => {
-      const { id, ...data } = input;
+      const { id, itemTypeId, minCount, maxCount, preconditionsStatuses, ...data } = input;
       const [updated] = await ctx.db
-        .update(operationTypeInputField)
-        .set(data)
-        .where(eq(operationTypeInputField.id, id))
+        .update(operationTypeInput)
+        .set({
+          referenceKey: data.referenceKey,
+          label: data.label ?? null,
+          description: data.description ?? null,
+          type: data.type,
+          required: data.required ?? false,
+          sortOrder: data.sortOrder,
+          options: data.options ?? null,
+          defaultValue: data.defaultValue ?? null,
+        })
+        .where(eq(operationTypeInput.id, id))
         .returning();
 
       if (!updated) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: "Operation type field not found",
+          message: "Operation type input not found",
         });
+      }
+
+      if (data.type === "items" && itemTypeId) {
+        const existing = await ctx.db
+          .select()
+          .from(operationTypeInputItemConfig)
+          .where(eq(operationTypeInputItemConfig.inputId, id));
+
+        if (existing.length > 0) {
+          await ctx.db
+            .update(operationTypeInputItemConfig)
+            .set({
+              itemTypeId,
+              minCount: minCount ?? 0,
+              maxCount: maxCount ?? null,
+              preconditionsStatuses: preconditionsStatuses ?? null,
+            })
+            .where(eq(operationTypeInputItemConfig.inputId, id));
+        } else {
+          await ctx.db.insert(operationTypeInputItemConfig).values({
+            inputId: id,
+            itemTypeId,
+            minCount: minCount ?? 0,
+            maxCount: maxCount ?? null,
+            preconditionsStatuses: preconditionsStatuses ?? null,
+          });
+        }
       }
 
       return updated;
     }),
 
-  deleteField: publicProcedure
+  deleteInput: publicProcedure
     .input(z.object({ id: z.uuid() }))
     .mutation(async ({ ctx, input }) => {
-      const [deletedField] = await ctx.db
-        .delete(operationTypeInputField)
-        .where(eq(operationTypeInputField.id, input.id))
-        .returning({ id: operationTypeInputField.id });
+      const [deleted] = await ctx.db
+        .delete(operationTypeInput)
+        .where(eq(operationTypeInput.id, input.id))
+        .returning({ id: operationTypeInput.id });
 
-      if (!deletedField) {
+      if (!deleted) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: "Operation type field not found",
+          message: "Operation type input not found",
         });
       }
 
-      return deletedField;
+      return deleted;
+    }),
+
+  saveInputs: publicProcedure
+    .input(
+      z.object({
+        operationTypeId: z.uuid(),
+        inputs: z.array(inputSchema),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      return ctx.db.transaction(async (tx) => {
+        const existing = await tx
+          .select()
+          .from(operationTypeInput)
+          .where(
+            eq(operationTypeInput.operationTypeId, input.operationTypeId),
+          );
+
+        const incomingIds = new Set(
+          input.inputs.map((i) => i.id).filter(Boolean),
+        );
+        const toDelete = existing.filter((e) => !incomingIds.has(e.id));
+
+        if (toDelete.length > 0) {
+          await tx.delete(operationTypeInput).where(
+            inArray(
+              operationTypeInput.id,
+              toDelete.map((d) => d.id),
+            ),
+          );
+        }
+
+        for (const inp of input.inputs) {
+          if (inp.id && existing.some((e) => e.id === inp.id)) {
+            await tx
+              .update(operationTypeInput)
+              .set({
+                referenceKey: inp.referenceKey,
+                label: inp.label ?? null,
+                description: inp.description ?? null,
+                type: inp.type,
+                required: inp.required ?? false,
+                sortOrder: inp.sortOrder,
+                options: inp.options ?? null,
+                defaultValue: inp.defaultValue ?? null,
+              })
+              .where(eq(operationTypeInput.id, inp.id));
+
+            if (inp.type === "items" && inp.itemTypeId) {
+              const existingConfig = await tx
+                .select()
+                .from(operationTypeInputItemConfig)
+                .where(eq(operationTypeInputItemConfig.inputId, inp.id));
+
+              if (existingConfig.length > 0) {
+                await tx
+                  .update(operationTypeInputItemConfig)
+                  .set({
+                    itemTypeId: inp.itemTypeId,
+                    minCount: inp.minCount ?? 0,
+                    maxCount: inp.maxCount ?? null,
+                    preconditionsStatuses: inp.preconditionsStatuses ?? null,
+                  })
+                  .where(eq(operationTypeInputItemConfig.inputId, inp.id));
+              } else {
+                await tx.insert(operationTypeInputItemConfig).values({
+                  inputId: inp.id,
+                  itemTypeId: inp.itemTypeId,
+                  minCount: inp.minCount ?? 0,
+                  maxCount: inp.maxCount ?? null,
+                  preconditionsStatuses: inp.preconditionsStatuses ?? null,
+                });
+              }
+            }
+          } else {
+            const [created] = await tx
+              .insert(operationTypeInput)
+              .values({
+                operationTypeId: input.operationTypeId,
+                referenceKey: inp.referenceKey,
+                label: inp.label ?? null,
+                description: inp.description ?? null,
+                type: inp.type,
+                required: inp.required ?? false,
+                sortOrder: inp.sortOrder,
+                options: inp.options ?? null,
+                defaultValue: inp.defaultValue ?? null,
+              })
+              .returning();
+
+            if (inp.type === "items" && inp.itemTypeId && created) {
+              await tx.insert(operationTypeInputItemConfig).values({
+                inputId: created.id,
+                itemTypeId: inp.itemTypeId,
+                minCount: inp.minCount ?? 0,
+                maxCount: inp.maxCount ?? null,
+                preconditionsStatuses: inp.preconditionsStatuses ?? null,
+              });
+            }
+          }
+        }
+
+        return tx
+          .select()
+          .from(operationTypeInput)
+          .where(
+            eq(operationTypeInput.operationTypeId, input.operationTypeId),
+          )
+          .orderBy(asc(operationTypeInput.sortOrder));
+      });
     }),
 
   listSteps: publicProcedure
@@ -368,178 +471,6 @@ export const operationTypeRouter = createTRPCRouter({
       }
 
       return deletedOperationType;
-    }),
-
-  deletePort: publicProcedure
-    .input(z.object({ id: z.uuid() }))
-    .mutation(async ({ ctx, input }) => {
-      const [deletedOperationTypePort] = await ctx.db
-        .delete(operationTypeInputItem)
-        .where(eq(operationTypeInputItem.id, input.id))
-        .returning({ id: operationTypeInputItem.id });
-
-      if (!deletedOperationTypePort) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Operation type port not found",
-        });
-      }
-
-      return deletedOperationTypePort;
-    }),
-
-  savePorts: publicProcedure
-    .input(
-      z.object({
-        operationTypeId: z.uuid(),
-        ports: z.array(
-          z.object({
-            id: z.uuid().optional(),
-            itemTypeId: z.uuid(),
-            referenceKey: z.string().min(1),
-            qtyMin: z.string().nullable().optional(),
-            qtyMax: z.string().nullable().optional(),
-            preconditionsStatuses: z.array(z.string()).nullable().optional(),
-          }),
-        ),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      return ctx.db.transaction(async (tx) => {
-        const existing = await tx
-          .select()
-          .from(operationTypeInputItem)
-          .where(
-            eq(operationTypeInputItem.operationTypeId, input.operationTypeId),
-          );
-
-        const incomingIds = new Set(
-          input.ports.map((p) => p.id).filter(Boolean),
-        );
-        const toDelete = existing.filter((e) => !incomingIds.has(e.id));
-
-        if (toDelete.length > 0) {
-          await tx.delete(operationTypeInputItem).where(
-            inArray(
-              operationTypeInputItem.id,
-              toDelete.map((d) => d.id),
-            ),
-          );
-        }
-
-        for (const p of input.ports) {
-          if (p.id && existing.some((e) => e.id === p.id)) {
-            await tx
-              .update(operationTypeInputItem)
-              .set({
-                itemTypeId: p.itemTypeId,
-                referenceKey: p.referenceKey,
-                qtyMin: p.qtyMin ?? null,
-                qtyMax: p.qtyMax ?? null,
-                preconditionsStatuses: p.preconditionsStatuses ?? null,
-              })
-              .where(eq(operationTypeInputItem.id, p.id));
-          } else {
-            await tx.insert(operationTypeInputItem).values({
-              operationTypeId: input.operationTypeId,
-              itemTypeId: p.itemTypeId,
-              referenceKey: p.referenceKey,
-              qtyMin: p.qtyMin ?? null,
-              qtyMax: p.qtyMax ?? null,
-              preconditionsStatuses: p.preconditionsStatuses ?? null,
-            });
-          }
-        }
-
-        return tx
-          .select()
-          .from(operationTypeInputItem)
-          .where(
-            eq(operationTypeInputItem.operationTypeId, input.operationTypeId),
-          );
-      });
-    }),
-
-  saveFields: publicProcedure
-    .input(
-      z.object({
-        operationTypeId: z.uuid(),
-        fields: z.array(
-          z.object({
-            id: z.uuid().optional(),
-            referenceKey: z.string().min(1),
-            label: z.string().nullable().optional(),
-            description: z.string().nullable().optional(),
-            type: z.string().min(1),
-            required: z.boolean().optional(),
-            options: z.record(z.string(), z.unknown()).nullable().optional(),
-            defaultValue: z.unknown().nullable().optional(),
-            sortOrder: z.number().int().default(0),
-          }),
-        ),
-      }),
-    )
-    .mutation(async ({ ctx, input }) => {
-      return ctx.db.transaction(async (tx) => {
-        const existing = await tx
-          .select()
-          .from(operationTypeInputField)
-          .where(
-            eq(operationTypeInputField.operationTypeId, input.operationTypeId),
-          );
-
-        const incomingIds = new Set(
-          input.fields.map((f) => f.id).filter(Boolean),
-        );
-        const toDelete = existing.filter((e) => !incomingIds.has(e.id));
-
-        if (toDelete.length > 0) {
-          await tx.delete(operationTypeInputField).where(
-            inArray(
-              operationTypeInputField.id,
-              toDelete.map((d) => d.id),
-            ),
-          );
-        }
-
-        for (const f of input.fields) {
-          if (f.id && existing.some((e) => e.id === f.id)) {
-            await tx
-              .update(operationTypeInputField)
-              .set({
-                referenceKey: f.referenceKey,
-                label: f.label ?? null,
-                description: f.description ?? null,
-                type: f.type,
-                required: f.required ?? false,
-                options: f.options ?? null,
-                defaultValue: f.defaultValue ?? null,
-                sortOrder: f.sortOrder,
-              })
-              .where(eq(operationTypeInputField.id, f.id));
-          } else {
-            await tx.insert(operationTypeInputField).values({
-              operationTypeId: input.operationTypeId,
-              referenceKey: f.referenceKey,
-              label: f.label ?? null,
-              description: f.description ?? null,
-              type: f.type,
-              required: f.required ?? false,
-              options: f.options ?? null,
-              defaultValue: f.defaultValue ?? null,
-              sortOrder: f.sortOrder,
-            });
-          }
-        }
-
-        return tx
-          .select()
-          .from(operationTypeInputField)
-          .where(
-            eq(operationTypeInputField.operationTypeId, input.operationTypeId),
-          )
-          .orderBy(asc(operationTypeInputField.sortOrder));
-      });
     }),
 
   saveSteps: publicProcedure

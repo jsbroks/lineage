@@ -352,20 +352,22 @@ export default function ScanPage() {
       itemsByType.set(s.item.itemTypeId, arr);
     }
 
-    const itemsMap: Record<string, string[]> = {};
+    const inputs: Record<string, unknown> = { ...fieldValues };
     for (const port of chosenOp.ports) {
       const ids = itemsByType.get(port.itemTypeId) ?? [];
       if (ids.length > 0) {
-        itemsMap[port.referenceKey] = ids;
+        inputs[port.referenceKey] = ids;
       }
+    }
+
+    if (scannedLocations[0]?.id) {
+      inputs._locationId = scannedLocations[0].id;
     }
 
     try {
       const res = await executeMutation.mutateAsync({
         operationTypeId: chosenOp.operationType.id,
-        items: itemsMap,
-        fields: fieldValues,
-        locationId: scannedLocations[0]?.id,
+        inputs,
       });
       setResult(res);
     } catch (e: unknown) {
@@ -884,7 +886,8 @@ function FieldInputs({
     );
   }
 
-  const fields = opTypeData?.fields ?? [];
+  const allInputs = opTypeData?.inputs ?? [];
+  const fields = allInputs.filter((inp) => inp.type !== "items");
 
   if (fields.length === 0) {
     return (

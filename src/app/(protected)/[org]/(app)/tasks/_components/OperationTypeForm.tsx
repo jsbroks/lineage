@@ -21,22 +21,18 @@ export type OperationTypeBaseValues = {
   category: string;
 };
 
-export type InputItemRow = {
-  id?: string;
-  itemTypeId: string;
-  referenceKey: string;
-  qtyMin: string;
-  qtyMax: string;
-  preconditionsStatuses: string[];
-};
-
-export type InputFieldRow = {
+export type InputRow = {
   id?: string;
   referenceKey: string;
   label: string;
   description: string;
   type: string;
   required: boolean;
+  sortOrder: number;
+  itemTypeId?: string;
+  qtyMin?: string;
+  qtyMax?: string;
+  preconditionsStatuses?: string[];
 };
 
 export type StepRow = {
@@ -49,8 +45,7 @@ export type StepRow = {
 
 export type OperationTypeFormData = {
   base: OperationTypeBaseValues;
-  inputItems: InputItemRow[];
-  inputFields: InputFieldRow[];
+  inputs: InputRow[];
   steps: StepRow[];
 };
 
@@ -84,11 +79,8 @@ export function OperationTypeForm({
   const [base, setBase] = useState<OperationTypeBaseValues>(
     initialData?.base ?? EMPTY_BASE,
   );
-  const [inputItems, setInputItems] = useState<InputItemRow[]>(
-    initialData?.inputItems ?? [],
-  );
-  const [inputFields, setInputFields] = useState<InputFieldRow[]>(
-    initialData?.inputFields ?? [],
+  const [inputs, setInputs] = useState<InputRow[]>(
+    initialData?.inputs ?? [],
   );
   const [simpleSteps, setSimpleSteps] = useState<SimpleStepRow[]>(
     initialConversion.steps,
@@ -97,8 +89,7 @@ export function OperationTypeForm({
   useEffect(() => {
     if (!initialData) return;
     setBase(initialData.base);
-    setInputItems(initialData.inputItems);
-    setInputFields(initialData.inputFields);
+    setInputs(initialData.inputs);
 
     const conversion = stepRowsToSimpleSteps(initialData.steps);
     setSimpleSteps(conversion.steps);
@@ -107,69 +98,77 @@ export function OperationTypeForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const steps = simpleStepsToStepRows(simpleSteps);
-    await onSubmit({ base, inputItems, inputFields, steps });
+    await onSubmit({ base, inputs, steps });
   };
 
-  // ── Input items CRUD ───────────────────────────────────────────────
+  const inputItems = inputs.filter((i) => i.type === "items");
+  const inputFields = inputs.filter((i) => i.type !== "items");
 
   const addInputItem = () =>
-    setInputItems((prev) => [
+    setInputs((prev) => [
       ...prev,
       {
-        itemTypeId: "",
+        type: "items",
         referenceKey: "",
+        label: "",
+        description: "",
+        required: false,
+        sortOrder: prev.length,
+        itemTypeId: "",
         qtyMin: "1",
         qtyMax: "",
         preconditionsStatuses: [],
       },
     ]);
 
-  const removeInputItem = (idx: number) =>
-    setInputItems((prev) => prev.filter((_, i) => i !== idx));
+  const removeInput = (idx: number) =>
+    setInputs((prev) => prev.filter((_, i) => i !== idx));
 
-  const updateInputItem = (idx: number, patch: Partial<InputItemRow>) =>
-    setInputItems((prev) =>
+  const updateInput = (idx: number, patch: Partial<InputRow>) =>
+    setInputs((prev) =>
       prev.map((item, i) => (i === idx ? { ...item, ...patch } : item)),
     );
 
-  // ── Input fields CRUD ──────────────────────────────────────────────
-
   const addInputField = () =>
-    setInputFields((prev) => [
+    setInputs((prev) => [
       ...prev,
       {
+        type: "string",
         referenceKey: "",
         label: "",
         description: "",
-        type: "string",
         required: false,
+        sortOrder: prev.length,
       },
     ]);
 
-  const removeInputField = (idx: number) =>
-    setInputFields((prev) => prev.filter((_, i) => i !== idx));
-
-  const updateInputField = (idx: number, patch: Partial<InputFieldRow>) =>
-    setInputFields((prev) =>
-      prev.map((field, i) => (i === idx ? { ...field, ...patch } : field)),
-    );
+  const itemInputIndices = inputs
+    .map((inp, i) => (inp.type === "items" ? i : -1))
+    .filter((i) => i >= 0);
+  const fieldInputIndices = inputs
+    .map((inp, i) => (inp.type !== "items" ? i : -1))
+    .filter((i) => i >= 0);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <GeneralCard base={base} setBase={setBase} />
 
       <SimpleInputItemsCard
-        inputItems={inputItems}
+        inputItems={itemInputIndices.map((i) => inputs[i]!)}
         onAdd={addInputItem}
-        onRemove={removeInputItem}
-        onUpdate={updateInputItem}
+        onRemove={(localIdx) => removeInput(itemInputIndices[localIdx]!)}
+        onUpdate={(localIdx, patch) =>
+          updateInput(itemInputIndices[localIdx]!, patch)
+        }
       />
 
       <SimpleInputFieldsCard
-        inputFields={inputFields}
+        inputFields={fieldInputIndices.map((i) => inputs[i]!)}
         onAdd={addInputField}
-        onRemove={removeInputField}
-        onUpdate={updateInputField}
+        onRemove={(localIdx) => removeInput(fieldInputIndices[localIdx]!)}
+        onUpdate={(localIdx, patch) =>
+          updateInput(fieldInputIndices[localIdx]!, patch)
+        }
       />
 
       <SimpleStepsCard

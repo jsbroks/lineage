@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { incrementAttribute } from "./increment-attribute";
 import { ActionResult } from "./actions";
 import { OperationContext } from "../operation-context";
-import type { Item, OperationInputField } from "~/server/db/schema";
+import type { Item, OperationInputValue } from "~/server/db/schema";
 
 function makeItem(overrides: Partial<Item> = {}): Item {
   return {
@@ -58,7 +58,7 @@ function makeCtx({ items = {}, fields = [] }: CtxInput = {}): OperationContext {
     })),
   );
 
-  const operationFields: OperationInputField[] = fields.map((f, i) => ({
+  const operationValues: OperationInputValue[] = fields.map((f, i) => ({
     id: `field-${i}`,
     key: f.key,
     operationId: "op-1",
@@ -77,8 +77,9 @@ function makeCtx({ items = {}, fields = [] }: CtxInput = {}): OperationContext {
     attributes: {},
     createdAt: new Date("2025-01-01"),
     steps: [],
-    fields: operationFields,
-    items: operationItems,
+    inputItems: operationItems,
+    inputLocations: [],
+    inputValues: operationValues,
   });
 
   ctx.items = Object.fromEntries(allItems.map((i) => [i.id, i]));

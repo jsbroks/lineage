@@ -2,10 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import * as schema from "../db/schema";
 import type { Tx } from "./types";
 
-export type OperationInputs = {
-  items: Record<string, string[]>;
-  fields: Record<string, unknown>;
-};
+export type OperationInputs = Record<string, unknown>;
 
 export const createOperation = async (
   tx: Tx,
@@ -21,28 +18,46 @@ export const createOperation = async (
     return null;
   }
 
-  const items = Object.entries(inputs.items).flatMap(([key, itemIds]) =>
-    itemIds.map((itemId) => ({ key, itemId })),
-  );
-  if (items.length > 0) {
-    await tx.insert(schema.operationInputItem).values(
-      items.map(({ itemId, key }) => ({
-        operationId: operation.id,
-        key,
-        itemId: itemId,
-      })),
-    );
-  }
+  const inputDefs = await tx
+    .select()
+    .from(schema.operationTypeInput)
+    .where(eq(schema.operationTypeInput.operationTypeId, operationType.id));
 
-  const fields = Object.entries(inputs.fields);
-  if (fields.length > 0) {
-    await tx.insert(schema.operationInputField).values(
-      fields.map(([key, value]) => ({
-        operationId: operation.id,
-        key,
-        value,
-      })),
-    );
+  for (const def of inputDefs) {
+    const value = inputs[def.referenceKey];
+    if (value === undefined || value === null) continue;
+
+    switch (def.type) {
+      case "items": {
+        const itemIds = value as string[];
+        if (itemIds.length > 0) {
+          await tx.insert(schema.operationInputItem).values(
+            itemIds.map((itemId) => ({
+              operationId: operation.id,
+              key: def.referenceKey,
+              itemId,
+            })),
+          );
+        }
+        break;
+      }
+      case "location": {
+        await tx.insert(schema.operationInputLocation).values({
+          operationId: operation.id,
+          key: def.referenceKey,
+          locationId: value as string,
+        });
+        break;
+      }
+      default: {
+        await tx.insert(schema.operationInputValue).values({
+          operationId: operation.id,
+          key: def.referenceKey,
+          value,
+        });
+        break;
+      }
+    }
   }
 
   const typeSteps = await tx

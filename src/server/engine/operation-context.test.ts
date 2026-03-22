@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { OperationContext, type Operation } from "./operation-context";
 import type {
   Item,
-  OperationInputField,
+  OperationInputValue,
   OperationInputItem,
 } from "~/server/db/schema";
 
@@ -40,8 +40,9 @@ function makeOperation(overrides: Partial<Operation> = {}): Operation {
     attributes: {},
     createdAt: new Date("2025-01-01"),
     steps: [],
-    fields: [],
-    items: [],
+    inputItems: [],
+    inputLocations: [],
+    inputValues: [],
     ...overrides,
   };
 }
@@ -68,7 +69,7 @@ function makeCtx({
       })),
     );
 
-  const opFields: OperationInputField[] = fields.map((f, i) => ({
+  const opValues: OperationInputValue[] = fields.map((f, i) => ({
     id: `field-${i}`,
     key: f.key,
     operationId: "op-1",
@@ -76,7 +77,7 @@ function makeCtx({
   }));
 
   const ctx = new OperationContext(
-    makeOperation({ fields: opFields, items: opItems }),
+    makeOperation({ inputValues: opValues, inputItems: opItems, inputLocations: [] }),
   );
   ctx.items = Object.fromEntries(allItems.map((i) => [i.id, i]));
 

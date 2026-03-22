@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { setOperation } from "./set-operation";
 import { ActionResult } from "./actions";
 import { OperationContext } from "../operation-context";
-import type { OperationInputField } from "~/server/db/schema";
+import type { OperationInputValue } from "~/server/db/schema";
 
 type StepInput = {
   target?: string | null;
@@ -25,7 +25,7 @@ type CtxInput = {
 };
 
 function makeCtx({ fields = [] }: CtxInput = {}): OperationContext {
-  const operationFields: OperationInputField[] = fields.map((f, i) => ({
+  const operationValues: OperationInputValue[] = fields.map((f, i) => ({
     id: `field-${i}`,
     key: f.key,
     operationId: "op-1",
@@ -44,8 +44,9 @@ function makeCtx({ fields = [] }: CtxInput = {}): OperationContext {
     attributes: {},
     createdAt: new Date("2025-01-01"),
     steps: [],
-    fields: operationFields,
-    items: [],
+    inputItems: [],
+    inputLocations: [],
+    inputValues: operationValues,
   });
 }
 

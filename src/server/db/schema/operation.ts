@@ -46,8 +46,9 @@ export const operationRelation = relations(operation, ({ many, one }) => ({
     fields: [operation.operationTypeId],
     references: [operationType.id],
   }),
-  items: many(operationInputItem),
-  fields: many(operationInputField),
+  inputItems: many(operationInputItem),
+  inputLocations: many(operationInputLocation),
+  inputValues: many(operationInputValue),
   steps: many(operationStep),
 }));
 
@@ -80,29 +81,65 @@ export const operationInputItemRelation = relations(
   }),
 );
 
-export const operationInputField = pgTable(
-  "operation_input_field",
+export const operationInputLocation = pgTable(
+  "operation_input_location",
   {
     id: uuid().primaryKey().defaultRandom(),
-    key: text("key").notNull(),
     operationId: uuid("operation_id").references(() => operation.id, {
       onDelete: "cascade",
     }),
+    key: text("key").notNull(),
+    locationId: uuid("location_id").references(() => location.id, {
+      onDelete: "set null",
+    }),
+  },
+  (t) => [uniqueIndex().on(t.operationId, t.key)],
+);
+
+export type OperationInputLocation = typeof operationInputLocation.$inferSelect;
+export const operationInputLocationRelation = relations(
+  operationInputLocation,
+  ({ one }) => ({
+    operation: one(operation, {
+      fields: [operationInputLocation.operationId],
+      references: [operation.id],
+    }),
+    location: one(location, {
+      fields: [operationInputLocation.locationId],
+      references: [location.id],
+    }),
+  }),
+);
+
+export const operationInputValue = pgTable(
+  "operation_input_value",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    operationId: uuid("operation_id").references(() => operation.id, {
+      onDelete: "cascade",
+    }),
+    key: text("key").notNull(),
     value: jsonb(),
   },
   (t) => [uniqueIndex().on(t.operationId, t.key)],
 );
 
-export type OperationInputField = typeof operationInputField.$inferSelect;
-export const operationInputFieldRelation = relations(
-  operationInputField,
+export type OperationInputValue = typeof operationInputValue.$inferSelect;
+export const operationInputValueRelation = relations(
+  operationInputValue,
   ({ one }) => ({
     operation: one(operation, {
-      fields: [operationInputField.operationId],
+      fields: [operationInputValue.operationId],
       references: [operation.id],
     }),
   }),
 );
+
+// Backward-compatible aliases (will be removed once all layers are migrated)
+/** @deprecated Use operationInputValue */
+export const operationInputField = operationInputValue;
+/** @deprecated Use OperationInputValue */
+export type OperationInputField = OperationInputValue;
 
 export const operationStep = pgTable("operation_step", {
   id: uuid().primaryKey().defaultRandom(),

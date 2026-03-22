@@ -16,12 +16,13 @@
  * Operations with score <= 0 are excluded from results.
  */
 
-import { asc, inArray } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import {
   item,
   itemTypeStatusDefinition,
   operationType,
-  operationTypeInputItem,
+  operationTypeInput,
+  operationTypeInputItemConfig,
 } from "~/server/db/schema";
 import type { db as dbInstance } from "~/server/db";
 
@@ -85,18 +86,56 @@ export async function suggestOperations(
     .from(operationType)
     .orderBy(asc(operationType.name));
 
-  const allPorts = await db.select().from(operationTypeInputItem);
+  const allItemInputs = await db
+    .select()
+    .from(operationTypeInput)
+    .where(eq(operationTypeInput.type, "items"));
 
-  const portsByOpType = new Map<string, typeof allPorts>();
-  for (const port of allPorts) {
+  const allItemConfigs = allItemInputs.length > 0
+    ? await db
+        .select()
+        .from(operationTypeInputItemConfig)
+        .where(
+          inArray(
+            operationTypeInputItemConfig.inputId,
+            allItemInputs.map((i) => i.id),
+          ),
+        )
+    : [];
+
+  const configByInputId = new Map(
+    allItemConfigs.map((c) => [c.inputId, c]),
+  );
+
+  type ItemPort = (typeof allItemInputs)[number] & {
+    itemTypeId: string;
+    minCount: number;
+    maxCount: number | null;
+    preconditionsStatuses: string[] | null;
+  };
+
+  const ports: ItemPort[] = allItemInputs
+    .map((inp) => {
+      const cfg = configByInputId.get(inp.id);
+      if (!cfg) return null;
+      return {
+        ...inp,
+        itemTypeId: cfg.itemTypeId,
+        minCount: cfg.minCount,
+        maxCount: cfg.maxCount,
+        preconditionsStatuses: cfg.preconditionsStatuses,
+      };
+    })
+    .filter((p): p is ItemPort => p !== null);
+
+  const portsByOpType = new Map<string, ItemPort[]>();
+  for (const port of ports) {
     const arr = portsByOpType.get(port.operationTypeId) ?? [];
     arr.push(port);
     portsByOpType.set(port.operationTypeId, arr);
   }
 
-  // Pre-load status definitions for all item types that appear in ports
-  // so we can resolve precondition status names to UUIDs.
-  const portItemTypeIds = [...new Set(allPorts.map((p) => p.itemTypeId))];
+  const portItemTypeIds = [...new Set(ports.map((p) => p.itemTypeId))];
   const statusDefsForTypes =
     portItemTypeIds.length > 0
       ? await db
@@ -109,7 +148,6 @@ export async function suggestOperations(
           .where(inArray(itemTypeStatusDefinition.itemTypeId, portItemTypeIds))
       : [];
 
-  // Map: itemTypeId → (statusName → statusId)
   const statusNameToId = new Map<string, Map<string, string>>();
   for (const sd of statusDefsForTypes) {
     let inner = statusNameToId.get(sd.itemTypeId);
@@ -132,11 +170,10 @@ export async function suggestOperations(
 
     for (const port of inputPorts) {
       const candidates = itemsByType.get(port.itemTypeId) ?? [];
-      const qtyMin = Number(port.qtyMin ?? 0);
-      const qtyMax = port.qtyMax ? Number(port.qtyMax) : null;
+      const qtyMin = port.minCount;
+      const qtyMax = port.maxCount;
       const isRequired = qtyMin > 0;
 
-      // Resolve precondition status names to UUIDs
       let statusOk: Set<string> | null = null;
       if (port.preconditionsStatuses && port.preconditionsStatuses.length > 0) {
         const lookup = statusNameToId.get(port.itemTypeId);

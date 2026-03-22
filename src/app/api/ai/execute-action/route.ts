@@ -10,7 +10,6 @@ import {
   operationType,
 } from "~/server/db/schema";
 import { createAndExecute } from "~/server/engine/operation-execute";
-import type { OperationInputs } from "~/server/engine/operation-create";
 
 export async function POST(req: Request) {
   const body = (await req.json()) as {
@@ -134,13 +133,11 @@ export async function POST(req: Request) {
 
       case "executeOperation": {
         const operationTypeId = payload.operationTypeId as string;
-        const itemsMap = payload.items as Record<string, string[]>;
-        const fields = (payload.fields as Record<string, unknown>) ?? {};
-        const notes = (payload.notes as string) ?? null;
+        const inputs = (payload.inputs as Record<string, unknown>) ?? {};
 
-        if (!operationTypeId || !itemsMap) {
+        if (!operationTypeId) {
           return NextResponse.json(
-            { error: "Missing operationTypeId or items" },
+            { error: "Missing operationTypeId" },
             { status: 400 },
           );
         }
@@ -154,7 +151,6 @@ export async function POST(req: Request) {
             throw new Error("Operation type not found");
           }
 
-          const inputs: OperationInputs = { items: itemsMap, fields };
           const execResult = await createAndExecute(tx, opType, inputs);
 
           if (!execResult) {

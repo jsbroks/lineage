@@ -106,10 +106,10 @@ export default function OperationsPage() {
   const handleExecute = async () => {
     if (!chosenOp) return;
 
-    const itemsMap: Record<string, string[]> = {};
+    const inputs: Record<string, unknown> = { ...fieldValues };
     for (const port of chosenOp.ports) {
       if (port.matchedItemIds.length > 0) {
-        itemsMap[port.referenceKey] = port.matchedItemIds;
+        inputs[port.referenceKey] = port.matchedItemIds;
       }
     }
 
@@ -117,8 +117,7 @@ export default function OperationsPage() {
     try {
       const res = await executeMutation.mutateAsync({
         operationTypeId: chosenOp.operationType.id,
-        items: itemsMap,
-        fields: fieldValues,
+        inputs,
       });
       setResult(res);
     } catch (e: unknown) {
@@ -380,7 +379,8 @@ function FieldInputs({
     );
   }
 
-  const fields = opTypeData?.fields ?? [];
+  const allInputs = opTypeData?.inputs ?? [];
+  const fields = allInputs.filter((inp) => inp.type !== "items");
 
   if (fields.length === 0) {
     return (

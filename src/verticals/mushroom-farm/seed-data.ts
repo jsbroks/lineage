@@ -2,6 +2,7 @@ import type {
   SeedData,
   SeedItemType,
   SeedOperationType,
+  SeedOperationTypeInput,
   SeedLocation,
 } from "../types";
 
@@ -361,19 +362,18 @@ function buildOperations(flags: WorkflowFlags): SeedOperationType[] {
       icon: "plus-circle",
       color: "#F59E0B",
       category: "substrate",
-      inputFields: [
+      inputs: [
         {
-          label: "Substrate Type",
+          type: "string",
           referenceKey: "substrate_type",
-          type: "text",
+          label: "Substrate Type",
           required: true,
           sortOrder: 0,
         },
         {
-          label: "Weight (lb)",
-          referenceKey: "weight_lbs",
           type: "number",
-          required: false,
+          referenceKey: "weight_lbs",
+          label: "Weight (lb)",
           sortOrder: 1,
         },
       ],
@@ -384,64 +384,71 @@ function buildOperations(flags: WorkflowFlags): SeedOperationType[] {
       icon: "flame",
       color: "#EF4444",
       category: "substrate",
-      inputItems: [
+      inputs: [
         {
-          itemTypeName: "Substrate Batch",
+          type: "items",
           referenceKey: "batch",
-          preconditionsStatuses: ["Mixing"],
-        },
-      ],
-      inputFields: [
-        {
-          label: "Temperature (°F)",
-          referenceKey: "temperature_f",
-          type: "number",
-          required: true,
           sortOrder: 0,
+          config: {
+            itemTypeName: "Substrate Batch",
+            preconditionsStatuses: ["Mixing"],
+          },
         },
         {
-          label: "Duration (hrs)",
-          referenceKey: "duration_hrs",
           type: "number",
+          referenceKey: "temperature_f",
+          label: "Temperature (°F)",
           required: true,
           sortOrder: 1,
+        },
+        {
+          type: "number",
+          referenceKey: "duration_hrs",
+          label: "Duration (hrs)",
+          required: true,
+          sortOrder: 2,
         },
       ],
     });
   }
 
   if (flags.blockTracking) {
+    const inoculateInputs: SeedOperationTypeInput[] = [
+      {
+        type: "items",
+        referenceKey: "spawn",
+        sortOrder: 0,
+        config: {
+          itemTypeName: "Spawn",
+          preconditionsStatuses: ["In Stock", "In Use"],
+        },
+      },
+    ];
+    if (flags.batchTracking) {
+      inoculateInputs.push({
+        type: "items",
+        referenceKey: "batch",
+        sortOrder: 1,
+        config: {
+          itemTypeName: "Substrate Batch",
+          preconditionsStatuses: ["Ready"],
+        },
+      });
+    }
+    inoculateInputs.push({
+      type: "number",
+      referenceKey: "block_count",
+      label: "Block Count",
+      required: true,
+      sortOrder: inoculateInputs.length,
+    });
     ops.push({
       name: "Inoculate",
       description: "Inoculate substrate with spawn to create grow blocks",
       icon: "syringe",
       color: "#8B5CF6",
       category: "cultivation",
-      inputItems: [
-        {
-          itemTypeName: "Spawn",
-          referenceKey: "spawn",
-          preconditionsStatuses: ["In Stock", "In Use"],
-        },
-        ...(flags.batchTracking
-          ? [
-              {
-                itemTypeName: "Substrate Batch" as string,
-                referenceKey: "batch" as string,
-                preconditionsStatuses: ["Ready"] as string[],
-              },
-            ]
-          : []),
-      ],
-      inputFields: [
-        {
-          label: "Block Count",
-          referenceKey: "block_count",
-          type: "number",
-          required: true,
-          sortOrder: 0,
-        },
-      ],
+      inputs: inoculateInputs,
     });
     ops.push({
       name: "Transfer to Fruiting",
@@ -449,11 +456,15 @@ function buildOperations(flags: WorkflowFlags): SeedOperationType[] {
       icon: "arrow-right",
       color: "#10B981",
       category: "cultivation",
-      inputItems: [
+      inputs: [
         {
-          itemTypeName: "Grow Block",
+          type: "items",
           referenceKey: "block",
-          preconditionsStatuses: ["Colonizing"],
+          sortOrder: 0,
+          config: {
+            itemTypeName: "Grow Block",
+            preconditionsStatuses: ["Colonizing"],
+          },
         },
       ],
     });
@@ -464,21 +475,24 @@ function buildOperations(flags: WorkflowFlags): SeedOperationType[] {
       icon: "eye",
       color: "#6366F1",
       category: "cultivation",
-      inputItems: [{ itemTypeName: "Grow Block", referenceKey: "block" }],
-      inputFields: [
+      inputs: [
         {
-          label: "Colonization %",
-          referenceKey: "colonization_pct",
-          type: "number",
-          required: false,
+          type: "items",
+          referenceKey: "block",
           sortOrder: 0,
+          config: { itemTypeName: "Grow Block" },
         },
         {
-          label: "Notes",
-          referenceKey: "notes",
-          type: "text",
-          required: false,
+          type: "number",
+          referenceKey: "colonization_pct",
+          label: "Colonization %",
           sortOrder: 1,
+        },
+        {
+          type: "string",
+          referenceKey: "notes",
+          label: "Notes",
+          sortOrder: 2,
         },
       ],
     });
@@ -488,27 +502,28 @@ function buildOperations(flags: WorkflowFlags): SeedOperationType[] {
       icon: "scissors",
       color: "#22C55E",
       category: "harvest",
-      inputItems: [
+      inputs: [
         {
-          itemTypeName: "Grow Block",
+          type: "items",
           referenceKey: "block",
-          preconditionsStatuses: ["Fruiting"],
-        },
-      ],
-      inputFields: [
-        {
-          label: "Weight (lb)",
-          referenceKey: "harvest_weight_lbs",
-          type: "number",
-          required: true,
           sortOrder: 0,
+          config: {
+            itemTypeName: "Grow Block",
+            preconditionsStatuses: ["Fruiting"],
+          },
         },
         {
-          label: "Flush #",
-          referenceKey: "flush_number",
           type: "number",
-          required: false,
+          referenceKey: "harvest_weight_lbs",
+          label: "Weight (lb)",
+          required: true,
           sortOrder: 1,
+        },
+        {
+          type: "number",
+          referenceKey: "flush_number",
+          label: "Flush #",
+          sortOrder: 2,
         },
       ],
     });
@@ -518,11 +533,15 @@ function buildOperations(flags: WorkflowFlags): SeedOperationType[] {
       icon: "x-circle",
       color: "#9CA3AF",
       category: "cultivation",
-      inputItems: [
+      inputs: [
         {
-          itemTypeName: "Grow Block",
+          type: "items",
           referenceKey: "block",
-          preconditionsStatuses: ["Fruiting", "Resting"],
+          sortOrder: 0,
+          config: {
+            itemTypeName: "Grow Block",
+            preconditionsStatuses: ["Fruiting", "Resting"],
+          },
         },
       ],
     });
@@ -532,11 +551,15 @@ function buildOperations(flags: WorkflowFlags): SeedOperationType[] {
       icon: "trash-2",
       color: "#EF4444",
       category: "cultivation",
-      inputItems: [
+      inputs: [
         {
-          itemTypeName: "Grow Block",
+          type: "items",
           referenceKey: "block",
-          preconditionsStatuses: ["Spent", "Contaminated"],
+          sortOrder: 0,
+          config: {
+            itemTypeName: "Grow Block",
+            preconditionsStatuses: ["Spent", "Contaminated"],
+          },
         },
       ],
     });
@@ -557,20 +580,22 @@ function buildOperations(flags: WorkflowFlags): SeedOperationType[] {
       icon: "package-check",
       color: "#06B6D4",
       category: "harvest",
-      inputItems: [
+      inputs: [
         {
-          itemTypeName: "Harvest Tray",
+          type: "items",
           referenceKey: "tray",
-          preconditionsStatuses: ["Open"],
-        },
-      ],
-      inputFields: [
-        {
-          label: "Total Weight (lb)",
-          referenceKey: "total_weight_lbs",
-          type: "number",
-          required: true,
           sortOrder: 0,
+          config: {
+            itemTypeName: "Harvest Tray",
+            preconditionsStatuses: ["Open"],
+          },
+        },
+        {
+          type: "number",
+          referenceKey: "total_weight_lbs",
+          label: "Total Weight (lb)",
+          required: true,
+          sortOrder: 1,
         },
       ],
     });
@@ -583,26 +608,24 @@ function buildOperations(flags: WorkflowFlags): SeedOperationType[] {
       icon: "thermometer",
       color: "#0EA5E9",
       category: "environment",
-      inputFields: [
+      inputs: [
         {
-          label: "Temperature (°F)",
-          referenceKey: "temperature_f",
           type: "number",
+          referenceKey: "temperature_f",
+          label: "Temperature (°F)",
           required: true,
           sortOrder: 0,
         },
         {
-          label: "Humidity (%)",
-          referenceKey: "humidity_pct",
           type: "number",
-          required: false,
+          referenceKey: "humidity_pct",
+          label: "Humidity (%)",
           sortOrder: 1,
         },
         {
-          label: "CO₂ (ppm)",
-          referenceKey: "co2_ppm",
           type: "number",
-          required: false,
+          referenceKey: "co2_ppm",
+          label: "CO₂ (ppm)",
           sortOrder: 2,
         },
       ],

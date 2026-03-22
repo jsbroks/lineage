@@ -14,52 +14,45 @@ function buildBasePayload(base: OperationTypeFormData["base"]) {
 export function useOperationTypeMutations() {
   const utils = api.useUtils();
 
-  const savePortsMutation = api.operationType.savePorts.useMutation();
-  const saveFieldsMutation = api.operationType.saveFields.useMutation();
+  const saveInputsMutation = api.operationType.saveInputs.useMutation();
   const saveStepsMutation = api.operationType.saveSteps.useMutation();
 
   const isSavingRelated =
-    savePortsMutation.isPending ||
-    saveFieldsMutation.isPending ||
-    saveStepsMutation.isPending;
+    saveInputsMutation.isPending || saveStepsMutation.isPending;
 
   async function saveRelatedData(
     operationTypeId: string,
     formData: OperationTypeFormData,
     { skipEmpty = false }: { skipEmpty?: boolean } = {},
   ) {
-    const { inputItems, inputFields, steps } = formData;
+    const { inputs, steps } = formData;
 
-    const filteredPorts = inputItems.filter(
-      (p) => p.referenceKey.trim() && p.itemTypeId,
-    );
-    if (!skipEmpty || filteredPorts.length > 0) {
-      await savePortsMutation.mutateAsync({
+    const filteredInputs = inputs.filter((inp) => inp.referenceKey.trim());
+    if (!skipEmpty || filteredInputs.length > 0) {
+      await saveInputsMutation.mutateAsync({
         operationTypeId,
-        ports: filteredPorts.map((p) => ({
-          id: p.id,
-          itemTypeId: p.itemTypeId,
-          referenceKey: p.referenceKey.trim(),
-          qtyMin: p.qtyMin.trim() || null,
-          qtyMax: p.qtyMax.trim() || null,
-          preconditionsStatuses:
-            p.preconditionsStatuses.length > 0 ? p.preconditionsStatuses : null,
-        })),
-      });
-    }
-
-    const filteredFields = inputFields.filter((f) => f.referenceKey.trim());
-    if (!skipEmpty || filteredFields.length > 0) {
-      await saveFieldsMutation.mutateAsync({
-        operationTypeId,
-        fields: filteredFields.map((f, i) => ({
-          id: f.id,
-          referenceKey: f.referenceKey.trim(),
-          label: f.label.trim() || null,
-          description: f.description.trim() || null,
-          type: f.type,
-          required: f.required,
+        inputs: filteredInputs.map((inp, i) => ({
+          id: inp.id,
+          referenceKey: inp.referenceKey.trim(),
+          label: inp.label.trim() || null,
+          description: inp.description.trim() || null,
+          type: inp.type,
+          required: inp.required,
           sortOrder: i,
+          ...(inp.type === "items"
+            ? {
+                itemTypeId: inp.itemTypeId,
+                minCount: inp.qtyMin ? parseInt(inp.qtyMin, 10) || 0 : 0,
+                maxCount: inp.qtyMax
+                  ? parseInt(inp.qtyMax, 10) || null
+                  : null,
+                preconditionsStatuses:
+                  inp.preconditionsStatuses &&
+                  inp.preconditionsStatuses.length > 0
+                    ? inp.preconditionsStatuses
+                    : null,
+              }
+            : {}),
         })),
       });
     }

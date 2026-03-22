@@ -58,25 +58,50 @@ export interface SeedItemType {
   attributes?: SeedAttributeDefinition[];
 }
 
-export interface SeedOperationTypeInputItem {
+// ---------------------------------------------------------------------------
+// Unified operation-type inputs (discriminated union on `type`)
+// ---------------------------------------------------------------------------
+
+export interface SeedItemsInputConfig {
   /** References SeedItemType.name — resolved to an ID at insert time */
   itemTypeName: string;
-  referenceKey: string;
   qtyMin?: string;
   qtyMax?: string;
   preconditionsStatuses?: string[];
 }
 
-export interface SeedOperationTypeInputField {
-  label: string;
-  referenceKey: string;
-  description?: string;
-  type: string;
-  required: boolean;
+export interface SeedValueInputConfig {
   options?: Record<string, unknown>;
   defaultValue?: unknown;
+}
+
+/** Maps each input type discriminant to its config shape (intersected into the base). */
+export interface SeedInputConfigMap {
+  items: { config: SeedItemsInputConfig };
+  location: {};
+  string: { config?: SeedValueInputConfig };
+  number: { config?: SeedValueInputConfig };
+  date: { config?: SeedValueInputConfig };
+}
+
+export type SeedInputType = keyof SeedInputConfigMap;
+
+interface SeedOperationTypeInputBase {
+  referenceKey: string;
+  label?: string;
+  description?: string;
+  required?: boolean;
   sortOrder: number;
 }
+
+/** Strongly-typed input for a known type `T`. */
+export type SeedOperationTypeInputOf<T extends SeedInputType> =
+  SeedOperationTypeInputBase & { type: T } & SeedInputConfigMap[T];
+
+/** Discriminated union of all input types — narrows on `type`. */
+export type SeedOperationTypeInput = {
+  [K in SeedInputType]: SeedOperationTypeInputOf<K>;
+}[SeedInputType];
 
 export interface SeedOperationTypeStep {
   name: string;
@@ -92,8 +117,7 @@ export interface SeedOperationType {
   icon?: string;
   color?: string;
   category?: string;
-  inputItems?: SeedOperationTypeInputItem[];
-  inputFields?: SeedOperationTypeInputField[];
+  inputs?: SeedOperationTypeInput[];
   steps?: SeedOperationTypeStep[];
 }
 

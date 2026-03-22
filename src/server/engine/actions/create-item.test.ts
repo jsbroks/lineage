@@ -9,7 +9,7 @@ import type {
   Item,
   ItemType,
   ItemTypeStatusDefinition,
-  OperationInputField,
+  OperationInputValue,
 } from "~/server/db/schema";
 
 function makeStatusDef(
@@ -87,7 +87,7 @@ function makeCtx({
     })),
   );
 
-  const operationFields: OperationInputField[] = fields.map((f, i) => ({
+  const operationValues: OperationInputValue[] = fields.map((f, i) => ({
     id: `field-${i}`,
     key: f.key,
     operationId: "op-1",
@@ -106,8 +106,9 @@ function makeCtx({
     attributes: {},
     createdAt: new Date("2025-01-01"),
     steps: [],
-    fields: operationFields,
-    items: operationItems,
+    inputItems: operationItems,
+    inputLocations: [],
+    inputValues: operationValues,
   });
 
   ctx.items = Object.fromEntries(allItems.map((i) => [i.id, i]));

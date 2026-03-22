@@ -13,8 +13,7 @@ import { TRPCError } from "@trpc/server";
 
 const executeInput = z.object({
   operationTypeId: z.uuid(),
-  items: z.record(z.string(), z.array(z.uuid())),
-  fields: z.record(z.string(), z.unknown()),
+  inputs: z.record(z.string(), z.unknown()),
   performedBy: z.uuid().nullable().optional(),
   locationId: z.uuid().nullable().optional(),
   notes: z.string().nullable().optional(),
@@ -33,10 +32,7 @@ export const operationRouter = createTRPCRouter({
     .input(executeInput)
     .mutation(async ({ ctx, input }) => {
       return ctx.db.transaction(async (tx) => {
-        const inputs: OperationInputs = {
-          items: input.items,
-          fields: input.fields,
-        };
+        const inputs: OperationInputs = input.inputs;
         const operationType = await tx.query.operationType.findFirst({
           where: eq(schema.operationType.id, input.operationTypeId),
         });

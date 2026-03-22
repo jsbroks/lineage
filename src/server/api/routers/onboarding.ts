@@ -14,8 +14,8 @@ import {
   itemTypeVariantOptionValue,
   itemTypeAttributeDefinition,
   operationType,
-  operationTypeInputItem,
-  operationTypeInputField,
+  operationTypeInput,
+  operationTypeInputItemConfig,
   operationTypeStep,
   location,
 } from "~/server/db/schema";
@@ -194,35 +194,36 @@ async function insertOperationType(
     .returning();
   const opTypeId = created!.id;
 
-  if (seed.inputItems && seed.inputItems.length > 0) {
-    for (const inp of seed.inputItems) {
-      const resolvedItemTypeId = itemTypeNameToId.get(inp.itemTypeName);
-      if (!resolvedItemTypeId) continue;
-      await tx.insert(operationTypeInputItem).values({
-        operationTypeId: opTypeId,
-        itemTypeId: resolvedItemTypeId,
-        referenceKey: inp.referenceKey,
-        qtyMin: inp.qtyMin ?? "0",
-        qtyMax: inp.qtyMax ?? null,
-        preconditionsStatuses: inp.preconditionsStatuses ?? null,
-      });
-    }
-  }
+  if (seed.inputs && seed.inputs.length > 0) {
+    for (const inp of seed.inputs) {
+      const [created] = await tx
+        .insert(operationTypeInput)
+        .values({
+          operationTypeId: opTypeId,
+          referenceKey: inp.referenceKey,
+          label: inp.label ?? null,
+          description: inp.description ?? null,
+          type: inp.type,
+          required: inp.required ?? false,
+          sortOrder: inp.sortOrder,
+          options: (inp.type !== "items" && inp.type !== "location" && inp.config?.options) || null,
+          defaultValue: (inp.type !== "items" && inp.type !== "location" && inp.config?.defaultValue) ?? null,
+        })
+        .returning();
 
-  if (seed.inputFields && seed.inputFields.length > 0) {
-    await tx.insert(operationTypeInputField).values(
-      seed.inputFields.map((f) => ({
-        operationTypeId: opTypeId,
-        referenceKey: f.referenceKey,
-        label: f.label,
-        description: f.description ?? null,
-        type: f.type,
-        required: f.required,
-        options: f.options ?? null,
-        defaultValue: f.defaultValue ?? null,
-        sortOrder: f.sortOrder,
-      })),
-    );
+      if (inp.type === "items" && created) {
+        const resolvedItemTypeId = itemTypeNameToId.get(inp.config.itemTypeName);
+        if (resolvedItemTypeId) {
+          await tx.insert(operationTypeInputItemConfig).values({
+            inputId: created.id,
+            itemTypeId: resolvedItemTypeId,
+            minCount: inp.config.qtyMin ? Number(inp.config.qtyMin) : 0,
+            maxCount: inp.config.qtyMax ? Number(inp.config.qtyMax) : null,
+            preconditionsStatuses: inp.config.preconditionsStatuses ?? null,
+          });
+        }
+      }
+    }
   }
 
   if (seed.steps && seed.steps.length > 0) {

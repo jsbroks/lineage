@@ -21,13 +21,13 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { api } from "~/trpc/react";
-import type { InputItemRow } from "./OperationTypeForm";
+import type { InputRow } from "./OperationTypeForm";
 
 type SimpleInputItemsCardProps = {
-  inputItems: InputItemRow[];
+  inputItems: InputRow[];
   onAdd: () => void;
   onRemove: (idx: number) => void;
-  onUpdate: (idx: number, patch: Partial<InputItemRow>) => void;
+  onUpdate: (idx: number, patch: Partial<InputRow>) => void;
 };
 
 export function SimpleInputItemsCard({
@@ -50,10 +50,10 @@ export function SimpleInputItemsCard({
 
   const toggleStatus = (
     idx: number,
-    item: InputItemRow,
+    item: InputRow,
     statusName: string,
   ) => {
-    const current = item.preconditionsStatuses;
+    const current = item.preconditionsStatuses ?? [];
     const next = current.includes(statusName)
       ? current.filter((s) => s !== statusName)
       : [...current, statusName];
@@ -95,7 +95,7 @@ export function SimpleInputItemsCard({
                     <div className="min-w-[180px] flex-1 space-y-1">
                       <Label className="text-xs">Item Type</Label>
                       <Select
-                        value={item.itemTypeId || undefined}
+                        value={item.itemTypeId ?? undefined}
                         onValueChange={(val) => handleItemTypeChange(idx, val)}
                       >
                         <SelectTrigger>
@@ -127,7 +127,7 @@ export function SimpleInputItemsCard({
                     <Label className="text-xs">Must be in status</Label>
                     <div className="flex flex-wrap gap-1.5">
                       {availableStatuses.map((s) => {
-                        const selected = item.preconditionsStatuses.includes(
+                        const selected = (item.preconditionsStatuses ?? []).includes(
                           s.name,
                         );
                         return (
@@ -148,7 +148,7 @@ export function SimpleInputItemsCard({
                         );
                       })}
                     </div>
-                    {item.preconditionsStatuses.length === 0 && (
+                    {(item.preconditionsStatuses ?? []).length === 0 && (
                       <p className="text-muted-foreground text-xs">
                         Any status accepted
                       </p>
@@ -160,7 +160,7 @@ export function SimpleInputItemsCard({
                   <div className="w-20 space-y-1">
                     <Label className="text-xs">Min Qty</Label>
                     <Input
-                      value={item.qtyMin}
+                      value={item.qtyMin ?? "1"}
                       onChange={(e) =>
                         onUpdate(idx, { qtyMin: e.target.value })
                       }
@@ -171,7 +171,7 @@ export function SimpleInputItemsCard({
                   <div className="w-20 space-y-1">
                     <Label className="text-xs">Max Qty</Label>
                     <Input
-                      value={item.qtyMax}
+                      value={item.qtyMax ?? ""}
                       onChange={(e) =>
                         onUpdate(idx, { qtyMax: e.target.value })
                       }

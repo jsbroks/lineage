@@ -236,9 +236,10 @@ function ItemTypeRow({ itemType: it }: { itemType: SeedItemType }) {
 }
 
 function OperationRow({ operation: op }: { operation: SeedOperationType }) {
-  const hasInputs =
-    (op.inputItems && op.inputItems.length > 0) ||
-    (op.inputFields && op.inputFields.length > 0);
+  const inputs = op.inputs ?? [];
+  const itemInputs = inputs.filter((i) => i.type === "items");
+  const fieldInputs = inputs.filter((i) => i.type !== "items");
+  const hasInputs = inputs.length > 0;
 
   return (
     <div className="flex items-start gap-3 p-3">
@@ -253,24 +254,26 @@ function OperationRow({ operation: op }: { operation: SeedOperationType }) {
         )}
         {hasInputs && (
           <div className="mt-1 flex flex-wrap gap-1">
-            {op.inputItems?.map((inp) => (
+            {itemInputs.map((inp) => (
               <Badge
                 key={inp.referenceKey}
                 variant="outline"
                 className="text-[10px] font-normal"
               >
                 <Box className="mr-0.5 size-2.5" />
-                {inp.itemTypeName}
+                {inp.type === "items" && "config" in inp
+                  ? (inp.config as { itemTypeName?: string }).itemTypeName
+                  : inp.referenceKey}
               </Badge>
             ))}
-            {op.inputFields?.map((f) => (
+            {fieldInputs.map((inp) => (
               <Badge
-                key={f.referenceKey}
+                key={inp.referenceKey}
                 variant="outline"
                 className="text-[10px] font-normal"
               >
                 <FileText className="mr-0.5 size-2.5" />
-                {f.label}
+                {inp.label ?? inp.referenceKey}
               </Badge>
             ))}
           </div>

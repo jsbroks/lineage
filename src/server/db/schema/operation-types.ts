@@ -3,8 +3,6 @@ import {
   index,
   integer,
   jsonb,
-  numeric,
-  pgEnum,
   pgTable,
   text,
   timestamp,
@@ -30,49 +28,59 @@ export const operationType = pgTable("operation_type", {
 
 export type OperationType = typeof operationType.$inferSelect;
 
-export const operationTypeInputItem = pgTable(
-  "operation_type_input_item",
+// ---------------------------------------------------------------------------
+// Unified input definition (class table inheritance)
+// ---------------------------------------------------------------------------
+
+export const operationTypeInput = pgTable(
+  "operation_type_input",
   {
     id: uuid().primaryKey().defaultRandom(),
     operationTypeId: uuid("operation_type_id")
       .notNull()
       .references(() => operationType.id, { onDelete: "cascade" }),
+    referenceKey: text("reference_key").notNull(),
+    label: text("label"),
+    description: text("description"),
+    type: text("type").notNull(), // 'items' | 'location' | 'string' | 'number' | 'date' | ...
+    required: boolean("required").notNull().default(false),
+    sortOrder: integer("sort_order").notNull(),
+    options: jsonb().$type<Record<string, unknown>>(),
+    defaultValue: jsonb("default_value"),
+  },
+  (t) => [uniqueIndex().on(t.operationTypeId, t.referenceKey)],
+);
+export type OperationTypeInput = typeof operationTypeInput.$inferSelect;
 
+export const operationTypeInputItemConfig = pgTable(
+  "operation_type_input_item_config",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    inputId: uuid("input_id")
+      .notNull()
+      .unique()
+      .references(() => operationTypeInput.id, { onDelete: "cascade" }),
     itemTypeId: uuid("item_type_id")
       .notNull()
       .references(() => itemType.id),
-
-    referenceKey: text("reference_key").notNull(),
-
-    qtyMin: numeric("qty_min").default("0"),
-    qtyMax: numeric("qty_max"),
+    minCount: integer("min_count").notNull().default(0),
+    maxCount: integer("max_count"),
 
     preconditionsStatuses: jsonb("preconditions_statuses").$type<string[]>(),
   },
-  (t) => [uniqueIndex().on(t.operationTypeId, t.referenceKey)],
 );
-export type OperationTypeInputItem = typeof operationTypeInputItem.$inferSelect;
+export type OperationTypeInputItemConfig =
+  typeof operationTypeInputItemConfig.$inferSelect;
 
-export const operationTypeInputField = pgTable(
-  "operation_type_input_field",
-  {
-    id: uuid().primaryKey().defaultRandom(),
-    label: text("label"),
-    operationTypeId: uuid("operation_type_id")
-      .notNull()
-      .references(() => operationType.id, { onDelete: "cascade" }),
-    referenceKey: text("reference_key").notNull(),
-    description: text("description"),
-    type: text("type").notNull(),
-    required: boolean("required").notNull().default(false),
-    options: jsonb().$type<Record<string, unknown>>(),
-    defaultValue: jsonb("default_value"),
-    sortOrder: integer("sort_order").notNull(),
-  },
-  (t) => [uniqueIndex().on(t.operationTypeId, t.referenceKey)],
-);
-export type OperationTypeInputField =
-  typeof operationTypeInputField.$inferSelect;
+// Backward-compatible aliases (will be removed once all layers are migrated)
+/** @deprecated Use operationTypeInput */
+export const operationTypeInputItem = operationTypeInput;
+/** @deprecated Use OperationTypeInput */
+export type OperationTypeInputItem = OperationTypeInput;
+/** @deprecated Use operationTypeInput */
+export const operationTypeInputField = operationTypeInput;
+/** @deprecated Use OperationTypeInput */
+export type OperationTypeInputField = OperationTypeInput;
 
 export const operationTypeStep = pgTable(
   "operation_type_step",
@@ -118,7 +126,7 @@ export const validationRule = pgTable(
       onDelete: "cascade",
     }),
     operationTypePortId: uuid("operation_type_port_id").references(
-      () => operationTypeInputItem.id,
+      () => operationTypeInput.id,
       { onDelete: "cascade" },
     ),
 

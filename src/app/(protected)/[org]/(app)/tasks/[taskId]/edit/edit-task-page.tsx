@@ -49,21 +49,26 @@ export default function EditTaskTypePage() {
         color: data.color ?? "",
         category: data.category ?? "",
       },
-      inputItems: data.ports.map((p) => ({
-        id: p.id,
-        itemTypeId: p.itemTypeId,
-        referenceKey: p.referenceKey,
-        qtyMin: p.qtyMin ?? "0",
-        qtyMax: p.qtyMax ?? "",
-        preconditionsStatuses: (p.preconditionsStatuses as string[]) ?? [],
-      })),
-      inputFields: data.fields.map((f) => ({
-        id: f.id,
-        referenceKey: f.referenceKey,
-        label: f.label ?? "",
-        description: f.description ?? "",
-        type: f.type,
-        required: f.required,
+      inputs: data.inputs.map((inp) => ({
+        id: inp.id,
+        referenceKey: inp.referenceKey,
+        label: inp.label ?? "",
+        description: inp.description ?? "",
+        type: inp.type,
+        required: inp.required,
+        sortOrder: inp.sortOrder,
+        ...(inp.type === "items" && inp.itemConfig
+          ? {
+              itemTypeId: inp.itemConfig.itemTypeId,
+              qtyMin: String(inp.itemConfig.minCount ?? 0),
+              qtyMax:
+                inp.itemConfig.maxCount != null
+                  ? String(inp.itemConfig.maxCount)
+                  : "",
+              preconditionsStatuses:
+                (inp.itemConfig.preconditionsStatuses as string[]) ?? [],
+            }
+          : {}),
       })),
       steps: data.steps.map((s) => ({
         id: s.id,

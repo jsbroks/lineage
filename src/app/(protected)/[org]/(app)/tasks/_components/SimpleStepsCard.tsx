@@ -20,12 +20,12 @@ import {
 } from "~/components/ui/select";
 import { api } from "~/trpc/react";
 import type { SimpleStepRow } from "~/lib/simple-steps";
-import type { InputItemRow, InputFieldRow } from "./OperationTypeForm";
+import type { InputRow } from "./OperationTypeForm";
 
 type SimpleStepsCardProps = {
   steps: SimpleStepRow[];
-  inputItems: InputItemRow[];
-  inputFields: InputFieldRow[];
+  inputItems: InputRow[];
+  inputFields: InputRow[];
   onUpdate: (steps: SimpleStepRow[]) => void;
 };
 
@@ -144,7 +144,7 @@ function ChangeStatusRow({
 }: {
   step: SimpleStepRow;
   idx: number;
-  inputItems: InputItemRow[];
+  inputItems: InputRow[];
   statuses: StatusInfo[];
   onUpdate: (idx: number, patch: Partial<SimpleStepRow>) => void;
   onRemove: (idx: number) => void;
@@ -202,8 +202,8 @@ function SetAttributeRow({
 }: {
   step: SimpleStepRow;
   idx: number;
-  inputItems: InputItemRow[];
-  inputFields: InputFieldRow[];
+  inputItems: InputRow[];
+  inputFields: InputRow[];
   onUpdate: (idx: number, patch: Partial<SimpleStepRow>) => void;
   onRemove: (idx: number) => void;
 }) {
@@ -312,7 +312,7 @@ function TargetSelect({
   onChange,
 }: {
   value: string;
-  inputItems: InputItemRow[];
+  inputItems: InputRow[];
   onChange: (val: string) => void;
 }) {
   const targets = inputItems.filter((i) => i.referenceKey);

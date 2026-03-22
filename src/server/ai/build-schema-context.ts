@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "~/server/db";
 import {
   itemType,
@@ -7,8 +7,8 @@ import {
   itemTypeStatusDefinition,
   location,
   operationType,
-  operationTypeInputItem,
-  operationTypeInputField,
+  operationTypeInput,
+  operationTypeInputItemConfig,
 } from "~/server/db/schema";
 
 export type SchemaContext = {
@@ -54,15 +54,15 @@ function loadOperationTypes() {
   return db.select().from(operationType).orderBy(asc(operationType.name));
 }
 
-function loadOperationPorts() {
-  return db.select().from(operationTypeInputItem);
-}
-
-function loadOperationFields() {
+function loadOperationInputs() {
   return db
     .select()
-    .from(operationTypeInputField)
-    .orderBy(asc(operationTypeInputField.sortOrder));
+    .from(operationTypeInput)
+    .orderBy(asc(operationTypeInput.sortOrder));
+}
+
+function loadOperationItemConfigs() {
+  return db.select().from(operationTypeInputItemConfig);
 }
 
 export async function buildSchemaContext(): Promise<SchemaContext> {
@@ -73,8 +73,8 @@ export async function buildSchemaContext(): Promise<SchemaContext> {
     locations,
     attributes,
     operationTypes,
-    opPorts,
-    opFields,
+    opInputs,
+    opItemConfigs,
   ] = await Promise.all([
     loadItemTypes(),
     loadStatuses(),
@@ -82,9 +82,13 @@ export async function buildSchemaContext(): Promise<SchemaContext> {
     loadLocations(),
     loadAttributes(),
     loadOperationTypes(),
-    loadOperationPorts(),
-    loadOperationFields(),
+    loadOperationInputs(),
+    loadOperationItemConfigs(),
   ]);
+
+  const configByInputId = new Map(
+    opItemConfigs.map((c) => [c.inputId, c]),
+  );
 
   const statusesByType = new Map<string, typeof statuses>();
   for (const s of statuses) {
@@ -140,18 +144,11 @@ export async function buildSchemaContext(): Promise<SchemaContext> {
   }
 
   if (operationTypes.length > 0) {
-    const portsByOp = new Map<string, typeof opPorts>();
-    for (const p of opPorts) {
-      const arr = portsByOp.get(p.operationTypeId) ?? [];
-      arr.push(p);
-      portsByOp.set(p.operationTypeId, arr);
-    }
-
-    const fieldsByOp = new Map<string, typeof opFields>();
-    for (const f of opFields) {
-      const arr = fieldsByOp.get(f.operationTypeId) ?? [];
-      arr.push(f);
-      fieldsByOp.set(f.operationTypeId, arr);
+    const inputsByOp = new Map<string, typeof opInputs>();
+    for (const inp of opInputs) {
+      const arr = inputsByOp.get(inp.operationTypeId) ?? [];
+      arr.push(inp);
+      inputsByOp.set(inp.operationTypeId, arr);
     }
 
     lines.push("");
@@ -160,23 +157,27 @@ export async function buildSchemaContext(): Promise<SchemaContext> {
       let line = `- ${op.name}`;
       if (op.description) line += ` — ${op.description}`;
 
-      const ports = portsByOp.get(op.id) ?? [];
-      if (ports.length > 0) {
-        const portLabels = ports.map((p) => {
-          const typeName =
-            itemTypes.find((t) => t.id === p.itemTypeId)?.name ?? "unknown";
+      const inputs = inputsByOp.get(op.id) ?? [];
+      const itemInputs = inputs.filter((i) => i.type === "items");
+      const fieldInputs = inputs.filter((i) => i.type !== "items");
+
+      if (itemInputs.length > 0) {
+        const portLabels = itemInputs.map((inp) => {
+          const cfg = configByInputId.get(inp.id);
+          const typeName = cfg
+            ? (itemTypes.find((t) => t.id === cfg.itemTypeId)?.name ?? "unknown")
+            : "unknown";
           const statusInfo =
-            p.preconditionsStatuses && p.preconditionsStatuses.length > 0
-              ? ` (${p.preconditionsStatuses.join("/")})`
+            cfg?.preconditionsStatuses && cfg.preconditionsStatuses.length > 0
+              ? ` (${cfg.preconditionsStatuses.join("/")})`
               : "";
           return `${typeName}${statusInfo}`;
         });
         line += ` | Takes: ${portLabels.join(", ")}`;
       }
 
-      const fields = fieldsByOp.get(op.id) ?? [];
-      if (fields.length > 0) {
-        const fieldLabels = fields.map(
+      if (fieldInputs.length > 0) {
+        const fieldLabels = fieldInputs.map(
           (f) =>
             `${f.label ?? f.referenceKey} (${f.type}${f.required ? ", required" : ""})`,
         );

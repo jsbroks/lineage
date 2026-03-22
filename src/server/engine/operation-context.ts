@@ -15,8 +15,9 @@ export type ResolvableValue = z.infer<typeof resolvableValueSchema>;
 
 export type Operation = schema.Operation & {
   steps: schema.OperationStep[];
-  fields: schema.OperationInputField[];
-  items: schema.OperationInputItem[];
+  inputItems: schema.OperationInputItem[];
+  inputLocations: schema.OperationInputLocation[];
+  inputValues: schema.OperationInputValue[];
 };
 
 export type ItemTypeWithStatusDefinitions = schema.ItemType & {
@@ -29,10 +30,11 @@ export class OperationContext {
       where: eq(schema.operation.id, operationId),
       with: {
         steps: true,
-        fields: true,
-        items: {
+        inputItems: {
           with: { item: true },
         },
+        inputLocations: true,
+        inputValues: true,
       },
     });
 
@@ -40,7 +42,7 @@ export class OperationContext {
       throw new Error("Operation not found");
     }
 
-    const items = _.chain(op.items)
+    const items = _.chain(op.inputItems)
       .map((i) => i.item)
       .compact();
 
@@ -64,7 +66,7 @@ export class OperationContext {
       where: inArray(schema.location.id, locationIds),
     });
 
-    const ctx = new OperationContext(op);
+    const ctx = new OperationContext(op as Operation);
 
     ctx.items = _.keyBy(items.value(), (i) => i.id);
     ctx.itemTypes = _.keyBy(itemTypes, (i) => i.id);
@@ -87,7 +89,7 @@ export class OperationContext {
 
   itemsFromTarget(ref?: string | null): schema.Item[] {
     if (ref == null) return [];
-    const ids = _.chain(this.operation.items)
+    const ids = _.chain(this.operation.inputItems)
       .filter((i) => i.key === ref)
       .map((i) => i.itemId)
       .compact()
@@ -100,12 +102,16 @@ export class OperationContext {
     if (val == null) return val;
     if (typeof val !== "object") return val;
     if ("from" in val) {
-      const inputs = _.chain(this.operation.fields)
+      const valueInputs = _.chain(this.operation.inputValues)
         .map((f) => [f.key, f.value])
         .fromPairs()
         .value();
+      const locationInputs = _.chain(this.operation.inputLocations)
+        .map((l) => [l.key, l.locationId])
+        .fromPairs()
+        .value();
 
-      const ctx = { inputs };
+      const ctx = { inputs: { ...valueInputs, ...locationInputs } };
       return _.get(ctx, val.from);
     }
     return undefined;

@@ -104,29 +104,27 @@ operation_types:
       the grow room and harvest date.
 
     inputs:
-      items:
-        - key: packaged_good
-          item_type: packaged_good
-          scan: barcode
-          required: true
-          qty: { min: 1 }
-          preconditions:
-            status: [printed]
-
-      fields:
-        composte_number:
-          description: Grow room the product was harvested from
-          type: item
-          required: true
-        harvest_date:
-          description: Date the mushrooms were harvested
-          type: date
-          required: true
-          default: today
-        species:
-          description: Species of mushrooms harvested
-          type: string
-          required: true
+      - key: packaged_good
+        type: items
+        item_type: packaged_good
+        scan: barcode
+        required: true
+        qty: { min: 1 }
+        preconditions:
+          status: [printed]
+      - key: composte_number
+        type: item
+        description: Grow room the product was harvested from
+        required: true
+      - key: harvest_date
+        type: date
+        description: Date the mushrooms were harvested
+        required: true
+        default: today
+      - key: species
+        type: string
+        description: Species of mushrooms harvested
+        required: true
 
     steps:
       - name: Mark package as approved
@@ -150,26 +148,25 @@ operation_types:
       Scan barcodes that have been assigned to approved products,
       then link those products onto a skid for shipment.
     inputs:
-      items:
-        - key: boxes
-          item_type: packaged_product
-          scan: barcode
-          resolve: true
-          required: true
-          qty: { min: 1 }
-          preconditions:
-            status: [approved]
-        - key: skid
-          item_type: skid
-          scan: barcode
-          required: true
-          qty: { min: 1, max: 1 }
-
-      fields:
-        destination:
-          description: Where this skid is being shipped to
-          type: string
-          required: false
+      - key: boxes
+        type: items
+        item_type: packaged_product
+        scan: barcode
+        resolve: true
+        required: true
+        qty: { min: 1 }
+        preconditions:
+          status: [approved]
+      - key: skid
+        type: items
+        item_type: skid
+        scan: barcode
+        required: true
+        qty: { min: 1, max: 1 }
+      - key: destination
+        type: string
+        description: Where this skid is being shipped to
+        required: false
 
     steps:
       - name: Link products to skid

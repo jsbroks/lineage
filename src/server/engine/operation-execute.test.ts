@@ -34,8 +34,9 @@ function makeCtx(steps: OperationStep[] = []): OperationContext {
     attributes: {},
     createdAt: new Date("2025-01-01"),
     steps,
-    fields: [],
-    items: [],
+    inputItems: [],
+    inputLocations: [],
+    inputValues: [],
   };
   return new OperationContext(op);
 }
