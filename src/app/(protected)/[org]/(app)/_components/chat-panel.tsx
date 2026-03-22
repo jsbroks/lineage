@@ -446,10 +446,8 @@ export function ChatPanel() {
               )}
 
               {actionParts.map((part, i) => {
-                const toolCallId = (part as { toolCallId: string })
-                  .toolCallId;
-                const result = (part as { output: PendingActionResult })
-                  .output;
+                const toolCallId = (part as { toolCallId: string }).toolCallId;
+                const result = (part as { output: PendingActionResult }).output;
                 const state: ActionState = actionStates[toolCallId] ?? {
                   status: "pending",
                 };

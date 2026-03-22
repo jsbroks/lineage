@@ -40,7 +40,13 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
+    const { data: orgs } = await authClient.organization.list();
+    if (orgs && orgs.length > 0) {
+      await authClient.organization.setActive({ organizationId: orgs[0]!.id });
+      router.push(`/${orgs[0]!.slug}`);
+    } else {
+      router.push("/create-org");
+    }
     router.refresh();
   }
 
@@ -90,7 +96,10 @@ export default function LoginPage() {
 
           <p className="text-muted-foreground text-center text-sm">
             Don&apos;t have an account?{" "}
-            <Link href="/signup" className="text-foreground underline underline-offset-4 hover:text-primary">
+            <Link
+              href="/signup"
+              className="text-foreground hover:text-primary underline underline-offset-4"
+            >
               Sign up
             </Link>
           </p>

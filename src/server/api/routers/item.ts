@@ -1202,9 +1202,7 @@ export const itemRouter = createTRPCRouter({
 
           switch (af.op) {
             case "eq":
-              conditions.push(
-                sql`lower(${jsonbExpr}) = lower(${af.value})`,
-              );
+              conditions.push(sql`lower(${jsonbExpr}) = lower(${af.value})`);
               break;
             case "gte":
               if (dt === "date") {

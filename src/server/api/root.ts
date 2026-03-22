@@ -4,6 +4,7 @@ import { locationRouter } from "~/server/api/routers/location";
 import { operationRouter } from "~/server/api/routers/operation";
 import { operationTypeRouter } from "~/server/api/routers/operation-type";
 import { anomalyRouter } from "~/server/api/routers/anomaly";
+import { onboardingRouter } from "~/server/api/routers/onboarding";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 /**
@@ -18,6 +19,7 @@ export const appRouter = createTRPCRouter({
   operation: operationRouter,
   operationType: operationTypeRouter,
   anomaly: anomalyRouter,
+  onboarding: onboardingRouter,
 });
 
 // export type definition of API

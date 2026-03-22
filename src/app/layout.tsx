@@ -1,7 +1,7 @@
 import "~/styles/globals.css";
 
 import { type Metadata } from "next";
-import { Geist, Inter, Instrument_Serif } from "next/font/google";
+import { DM_Serif_Display, Geist, Inter } from "next/font/google";
 
 import { ChatwootWidget } from "~/components/chatwoot";
 import { TRPCReactProvider } from "~/trpc/react";
@@ -24,10 +24,10 @@ const geist = Geist({
   variable: "--font-geist-sans",
 });
 
-const instrumentSerif = Instrument_Serif({
+const dmSerifDisplay = DM_Serif_Display({
   weight: "400",
   subsets: ["latin"],
-  variable: "--font-instrument-serif",
+  variable: "--font-display",
 });
 
 export default function RootLayout({
@@ -40,7 +40,7 @@ export default function RootLayout({
         geist.variable,
         "font-sans",
         inter.variable,
-        instrumentSerif.variable,
+        dmSerifDisplay.variable,
       )}
     >
       <body>

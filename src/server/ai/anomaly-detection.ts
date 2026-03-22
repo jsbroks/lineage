@@ -64,7 +64,8 @@ function mean(values: number[]): number {
 }
 
 function stddev(values: number[], avg: number): number {
-  const variance = values.reduce((a, v) => a + (v - avg) ** 2, 0) / values.length;
+  const variance =
+    values.reduce((a, v) => a + (v - avg) ** 2, 0) / values.length;
   return Math.sqrt(variance);
 }
 

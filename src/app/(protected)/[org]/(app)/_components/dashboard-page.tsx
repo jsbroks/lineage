@@ -11,6 +11,8 @@ import {
   Plus,
   Printer,
   Scan,
+  Sparkles,
+  X,
   Zap,
 } from "lucide-react";
 
@@ -23,6 +25,58 @@ import { Icon } from "~/app/_components/IconPicker";
 import { cn } from "~/lib/utils";
 import { getColorClasses } from "~/app/_components/ColorSelector";
 import { AnomalyWidget } from "./anomaly-widget";
+
+function OnboardingBanner({ org }: { org: string }) {
+  const { data: status, isLoading } = api.onboarding.getStatus.useQuery();
+  const utils = api.useUtils();
+
+  const dismissMutation = api.onboarding.dismiss.useMutation({
+    onSuccess: () => utils.onboarding.getStatus.invalidate(),
+  });
+
+  if (isLoading || !status) return null;
+  if (status.isComplete || status.isDismissed) return null;
+
+  return (
+    <Card
+      size="sm"
+      className="bg-primary/5 ring-primary/20 relative overflow-hidden"
+    >
+      <CardContent className="flex items-center gap-4 pt-0">
+        <div className="bg-primary/10 flex size-10 shrink-0 items-center justify-center rounded-lg">
+          <Sparkles className="text-primary size-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">
+            Finish setting up your workspace
+          </p>
+          <p className="text-muted-foreground text-xs">
+            Configure your item types, operations, and locations with our setup
+            wizard.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button size="sm" asChild>
+            <Link href={`/${org}/setup`}>
+              Continue setup
+              <ArrowRight className="ml-1 size-3.5" />
+            </Link>
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="text-muted-foreground hover:text-foreground size-8"
+            onClick={() => dismissMutation.mutate()}
+            disabled={dismissMutation.isPending}
+          >
+            <X className="size-4" />
+            <span className="sr-only">Dismiss</span>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export function DashboardPage({ org }: { org: string }) {
   const { data: inventoryRows, isLoading: loadingInventory } =
@@ -49,6 +103,9 @@ export function DashboardPage({ org }: { org: string }) {
 
   return (
     <div className="space-y-8">
+      {/* Onboarding Banner */}
+      <OnboardingBanner org={org} />
+
       {/* Quick Actions */}
       <section>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

@@ -1,4 +1,4 @@
-import type { StepRow } from "~/app/[org]/tasks/_components/OperationTypeForm";
+import type { StepRow } from "~/app/(protected)/[org]/(app)/tasks/_components/OperationTypeForm";
 
 // ── Simple step model ───────────────────────────────────────────────
 // Single flat type; the `action` field determines which properties

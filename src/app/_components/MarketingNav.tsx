@@ -212,7 +212,10 @@ export function MarketingNav() {
           <NavigationMenu viewport={false} className="hidden sm:flex">
             <NavigationMenuList className="gap-1">
               <NavigationMenuItem className="relative">
-                <NavigationMenuTrigger className={triggerStyles}>
+                <NavigationMenuTrigger
+                  className={triggerStyles}
+                  onClick={(e) => e.preventDefault()}
+                >
                   Features
                 </NavigationMenuTrigger>
                 <NavigationMenuContent className={dropdownContentStyles}>
@@ -224,7 +227,10 @@ export function MarketingNav() {
                 </NavigationMenuContent>
               </NavigationMenuItem>
               <NavigationMenuItem className="relative">
-                <NavigationMenuTrigger className={triggerStyles}>
+                <NavigationMenuTrigger
+                  className={triggerStyles}
+                  onClick={(e) => e.preventDefault()}
+                >
                   Who It&apos;s For
                 </NavigationMenuTrigger>
                 <NavigationMenuContent className={dropdownContentStyles}>

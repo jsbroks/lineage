@@ -4,7 +4,7 @@ import {
   stepRowsToSimpleSteps,
   type SimpleStepRow,
 } from "./simple-steps";
-import type { StepRow } from "~/app/[org]/tasks/_components/OperationTypeForm";
+import type { StepRow } from "~/app/(protected)/[org]/(app)/tasks/_components/OperationTypeForm";
 
 const EMPTY: SimpleStepRow = {
   action: "set-item-status",

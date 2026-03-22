@@ -42,7 +42,7 @@ export default function SignUpPage() {
       return;
     }
 
-    router.push("/");
+    router.push("/create-org");
     router.refresh();
   }
 
@@ -50,9 +50,7 @@ export default function SignUpPage() {
     <Card>
       <CardHeader>
         <CardTitle className="text-lg">Create an account</CardTitle>
-        <CardDescription>
-          Get started with Lineage for free
-        </CardDescription>
+        <CardDescription>Get started with Lineage for free</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -106,7 +104,10 @@ export default function SignUpPage() {
 
           <p className="text-muted-foreground text-center text-sm">
             Already have an account?{" "}
-            <Link href="/login" className="text-foreground underline underline-offset-4 hover:text-primary">
+            <Link
+              href="/login"
+              className="text-foreground hover:text-primary underline underline-offset-4"
+            >
               Sign in
             </Link>
           </p>
