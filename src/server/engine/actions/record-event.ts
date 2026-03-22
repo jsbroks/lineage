@@ -5,7 +5,7 @@ import { resolvableValueSchema } from "../operation-context";
 export const recordEvent = createAction({
   id: "record-event",
   name: "Record Event",
-  description: "Record an explicit event entry for targeted items",
+  description: "Record an explicit event entry for targeted lots",
 
   schema: z.object({
     eventType: z.string(),
@@ -16,11 +16,11 @@ export const recordEvent = createAction({
   handler: (ctx, step) => {
     const { eventType, message, payload } = step.config;
     const result = new ActionResult();
-    const items = ctx.itemsFromTarget(step.target);
+    const lots = ctx.lotsFromTarget(step.target);
 
-    if (items.length === 0) {
+    if (lots.length === 0) {
       result.skipped = true;
-      result.message = `No items found for target: ${step.target}`;
+      result.message = `No lots found for target: ${step.target}`;
       return result;
     }
 
@@ -34,9 +34,9 @@ export const recordEvent = createAction({
       }
     }
 
-    for (const item of items) {
+    for (const lot of lots) {
       result.addEvent({
-        itemId: item.id,
+        lotId: lot.id,
         eventType,
         message: resolvedMessage,
         payload:
@@ -44,7 +44,7 @@ export const recordEvent = createAction({
       });
     }
 
-    const total = items.length;
+    const total = lots.length;
     const plural = total === 1 ? "event" : "events";
     result.message = `Recorded ${total} ${plural}`;
 

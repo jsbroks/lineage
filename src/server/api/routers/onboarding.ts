@@ -5,17 +5,17 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   organization,
-  itemType,
-  itemTypeStatusDefinition,
-  itemTypeStatusTransition,
-  itemTypeOption,
-  itemTypeOptionValue,
-  itemTypeVariant,
-  itemTypeVariantOptionValue,
-  itemTypeAttributeDefinition,
+  lotType,
+  lotTypeStatusDefinition,
+  lotTypeStatusTransition,
+  lotTypeOption,
+  lotTypeOptionValue,
+  lotTypeVariant,
+  lotTypeVariantOptionValue,
+  lotTypeAttributeDefinition,
   operationType,
   operationTypeInput,
-  operationTypeInputItemConfig,
+  operationTypeInputLotConfig,
   operationTypeStep,
   location,
 } from "~/server/db/schema";
@@ -23,7 +23,7 @@ import { db } from "~/server/db";
 import { getVertical } from "~/verticals/registry";
 import type {
   SeedData,
-  SeedItemType,
+  SeedLotType,
   SeedLocation,
   SeedOperationType,
 } from "~/verticals/types";
@@ -58,9 +58,9 @@ function getActiveOrgId(session: {
   return orgId;
 }
 
-async function insertItemType(tx: Tx, seed: SeedItemType) {
+async function insertLotType(tx: Tx, seed: SeedLotType) {
   const [created] = await tx
-    .insert(itemType)
+    .insert(lotType)
     .values({
       name: seed.name,
       description: seed.description ?? null,
@@ -76,10 +76,10 @@ async function insertItemType(tx: Tx, seed: SeedItemType) {
 
   // Statuses
   const statusRows = await tx
-    .insert(itemTypeStatusDefinition)
+    .insert(lotTypeStatusDefinition)
     .values(
       seed.statuses.map((s) => ({
-        itemTypeId: typeId,
+        lotTypeId: typeId,
         name: s.name,
         color: s.color ?? null,
         isInitial: s.isInitial,
@@ -88,8 +88,8 @@ async function insertItemType(tx: Tx, seed: SeedItemType) {
       })),
     )
     .returning({
-      id: itemTypeStatusDefinition.id,
-      name: itemTypeStatusDefinition.name,
+      id: lotTypeStatusDefinition.id,
+      name: lotTypeStatusDefinition.name,
     });
 
   const statusNameToId = new Map(statusRows.map((r) => [r.name, r.id]));
@@ -105,7 +105,7 @@ async function insertItemType(tx: Tx, seed: SeedItemType) {
     .filter(Boolean) as { fromStatusId: string; toStatusId: string }[];
 
   if (transitionValues.length > 0) {
-    await tx.insert(itemTypeStatusTransition).values(transitionValues);
+    await tx.insert(lotTypeStatusTransition).values(transitionValues);
   }
 
   // Options + option values
@@ -113,15 +113,15 @@ async function insertItemType(tx: Tx, seed: SeedItemType) {
   if (seed.options && seed.options.length > 0) {
     for (const opt of seed.options) {
       const [createdOpt] = await tx
-        .insert(itemTypeOption)
-        .values({ itemTypeId: typeId, name: opt.name, position: opt.position })
+        .insert(lotTypeOption)
+        .values({ lotTypeId: typeId, name: opt.name, position: opt.position })
         .returning();
       const optId = createdOpt!.id;
 
       const valueNameToId = new Map<string, string>();
       for (const val of opt.values) {
         const [createdVal] = await tx
-          .insert(itemTypeOptionValue)
+          .insert(lotTypeOptionValue)
           .values({ optionId: optId, value: val.value, position: val.position })
           .returning();
         valueNameToId.set(val.value, createdVal!.id);
@@ -134,9 +134,9 @@ async function insertItemType(tx: Tx, seed: SeedItemType) {
   if (seed.variants && seed.variants.length > 0) {
     for (const v of seed.variants) {
       const [createdVariant] = await tx
-        .insert(itemTypeVariant)
+        .insert(lotTypeVariant)
         .values({
-          itemTypeId: typeId,
+          lotTypeId: typeId,
           name: v.name,
           isDefault: v.isDefault,
           sortOrder: v.sortOrder,
@@ -150,7 +150,7 @@ async function insertItemType(tx: Tx, seed: SeedItemType) {
           const ovId = valMap?.get(valName);
           if (ovId) {
             await tx
-              .insert(itemTypeVariantOptionValue)
+              .insert(lotTypeVariantOptionValue)
               .values({ variantId, optionValueId: ovId });
           }
         }
@@ -160,9 +160,9 @@ async function insertItemType(tx: Tx, seed: SeedItemType) {
 
   // Attributes
   if (seed.attributes && seed.attributes.length > 0) {
-    await tx.insert(itemTypeAttributeDefinition).values(
+    await tx.insert(lotTypeAttributeDefinition).values(
       seed.attributes.map((a) => ({
-        itemTypeId: typeId,
+        lotTypeId: typeId,
         attrKey: a.attrKey,
         dataType: a.dataType,
         isRequired: a.isRequired,
@@ -180,7 +180,7 @@ async function insertItemType(tx: Tx, seed: SeedItemType) {
 async function insertOperationType(
   tx: Tx,
   seed: SeedOperationType,
-  itemTypeNameToId: Map<string, string>,
+  lotTypeNameToId: Map<string, string>,
 ) {
   const [created] = await tx
     .insert(operationType)
@@ -206,17 +206,17 @@ async function insertOperationType(
           type: inp.type,
           required: inp.required ?? false,
           sortOrder: inp.sortOrder,
-          options: (inp.type !== "items" && inp.type !== "location" && inp.config?.options) || null,
-          defaultValue: (inp.type !== "items" && inp.type !== "location" && inp.config?.defaultValue) ?? null,
+          options: (inp.type !== "lots" && inp.type !== "location" && inp.config?.options) || null,
+          defaultValue: (inp.type !== "lots" && inp.type !== "location" && inp.config?.defaultValue) ?? null,
         })
         .returning();
 
-      if (inp.type === "items" && created) {
-        const resolvedItemTypeId = itemTypeNameToId.get(inp.config.itemTypeName);
-        if (resolvedItemTypeId) {
-          await tx.insert(operationTypeInputItemConfig).values({
+      if (inp.type === "lots" && created) {
+        const resolvedLotTypeId = lotTypeNameToId.get(inp.config.lotTypeName);
+        if (resolvedLotTypeId) {
+          await tx.insert(operationTypeInputLotConfig).values({
             inputId: created.id,
-            itemTypeId: resolvedItemTypeId,
+            lotTypeId: resolvedLotTypeId,
             minCount: inp.config.qtyMin ? Number(inp.config.qtyMin) : 0,
             maxCount: inp.config.qtyMax ? Number(inp.config.qtyMax) : null,
             preconditionsStatuses: inp.config.preconditionsStatuses ?? null,
@@ -338,16 +338,16 @@ export const onboardingRouter = createTRPCRouter({
       const seedData: SeedData = vertical.buildSeedData(input.answers);
 
       await ctx.db.transaction(async (tx) => {
-        // 1. Create item types and collect name->id mapping
-        const itemTypeNameToId = new Map<string, string>();
-        for (const it of seedData.itemTypes) {
-          const result = await insertItemType(tx, it);
-          itemTypeNameToId.set(result.name, result.id);
+        // 1. Create lot types and collect name->id mapping
+        const lotTypeNameToId = new Map<string, string>();
+        for (const it of seedData.lotTypes) {
+          const result = await insertLotType(tx, it);
+          lotTypeNameToId.set(result.name, result.id);
         }
 
-        // 2. Create operation types (resolving item type references)
+        // 2. Create operation types (resolving lot type references)
         for (const op of seedData.operations) {
-          await insertOperationType(tx, op, itemTypeNameToId);
+          await insertOperationType(tx, op, lotTypeNameToId);
         }
 
         // 3. Create locations (recursive parent-child)

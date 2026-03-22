@@ -44,9 +44,9 @@ type ExecuteResult = RouterOutputs["operation"]["execute"];
 export default function OperationsPage() {
   const params = useParams<{ org: string }>();
 
-  // Item selection
-  const [itemSearch, setItemSearch] = useState("");
-  const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  // Lot selection
+  const [lotSearch, setLotSearch] = useState("");
+  const [selectedLotIds, setSelectedLotIds] = useState<string[]>([]);
 
   // Workflow state
   const [chosenOp, setChosenOp] = useState<SuggestedOperation | null>(null);
@@ -55,12 +55,12 @@ export default function OperationsPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Queries
-  const itemsQuery = api.item.list.useQuery();
-  const items = itemsQuery.data ?? [];
+  const lotsQuery = api.lot.list.useQuery();
+  const lots = lotsQuery.data ?? [];
 
   const suggestQuery = api.operation.suggest.useQuery(
-    { itemIds: selectedItemIds },
-    { enabled: selectedItemIds.length > 0 },
+    { lotIds: selectedLotIds },
+    { enabled: selectedLotIds.length > 0 },
   );
 
   const opTypeQuery = api.operationType.getById.useQuery(
@@ -71,26 +71,26 @@ export default function OperationsPage() {
   const executeMutation = api.operation.execute.useMutation();
 
   // Search filtering
-  const searchResults = itemSearch.trim()
-    ? items.filter(
+  const searchResults = lotSearch.trim()
+    ? lots.filter(
         (l) =>
-          l.code.toLowerCase().includes(itemSearch.toLowerCase()) &&
-          !selectedItemIds.includes(l.id),
+          l.code.toLowerCase().includes(lotSearch.toLowerCase()) &&
+          !selectedLotIds.includes(l.id),
       )
     : [];
 
-  const selectedItems = items.filter((l) => selectedItemIds.includes(l.id));
+  const selectedLots = lots.filter((l) => selectedLotIds.includes(l.id));
 
-  const addItem = (id: string) => {
-    setSelectedItemIds((prev) => [...prev, id]);
-    setItemSearch("");
+  const addLot = (id: string) => {
+    setSelectedLotIds((prev) => [...prev, id]);
+    setLotSearch("");
     setChosenOp(null);
     setResult(null);
     setError(null);
   };
 
-  const removeItem = (id: string) => {
-    setSelectedItemIds((prev) => prev.filter((x) => x !== id));
+  const removeLot = (id: string) => {
+    setSelectedLotIds((prev) => prev.filter((x) => x !== id));
     setChosenOp(null);
     setResult(null);
     setError(null);
@@ -108,8 +108,8 @@ export default function OperationsPage() {
 
     const inputs: Record<string, unknown> = { ...fieldValues };
     for (const port of chosenOp.ports) {
-      if (port.matchedItemIds.length > 0) {
-        inputs[port.referenceKey] = port.matchedItemIds;
+      if (port.matchedLotIds.length > 0) {
+        inputs[port.referenceKey] = port.matchedLotIds;
       }
     }
 
@@ -126,12 +126,12 @@ export default function OperationsPage() {
   };
 
   const reset = () => {
-    setSelectedItemIds([]);
+    setSelectedLotIds([]);
     setChosenOp(null);
     setFieldValues({});
     setResult(null);
     setError(null);
-    setItemSearch("");
+    setLotSearch("");
   };
 
   return (
@@ -139,7 +139,7 @@ export default function OperationsPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Record Task</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Scan or pick items, then choose a task to record.
+          Scan or pick lots, then choose a task to record.
         </p>
       </div>
 
@@ -148,17 +148,17 @@ export default function OperationsPage() {
 
       {!result && (
         <div className="space-y-6">
-          {/* Step 1: Select items */}
+          {/* Step 1: Select lots */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <span className="bg-primary text-primary-foreground flex size-6 items-center justify-center rounded-full text-xs font-bold">
                   1
                 </span>
-                Scan or Pick Items
+                Scan or Pick Lots
               </CardTitle>
               <CardDescription>
-                Search by code to add items for this task.
+                Search by code to add lots for this task.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -166,8 +166,8 @@ export default function OperationsPage() {
                 <Search className="text-muted-foreground absolute top-2.5 left-2.5 size-4" />
                 <Input
                   placeholder="Search by code..."
-                  value={itemSearch}
-                  onChange={(e) => setItemSearch(e.target.value)}
+                  value={lotSearch}
+                  onChange={(e) => setLotSearch(e.target.value)}
                   className="pl-8"
                 />
               </div>
@@ -180,7 +180,7 @@ export default function OperationsPage() {
                       key={l.id}
                       type="button"
                       className="hover:bg-muted flex w-full items-center justify-between px-3 py-2 text-left text-sm"
-                      onClick={() => addItem(l.id)}
+                      onClick={() => addLot(l.id)}
                     >
                       <span className="font-medium">{l.code}</span>
                       <span className="text-muted-foreground text-xs">
@@ -191,10 +191,10 @@ export default function OperationsPage() {
                 </div>
               )}
 
-              {/* Selected items */}
-              {selectedItems.length > 0 && (
+              {/* Selected lots */}
+              {selectedLots.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {selectedItems.map((l) => (
+                  {selectedLots.map((l) => (
                     <Badge
                       key={l.id}
                       variant="secondary"
@@ -203,7 +203,7 @@ export default function OperationsPage() {
                       {l.code}
                       <button
                         type="button"
-                        onClick={() => removeItem(l.id)}
+                        onClick={() => removeLot(l.id)}
                         className="hover:bg-muted rounded-full p-0.5"
                       >
                         <X className="size-3" />
@@ -216,7 +216,7 @@ export default function OperationsPage() {
           </Card>
 
           {/* Step 2: Suggested operations */}
-          {selectedItemIds.length > 0 && (
+          {selectedLotIds.length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -226,7 +226,7 @@ export default function OperationsPage() {
                   What are you doing?
                 </CardTitle>
                 <CardDescription>
-                  Tasks ranked by how well they match the selected items.
+                  Tasks ranked by how well they match the selected lots.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -239,7 +239,7 @@ export default function OperationsPage() {
 
                 {suggestQuery.data && suggestQuery.data.length === 0 && (
                   <p className="text-muted-foreground py-4 text-center text-sm">
-                    No matching tasks for the selected items.
+                    No matching tasks for the selected lots.
                   </p>
                 )}
 
@@ -275,7 +275,7 @@ export default function OperationsPage() {
                               className="bg-yellow-300/20 text-xs text-yellow-700"
                             >
                               <AlertCircle className="mr-0.5 size-3" />
-                              Needs more items
+                              Needs more lots
                             </Badge>
                           )}
                         </div>
@@ -341,7 +341,7 @@ export default function OperationsPage() {
                   </Button>
                   {!chosenOp.ready && (
                     <p className="text-muted-foreground mt-2 text-xs">
-                      Not all required items are present. Add more items or
+                      Not all required lots are present. Add more lots or
                       choose a different task.
                     </p>
                   )}
@@ -380,7 +380,7 @@ function FieldInputs({
   }
 
   const allInputs = opTypeData?.inputs ?? [];
-  const fields = allInputs.filter((inp) => inp.type !== "items");
+  const fields = allInputs.filter((inp) => inp.type !== "lots");
 
   if (fields.length === 0) {
     return (
@@ -530,16 +530,16 @@ function ResultsView({
               </p>
 
               <div className="mt-3 flex flex-wrap gap-4 text-sm">
-                {result.itemsCreated.length > 0 && (
+                {result.lotsCreated.length > 0 && (
                   <div className="flex items-center gap-1.5">
                     <Zap className="size-3.5 text-blue-500" />
-                    <span>{result.itemsCreated.length} created</span>
+                    <span>{result.lotsCreated.length} created</span>
                   </div>
                 )}
-                {result.itemsUpdated.length > 0 && (
+                {result.lotsUpdated.length > 0 && (
                   <div className="flex items-center gap-1.5">
                     <Check className="size-3.5 text-green-500" />
-                    <span>{result.itemsUpdated.length} updated</span>
+                    <span>{result.lotsUpdated.length} updated</span>
                   </div>
                 )}
                 {result.lineageCreated > 0 && (

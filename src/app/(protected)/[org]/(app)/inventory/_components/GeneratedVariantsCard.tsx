@@ -11,7 +11,7 @@ import {
 } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import type { VariantRow } from "./ItemTypeForm";
+import type { VariantRow } from "./LotTypeForm";
 
 type GeneratedVariantsCardProps = {
   variants: VariantRow[];

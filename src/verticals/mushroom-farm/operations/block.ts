@@ -5,22 +5,22 @@ export function buildBlockOperations(
 ): SeedOperationType[] {
   const inoculateInputs: SeedOperationTypeInput[] = [
     {
-      type: "items",
+      type: "lots",
       referenceKey: "spawn",
       sortOrder: 0,
       config: {
-        itemTypeName: "Spawn",
+        lotTypeName: "Spawn",
         preconditionsStatuses: ["In Stock", "In Use"],
       },
     },
   ];
   if (hasBatchTracking) {
     inoculateInputs.push({
-      type: "items",
+      type: "lots",
       referenceKey: "batch",
       sortOrder: 1,
       config: {
-        itemTypeName: "Substrate Batch",
+        lotTypeName: "Substrate Batch",
         preconditionsStatuses: ["Ready"],
       },
     });
@@ -50,11 +50,11 @@ export function buildBlockOperations(
       category: "cultivation",
       inputs: [
         {
-          type: "items",
+          type: "lots",
           referenceKey: "block",
           sortOrder: 0,
           config: {
-            itemTypeName: "Grow Unit",
+            lotTypeName: "Grow Unit",
             preconditionsStatuses: ["Colonizing"],
           },
         },
@@ -69,10 +69,10 @@ export function buildBlockOperations(
       category: "cultivation",
       inputs: [
         {
-          type: "items",
+          type: "lots",
           referenceKey: "block",
           sortOrder: 0,
-          config: { itemTypeName: "Grow Unit" },
+          config: { lotTypeName: "Grow Unit" },
         },
         {
           type: "number",
@@ -96,11 +96,11 @@ export function buildBlockOperations(
       category: "harvest",
       inputs: [
         {
-          type: "items",
+          type: "lots",
           referenceKey: "block",
           sortOrder: 0,
           config: {
-            itemTypeName: "Grow Unit",
+            lotTypeName: "Grow Unit",
             preconditionsStatuses: ["Fruiting"],
           },
         },
@@ -127,11 +127,11 @@ export function buildBlockOperations(
       category: "cultivation",
       inputs: [
         {
-          type: "items",
+          type: "lots",
           referenceKey: "block",
           sortOrder: 0,
           config: {
-            itemTypeName: "Grow Unit",
+            lotTypeName: "Grow Unit",
             preconditionsStatuses: ["Fruiting", "Resting"],
           },
         },
@@ -145,11 +145,11 @@ export function buildBlockOperations(
       category: "cultivation",
       inputs: [
         {
-          type: "items",
+          type: "lots",
           referenceKey: "block",
           sortOrder: 0,
           config: {
-            itemTypeName: "Grow Unit",
+            lotTypeName: "Grow Unit",
             preconditionsStatuses: ["Spent", "Contaminated"],
           },
         },

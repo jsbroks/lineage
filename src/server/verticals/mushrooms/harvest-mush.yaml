@@ -24,7 +24,7 @@ locations:
   - name: "QA Room"
     icon: Warehouse
 
-items:
+lots:
   - name: Mushroom Box
     icon: Mushroom
     category: Product
@@ -117,8 +117,8 @@ operations:
 
     inputs:
       - key: mushroomBoxes
-        type: items
-        itemType: Mushroom Box
+        type: lots
+        lotType: Mushroom Box
         min: 1
         preconditions:
           status: [Created]
@@ -134,7 +134,7 @@ operations:
 
     steps:
       - name: Harvest Mushroom Box
-        action: set-item
+        action: set-lot
         target: mushroomBoxs
         value:
           status: Approved
@@ -157,14 +157,14 @@ operations:
 
     inputs:
       - key: mushroomBoxes
-        type: items
-        itemType: Mushroom Box
+        type: lots
+        lotType: Mushroom Box
         min: 1
         preconditions:
           status: [Approved]
       - key: skid
-        type: items
-        itemType: Skid
+        type: lots
+        lotType: Skid
         min: 1
         max: 1
         preconditions:
@@ -176,7 +176,7 @@ operations:
 
     steps:
       - name: Set Skid Status
-        action: set-item
+        action: set-lot
         target: skid
         value:
           status: Shipped

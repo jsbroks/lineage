@@ -49,7 +49,7 @@ export const BulkStatusDialog: React.FC<BulkStatusDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Change status</DialogTitle>
           <DialogDescription>
-            Update the status of {selectedCount} selected item
+            Update the status of {selectedCount} selected lot
             {selectedCount > 1 ? "s" : ""}.
           </DialogDescription>
         </DialogHeader>

@@ -9,7 +9,7 @@ export const maxDuration = 15;
 export async function GET() {
   const schemaCtx = await buildSchemaContext();
 
-  if (schemaCtx.itemTypes.length === 0) {
+  if (schemaCtx.lotTypes.length === 0) {
     return Response.json({ suggestions: [] });
   }
 
@@ -26,8 +26,8 @@ Here is the current schema:
 ${schemaCtx.prompt}
 
 Generate exactly 5 short, diverse example questions a user might ask about their inventory.
-- Questions should reference real item type names, statuses, variants, and locations from the schema above.
-- Mix question types: counts/status overviews, specific item lookups, lineage/traceability, location queries, and comparisons.
+- Questions should reference real lot type names, statuses, variants, and locations from the schema above.
+- Mix question types: counts/status overviews, specific lot lookups, lineage/traceability, location queries, and comparisons.
 - Keep each question under 12 words.
 - Do NOT use generic placeholders — use the actual names from the schema.
 - Write them as natural questions a grower or production manager would ask.`,

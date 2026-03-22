@@ -17,7 +17,7 @@ export interface LabelTemplate {
 export interface LabelContent {
   showQrCode: boolean;
   showBarcode: boolean;
-  showItemCode: boolean;
+  showLotCode: boolean;
   showTypeName: boolean;
   showVariantName: boolean;
   customText: string;
@@ -26,7 +26,7 @@ export interface LabelContent {
 export const DEFAULT_LABEL_CONTENT: LabelContent = {
   showQrCode: true,
   showBarcode: true,
-  showItemCode: true,
+  showLotCode: true,
   showTypeName: false,
   showVariantName: false,
   customText: "",

@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import type { AttributeDefinitionRow } from "./ItemTypeForm";
+import type { AttributeDefinitionRow } from "./LotTypeForm";
 
 type AttributesCardProps = {
   attrDefs: AttributeDefinitionRow[];
@@ -41,7 +41,7 @@ export function AttributesCard({
           <div>
             <CardTitle>Custom Attributes</CardTitle>
             <CardDescription>
-              Define extra data fields stored on each item.
+              Define extra data fields stored on each lot.
             </CardDescription>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={onAdd}>

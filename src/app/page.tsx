@@ -97,7 +97,7 @@ function LineageGraph() {
       viewBox="0 0 420 270"
       fill="none"
       className="w-full"
-      aria-label="Lineage graph showing parent-child relationships between items"
+      aria-label="Lineage graph showing parent-child relationships between lots"
     >
       {/* Edges: top → middle */}
       <Edge x1={n1.x} y1={n1.y} x2={n3.x} y2={n3.y} color="#7dd3fc" />
@@ -111,16 +111,16 @@ function LineageGraph() {
       <Edge x1={n5.x} y1={n5.y} x2={n6.x} y2={n6.y} color="#86efac" />
 
       {/* Top row */}
-      <Node cx={n1.x} cy={n1.y} label="ITM-012" color="#7dd3fc" />
-      <Node cx={n2.x} cy={n2.y} label="ITM-019" color="#7dd3fc" />
+      <Node cx={n1.x} cy={n1.y} label="LOT-012" color="#7dd3fc" />
+      <Node cx={n2.x} cy={n2.y} label="LOT-019" color="#7dd3fc" />
 
       {/* Middle row */}
-      <Node cx={n3.x} cy={n3.y} label="ITM-041" color="#86efac" />
-      <Node cx={n4.x} cy={n4.y} label="ITM-042" color="#c4b5fd" />
-      <Node cx={n5.x} cy={n5.y} label="ITM-043" color="#86efac" />
+      <Node cx={n3.x} cy={n3.y} label="LOT-041" color="#86efac" />
+      <Node cx={n4.x} cy={n4.y} label="LOT-042" color="#c4b5fd" />
+      <Node cx={n5.x} cy={n5.y} label="LOT-043" color="#86efac" />
 
       {/* Bottom row */}
-      <Node cx={n6.x} cy={n6.y} label="ITM-108" color="#fbbf24" />
+      <Node cx={n6.x} cy={n6.y} label="LOT-108" color="#fbbf24" />
     </svg>
   );
 }
@@ -128,15 +128,15 @@ function LineageGraph() {
 const STEPS = [
   {
     number: "01",
-    title: "Define your items",
+    title: "Define your lots",
     description:
-      "Create custom item types with their own statuses, variants, and attributes. Model your exact process.",
+      "Create custom lot types with their own statuses, variants, and attributes. Model your exact process.",
   },
   {
     number: "02",
     title: "Scan and track",
     description:
-      "Print QR labels and scan from your phone to update status, log operations, or look up any item.",
+      "Print QR labels and scan from your phone to update status, log operations, or look up any lot.",
   },
   {
     number: "03",
@@ -165,7 +165,7 @@ const FEATURES = [
     ),
     title: "Scan-first tracking",
     description:
-      "Print QR or barcode labels. Scan from your phone to update status, log tasks, or look up any item instantly.",
+      "Print QR or barcode labels. Scan from your phone to update status, log tasks, or look up any lot instantly.",
   },
   {
     icon: (
@@ -230,7 +230,7 @@ const FEATURES = [
     ),
     title: "Batch operations",
     description:
-      "Create 50 items at once. Move a full rack in one scan. Bulk update statuses or attributes.",
+      "Create 50 lots at once. Move a full rack in one scan. Bulk update statuses or attributes.",
   },
   {
     icon: (
@@ -249,7 +249,7 @@ const FEATURES = [
     ),
     title: "Smart suggestions",
     description:
-      "Scan an item and Lineage suggests the next operation based on its current status and type.",
+      "Scan a lot and Lineage suggests the next operation based on its current status and type.",
   },
   {
     icon: (
@@ -268,7 +268,7 @@ const FEATURES = [
     ),
     title: "Configurable workflows",
     description:
-      "Custom item types, statuses, and operation steps. Your process, your rules — no code required.",
+      "Custom lot types, statuses, and operation steps. Your process, your rules — no code required.",
   },
 ];
 
@@ -476,7 +476,7 @@ export default async function Home() {
             Ready to track smarter?
           </h2>
           <p className="text-background/60 mx-auto mt-3 max-w-md">
-            Free to start. No credit card required. Set up your first item type
+            Free to start. No credit card required. Set up your first lot type
             in under 5 minutes.
           </p>
           <div className="mt-8">

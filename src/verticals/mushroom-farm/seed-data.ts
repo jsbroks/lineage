@@ -1,12 +1,12 @@
 import { z } from "zod";
-import type { SeedData, SeedItemType } from "../types";
+import type { SeedData, SeedLotType } from "../types";
 import { DEFAULT_WORKFLOW_FLAGS, workflowFlagsSchema } from "./config";
 import {
-  buildSpawnItemType,
-  buildBatchItemType,
-  buildBlockItemType,
-  buildTrayItemType,
-} from "./item-types";
+  buildSpawnLotType,
+  buildBatchLotType,
+  buildBlockLotType,
+  buildTrayLotType,
+} from "./lot-types";
 import { buildOperations } from "./operations";
 import { buildLocations } from "./locations";
 
@@ -29,20 +29,20 @@ export function buildMushroomFarmSeedData(
   const varieties = parsed.varieties ?? ["Blue Oyster"];
   const flags = { ...DEFAULT_WORKFLOW_FLAGS, ...parsed.workflowFlags };
 
-  const itemTypes: SeedItemType[] = [buildSpawnItemType(varieties)];
+  const lotTypes: SeedLotType[] = [buildSpawnLotType(varieties)];
 
   if (flags.batchTracking) {
-    itemTypes.push(buildBatchItemType());
+    lotTypes.push(buildBatchLotType());
   }
   if (flags.blockTracking) {
-    itemTypes.push(buildBlockItemType(varieties));
+    lotTypes.push(buildBlockLotType(varieties));
   }
   if (flags.trayTracking) {
-    itemTypes.push(buildTrayItemType());
+    lotTypes.push(buildTrayLotType());
   }
 
   return {
-    itemTypes,
+    lotTypes,
     operations: buildOperations(flags),
     locations: buildLocations(),
   };

@@ -26,7 +26,7 @@ export interface AttrDef {
   defaultValue?: string | null;
 }
 
-export interface ItemRow {
+export interface LotRow {
   id: string;
   code: string;
   status: string;

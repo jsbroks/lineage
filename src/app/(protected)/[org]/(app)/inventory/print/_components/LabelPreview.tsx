@@ -34,7 +34,7 @@ export const LabelPreview: React.FC<LabelPreviewProps> = ({
     return (
       <div className="flex h-full items-center justify-center">
         <p className="text-muted-foreground text-sm">
-          Select items to preview labels
+          Select lots to preview labels
         </p>
       </div>
     );

@@ -1,5 +1,5 @@
-import { itemTypeRouter } from "~/server/api/routers/item-type";
-import { itemRouter } from "~/server/api/routers/item";
+import { lotTypeRouter } from "~/server/api/routers/lot-type";
+import { lotRouter } from "~/server/api/routers/lot";
 import { locationRouter } from "~/server/api/routers/location";
 import { operationRouter } from "~/server/api/routers/operation";
 import { operationTypeRouter } from "~/server/api/routers/operation-type";
@@ -13,8 +13,8 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
-  itemType: itemTypeRouter,
-  item: itemRouter,
+  lotType: lotTypeRouter,
+  lot: lotRouter,
   location: locationRouter,
   operation: operationRouter,
   operationType: operationTypeRouter,

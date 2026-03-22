@@ -32,7 +32,7 @@ import {
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/react";
 
-type ItemWithType = RouterOutputs["item"]["getByCode"];
+type LotWithType = RouterOutputs["lot"]["getByCode"];
 type ScannedLocation = RouterOutputs["location"]["getByName"];
 
 type SuggestedOperation = RouterOutputs["operation"]["suggest"][number];
@@ -54,8 +54,7 @@ export default function ScanPage() {
   const params = useParams<{ org: string }>();
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Scanned items stored with their item type info
-  const [scannedItems, setScannedItems] = useState<ItemWithType[]>([]);
+  const [scannedLots, setScannedLots] = useState<LotWithType[]>([]);
   const [scannedLocations, setScannedLocations] = useState<NonNullLocation[]>(
     [],
   );
@@ -63,26 +62,23 @@ export default function ScanPage() {
   const [scanError, setScanError] = useState<string | null>(null);
   const [isLookingUp, setIsLookingUp] = useState(false);
 
-  // Operation state — can be a DB-sourced suggestion or a built-in ID
   const [chosenOp, setChosenOp] = useState<SuggestedOperation | null>(null);
   const [chosenBuiltIn, setChosenBuiltIn] = useState<string | null>(null);
   const [fieldValues, setFieldValues] = useState<Record<string, unknown>>({});
   const [result, setResult] = useState<ExecuteResult | null>(null);
   const [executeError, setExecuteError] = useState<string | null>(null);
 
-  // For "Set Parent Location" — which location is the parent (index into scannedLocations)
   const [parentLocationIdx, setParentLocationIdx] = useState(0);
 
-  // Collapsed groups
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     new Set(),
   );
 
-  const scannedItemIds = scannedItems.map((s) => s.item.id);
+  const scannedLotIds = scannedLots.map((s) => s.lot.id);
 
   const suggestQuery = api.operation.suggest.useQuery(
-    { itemIds: scannedItemIds },
-    { enabled: scannedItemIds.length > 0 },
+    { lotIds: scannedLotIds },
+    { enabled: scannedLotIds.length > 0 },
   );
 
   const opTypeQuery = api.operationType.getById.useQuery(
@@ -91,17 +87,16 @@ export default function ScanPage() {
   );
 
   const executeMutation = api.operation.execute.useMutation();
-  const moveToLocationMutation = api.item.bulkSetLocation.useMutation();
+  const moveToLocationMutation = api.lot.bulkSetLocation.useMutation();
   const setParentMutation = api.location.setParent.useMutation();
   const utils = api.useUtils();
 
-  // Built-in operations derived from scan context
   const builtInOps: BuiltInOperation[] = [];
-  if (scannedLocations.length >= 1 && scannedItems.length > 0) {
+  if (scannedLocations.length >= 1 && scannedLots.length > 0) {
     builtInOps.push({
       id: BUILTIN_MOVE_TO_LOCATION,
       name: `Move to ${scannedLocations[0]!.name}`,
-      description: `Set location of ${scannedItems.length} item(s) to ${scannedLocations[0]!.name}`,
+      description: `Set location of ${scannedLots.length} lot(s) to ${scannedLocations[0]!.name}`,
       ready: true,
     });
   }
@@ -117,13 +112,11 @@ export default function ScanPage() {
     });
   }
 
-  // Auto-select best operation when suggestions or built-ins change
   useEffect(() => {
     const dbSuggestions = suggestQuery.data ?? [];
     const hasBuiltIn = builtInOps.length > 0;
     const hasDbSuggestions = dbSuggestions.length > 0;
 
-    // If user already has a selection, try to preserve it
     if (chosenBuiltIn) {
       if (builtInOps.some((b) => b.id === chosenBuiltIn)) return;
       setChosenBuiltIn(null);
@@ -138,7 +131,6 @@ export default function ScanPage() {
       }
     }
 
-    // Auto-select: prefer ready built-in, then DB suggestions
     if (hasBuiltIn && builtInOps[0]!.ready) {
       setChosenBuiltIn(builtInOps[0]!.id);
       setChosenOp(null);
@@ -156,14 +148,14 @@ export default function ScanPage() {
       setChosenBuiltIn(null);
       setFieldValues({});
     }
-  }, [suggestQuery.data, scannedLocations.length, scannedItems.length]);
+  }, [suggestQuery.data, scannedLocations.length, scannedLots.length]);
 
   const handleScan = useCallback(
     async (code: string) => {
       const trimmed = code.trim();
       if (!trimmed) return;
 
-      if (scannedItems.some((s) => s.item.code === trimmed)) {
+      if (scannedLots.some((s) => s.lot.code === trimmed)) {
         setScanError(`"${trimmed}" is already scanned`);
         setScanInput("");
         inputRef.current?.focus();
@@ -173,13 +165,12 @@ export default function ScanPage() {
       setIsLookingUp(true);
       setScanError(null);
 
-      // Try item lookup first
       try {
-        const data = await utils.item.getByCode.fetch({ code: trimmed });
-        if (scannedItems.some((s) => s.item.id === data.item.id)) {
+        const data = await utils.lot.getByCode.fetch({ code: trimmed });
+        if (scannedLots.some((s) => s.lot.id === data.lot.id)) {
           setScanError(`"${trimmed}" is already scanned`);
         } else {
-          setScannedItems((prev) => [...prev, data]);
+          setScannedLots((prev) => [...prev, data]);
           setResult(null);
           setExecuteError(null);
         }
@@ -188,7 +179,7 @@ export default function ScanPage() {
         inputRef.current?.focus();
         return;
       } catch {
-        // Not an item — try location
+        // Not a lot — try location
       }
 
       try {
@@ -202,10 +193,10 @@ export default function ScanPage() {
             setExecuteError(null);
           }
         } else {
-          setScanError(`No item or location found for "${trimmed}"`);
+          setScanError(`No lot or location found for "${trimmed}"`);
         }
       } catch {
-        setScanError(`No item or location found for "${trimmed}"`);
+        setScanError(`No lot or location found for "${trimmed}"`);
       } finally {
         setScanInput("");
         setIsLookingUp(false);
@@ -213,9 +204,9 @@ export default function ScanPage() {
       }
     },
     [
-      scannedItems,
+      scannedLots,
       scannedLocations,
-      utils.item.getByCode,
+      utils.lot.getByCode,
       utils.location.getByName,
     ],
   );
@@ -235,8 +226,8 @@ export default function ScanPage() {
     }
   };
 
-  const removeItem = (itemId: string) => {
-    setScannedItems((prev) => prev.filter((s) => s.item.id !== itemId));
+  const removeLot = (lotId: string) => {
+    setScannedLots((prev) => prev.filter((s) => s.lot.id !== lotId));
     setResult(null);
     setExecuteError(null);
   };
@@ -269,14 +260,13 @@ export default function ScanPage() {
   const handleExecute = async () => {
     setExecuteError(null);
 
-    // Built-in: Move to Location
     if (
       chosenBuiltIn === BUILTIN_MOVE_TO_LOCATION &&
       scannedLocations.length > 0
     ) {
       try {
         const res = await moveToLocationMutation.mutateAsync({
-          itemIds: scannedItemIds,
+          lotIds: scannedLotIds,
           locationId: scannedLocations[0]!.id,
         });
         setResult({
@@ -289,19 +279,18 @@ export default function ScanPage() {
               success: true,
             },
           ],
-          itemsCreated: [],
-          itemsUpdated: scannedItemIds.slice(0, res.updated),
+          lotsCreated: [],
+          lotsUpdated: scannedLotIds.slice(0, res.updated),
           lineageCreated: 0,
         });
       } catch (e: unknown) {
         setExecuteError(
-          e instanceof Error ? e.message : "Failed to move items",
+          e instanceof Error ? e.message : "Failed to move lots",
         );
       }
       return;
     }
 
-    // Built-in: Set Parent Location
     if (
       chosenBuiltIn === BUILTIN_SET_PARENT_LOCATION &&
       scannedLocations.length === 2
@@ -326,8 +315,8 @@ export default function ScanPage() {
               success: true,
             },
           ],
-          itemsCreated: [],
-          itemsUpdated: [],
+          lotsCreated: [],
+          lotsUpdated: [],
           lineageCreated: 0,
         });
       } catch (e: unknown) {
@@ -338,23 +327,18 @@ export default function ScanPage() {
       return;
     }
 
-    // DB-sourced operation
     if (!chosenOp) return;
 
-    // Match scanned items to ports by itemTypeId rather than using the
-    // suggestion engine's pre-filtered matchedItemIds (which excludes
-    // items that don't meet status preconditions). The execute engine
-    // does its own validation and gives clearer error messages.
-    const itemsByType = new Map<string, string[]>();
-    for (const s of scannedItems) {
-      const arr = itemsByType.get(s.item.itemTypeId) ?? [];
-      arr.push(s.item.id);
-      itemsByType.set(s.item.itemTypeId, arr);
+    const lotsByType = new Map<string, string[]>();
+    for (const s of scannedLots) {
+      const arr = lotsByType.get(s.lot.lotTypeId) ?? [];
+      arr.push(s.lot.id);
+      lotsByType.set(s.lot.lotTypeId, arr);
     }
 
     const inputs: Record<string, unknown> = { ...fieldValues };
     for (const port of chosenOp.ports) {
-      const ids = itemsByType.get(port.itemTypeId) ?? [];
+      const ids = lotsByType.get(port.lotTypeId) ?? [];
       if (ids.length > 0) {
         inputs[port.referenceKey] = ids;
       }
@@ -376,7 +360,7 @@ export default function ScanPage() {
   };
 
   const reset = () => {
-    setScannedItems([]);
+    setScannedLots([]);
     setScannedLocations([]);
     setParentLocationIdx(0);
     setChosenOp(null);
@@ -389,22 +373,21 @@ export default function ScanPage() {
     inputRef.current?.focus();
   };
 
-  // Group scanned items by item type
-  const groupedItems = scannedItems.reduce<
+  const groupedLots = scannedLots.reduce<
     Map<
       string,
-      { typeName: string; typeIcon: string | null; items: ItemWithType[] }
+      { typeName: string; typeIcon: string | null; lots: LotWithType[] }
     >
   >((map, entry) => {
-    const typeId = entry.item.itemTypeId;
+    const typeId = entry.lot.lotTypeId;
     const existing = map.get(typeId);
     if (existing) {
-      existing.items.push(entry);
+      existing.lots.push(entry);
     } else {
       map.set(typeId, {
-        typeName: entry.itemType?.name ?? "Unknown Type",
-        typeIcon: entry.itemType?.icon ?? null,
-        items: [entry],
+        typeName: entry.lotType?.name ?? "Unknown Type",
+        typeIcon: entry.lotType?.icon ?? null,
+        lots: [entry],
       });
     }
     return map;
@@ -418,8 +401,8 @@ export default function ScanPage() {
     );
   }
 
-  const hasItems = scannedItems.length > 0;
-  const hasAnything = hasItems || scannedLocations.length > 0;
+  const hasLots = scannedLots.length > 0;
+  const hasAnything = hasLots || scannedLocations.length > 0;
   const isExecuting =
     executeMutation.isPending ||
     moveToLocationMutation.isPending ||
@@ -442,7 +425,7 @@ export default function ScanPage() {
           <div>
             <h1 className="text-lg font-semibold tracking-tight">Smart Scan</h1>
             <p className="text-muted-foreground text-sm">
-              Scan items to auto-detect and execute operations.
+              Scan lots to auto-detect and execute operations.
             </p>
           </div>
         </div>
@@ -450,7 +433,7 @@ export default function ScanPage() {
 
       {/* Split layout */}
       <div className="flex min-h-0 flex-1">
-        {/* Left panel — scanned items */}
+        {/* Left panel — scanned lots */}
         <div className="flex w-1/2 flex-col border-r">
           <div className="p-4">
             <div className="relative">
@@ -458,7 +441,7 @@ export default function ScanPage() {
               <Input
                 ref={inputRef}
                 autoFocus
-                placeholder="Scan or type item code..."
+                placeholder="Scan or type lot code..."
                 value={scanInput}
                 onChange={(e) => {
                   setScanInput(e.target.value);
@@ -481,12 +464,12 @@ export default function ScanPage() {
             )}
           </div>
 
-          {/* Item groups */}
+          {/* Lot groups */}
           <div className="flex-1 overflow-y-auto px-4 pb-4">
             {!hasAnything && (
               <div className="text-muted-foreground flex flex-col items-center justify-center py-16 text-center">
                 <ScanBarcode className="mb-3 size-10 opacity-20" />
-                <p className="text-sm font-medium">No items scanned yet</p>
+                <p className="text-sm font-medium">No lots scanned yet</p>
                 <p className="mt-1 text-xs">
                   Scan a barcode or type a code above to get started.
                 </p>
@@ -537,8 +520,8 @@ export default function ScanPage() {
                 </div>
               )}
 
-              {[...groupedItems.entries()].map(
-                ([typeId, { typeName, items: groupItems }]) => {
+              {[...groupedLots.entries()].map(
+                ([typeId, { typeName, lots: groupLots }]) => {
                   const isCollapsed = collapsedGroups.has(typeId);
                   return (
                     <div
@@ -560,17 +543,17 @@ export default function ScanPage() {
                           {typeName}
                         </span>
                         <Badge variant="secondary" className="text-xs">
-                          {groupItems.length}
+                          {groupLots.length}
                         </Badge>
                       </button>
 
                       {!isCollapsed && (
                         <div className="border-border divide-border divide-y border-t">
-                          {groupItems.map((entry) => (
-                            <ScannedItemRow
-                              key={entry.item.id}
+                          {groupLots.map((entry) => (
+                            <ScannedLotRow
+                              key={entry.lot.id}
                               entry={entry}
-                              onRemove={removeItem}
+                              onRemove={removeLot}
                             />
                           ))}
                         </div>
@@ -587,7 +570,7 @@ export default function ScanPage() {
         <div className="flex w-1/2 flex-col">
           {!hasAnything && (
             <div className="text-muted-foreground flex flex-1 items-center justify-center p-8 text-center">
-              <p className="text-sm">Scan items to see suggested operations.</p>
+              <p className="text-sm">Scan lots to see suggested operations.</p>
             </div>
           )}
 
@@ -607,7 +590,6 @@ export default function ScanPage() {
                 )}
 
                 <div className="space-y-2">
-                  {/* Built-in operations */}
                   {builtInOps.map((op) => {
                     const isSelected = chosenBuiltIn === op.id;
                     return (
@@ -641,7 +623,6 @@ export default function ScanPage() {
                     );
                   })}
 
-                  {/* DB-sourced operation suggestions */}
                   {suggestQuery.data?.map((suggestion) => {
                     const isSelected =
                       !chosenBuiltIn &&
@@ -676,7 +657,7 @@ export default function ScanPage() {
                               className="bg-yellow-100 text-[10px] text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
                             >
                               <AlertCircle className="mr-0.5 size-3" />
-                              Needs items
+                              Needs lots
                             </Badge>
                           )}
                         </div>
@@ -693,9 +674,9 @@ export default function ScanPage() {
                 {!suggestQuery.isLoading &&
                   builtInOps.length === 0 &&
                   (suggestQuery.data?.length ?? 0) === 0 &&
-                  hasItems && (
+                  hasLots && (
                     <p className="text-muted-foreground py-3 text-sm">
-                      No matching operations for these items.
+                      No matching operations for these lots.
                     </p>
                   )}
               </div>
@@ -793,7 +774,7 @@ export default function ScanPage() {
               </Button>
               {!isReady && (
                 <p className="text-muted-foreground mt-2 text-center text-xs">
-                  Not all required items are present. Scan more items or choose
+                  Not all required lots are present. Scan more lots or choose
                   a different operation.
                 </p>
               )}
@@ -805,15 +786,15 @@ export default function ScanPage() {
   );
 }
 
-function ScannedItemRow({
+function ScannedLotRow({
   entry,
   onRemove,
 }: {
-  entry: ItemWithType;
+  entry: LotWithType;
   onRemove: (id: string) => void;
 }) {
-  const { item, status, variant } = entry;
-  const attrs = (item.attributes ?? {}) as Record<string, unknown>;
+  const { lot, status, variant } = entry;
+  const attrs = (lot.attributes ?? {}) as Record<string, unknown>;
   const attrEntries = Object.entries(attrs).filter(
     ([, v]) => v !== null && v !== undefined && v !== "",
   );
@@ -822,7 +803,7 @@ function ScannedItemRow({
     <div className="hover:bg-muted/30 px-3 py-2 transition-colors">
       <div className="flex items-center gap-2">
         <span className="flex-1 truncate font-mono text-xs font-medium">
-          {item.code}
+          {lot.code}
         </span>
         {variant && (
           <Badge variant="secondary" className="text-[10px]">
@@ -847,7 +828,7 @@ function ScannedItemRow({
         )}
         <button
           type="button"
-          onClick={() => onRemove(item.id)}
+          onClick={() => onRemove(lot.id)}
           className="text-muted-foreground hover:text-foreground shrink-0 rounded p-0.5 transition-colors"
         >
           <X className="size-3.5" />
@@ -887,7 +868,7 @@ function FieldInputs({
   }
 
   const allInputs = opTypeData?.inputs ?? [];
-  const fields = allInputs.filter((inp) => inp.type !== "items");
+  const fields = allInputs.filter((inp) => inp.type !== "lots");
 
   if (fields.length === 0) {
     return (
@@ -1032,16 +1013,16 @@ function ResultsView({
               </p>
 
               <div className="mt-3 flex flex-wrap gap-4 text-sm">
-                {result.itemsCreated.length > 0 && (
+                {result.lotsCreated.length > 0 && (
                   <div className="flex items-center gap-1.5">
                     <Zap className="size-3.5 text-blue-500" />
-                    <span>{result.itemsCreated.length} created</span>
+                    <span>{result.lotsCreated.length} created</span>
                   </div>
                 )}
-                {result.itemsUpdated.length > 0 && (
+                {result.lotsUpdated.length > 0 && (
                   <div className="flex items-center gap-1.5">
                     <Check className="size-3.5 text-green-500" />
-                    <span>{result.itemsUpdated.length} updated</span>
+                    <span>{result.lotsUpdated.length} updated</span>
                   </div>
                 )}
                 {result.lineageCreated > 0 && (

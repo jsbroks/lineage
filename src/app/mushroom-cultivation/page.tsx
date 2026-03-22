@@ -463,7 +463,7 @@ const FEATURES = [
     ),
     title: "Fits your process",
     description:
-      "Custom item types, statuses, and attributes. Oyster, lion's mane, shiitake — your rules.",
+      "Custom lot types, statuses, and attributes. Oyster, lion's mane, shiitake — your rules.",
   },
 ];
 

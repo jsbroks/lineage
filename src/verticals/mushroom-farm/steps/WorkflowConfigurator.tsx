@@ -19,21 +19,21 @@ const WORKFLOW_OPTIONS: WorkflowOption[] = [
     key: "batchTracking",
     title: "Batch pasteurization tracking",
     description:
-      "Track substrate batches through mixing, pasteurization, and cooling. Creates the Substrate Batch item type with pasteurization operations.",
+      "Track substrate batches through mixing, pasteurization, and cooling. Creates the Substrate Batch lot type with pasteurization operations.",
     icon: <Boxes className="size-5" />,
   },
   {
     key: "blockTracking",
     title: "Individual block tracking",
     description:
-      "Track each grow unit (block, bag, or bed) from inoculation through fruiting and harvest. Creates the Grow Unit item type with full lifecycle operations.",
+      "Track each grow unit (block, bag, or bed) from inoculation through fruiting and harvest. Creates the Grow Unit lot type with full lifecycle operations.",
     icon: <Bug className="size-5" />,
   },
   {
     key: "trayTracking",
     title: "Harvest tray tracking",
     description:
-      "Pack harvested mushrooms into tracked containers (trays, boxes, or crates) for sale or distribution. Creates the Harvest Container item type with a close operation.",
+      "Pack harvested mushrooms into tracked containers (trays, boxes, or crates) for sale or distribution. Creates the Harvest Container lot type with a close operation.",
     icon: <Package className="size-5" />,
   },
   {

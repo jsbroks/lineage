@@ -27,9 +27,9 @@ export const BulkDeleteDialog: React.FC<BulkDeleteDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete items</DialogTitle>
+          <DialogTitle>Delete lots</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete {selectedCount} item
+            Are you sure you want to delete {selectedCount} lot
             {selectedCount > 1 ? "s" : ""}? This action cannot be undone. All
             related events, identifiers, and lineage links will be removed.
           </DialogDescription>

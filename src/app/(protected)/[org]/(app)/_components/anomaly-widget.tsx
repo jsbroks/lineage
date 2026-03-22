@@ -27,7 +27,7 @@ export function AnomalyWidget({ org }: { org: string }) {
   const [expanded, setExpanded] = useState(false);
 
   const totalAnomalies =
-    (data?.stuckItems.length ?? 0) +
+    (data?.stuckLots.length ?? 0) +
     (data?.throughputChanges.length ?? 0) +
     (data?.yieldOutliers.length ?? 0);
 
@@ -72,54 +72,54 @@ export function AnomalyWidget({ org }: { org: string }) {
           <div className="grid gap-3 sm:grid-cols-3">
             <AnomalyStatCard
               icon={<Clock className="size-4 text-amber-500" />}
-              label="Stuck Items"
-              count={data?.stuckItems.length ?? 0}
+              label="Stuck Lots"
+              count={data?.stuckLots.length ?? 0}
               description="longer than peers in same status"
             />
             <AnomalyStatCard
               icon={<TrendingDown className="size-4 text-red-500" />}
               label="Throughput Drops"
               count={data?.throughputChanges.length ?? 0}
-              description="item types with 30%+ fewer transitions"
+              description="lot types with 30%+ fewer transitions"
             />
             <AnomalyStatCard
               icon={<Scale className="size-4 text-violet-500" />}
               label="Yield Outliers"
               count={data?.yieldOutliers.length ?? 0}
-              description="items with unusual quantities"
+              description="lots with unusual quantities"
             />
           </div>
 
           {expanded && data && (
             <div className="mt-4 space-y-4">
-              {data.stuckItems.length > 0 && (
+              {data.stuckLots.length > 0 && (
                 <AnomalyDetailCard
-                  title="Stuck Items"
+                  title="Stuck Lots"
                   icon={<Clock className="size-3.5 text-amber-500" />}
                 >
                   <div className="divide-y">
-                    {data.stuckItems.slice(0, 10).map((item) => (
+                    {data.stuckLots.slice(0, 10).map((stuck) => (
                       <div
-                        key={item.itemId}
+                        key={stuck.lotId}
                         className="flex items-start justify-between gap-3 px-4 py-2.5"
                       >
                         <div className="min-w-0">
                           <p className="text-sm">
                             <Link
-                              href={`/${org}/items/${item.itemId}`}
+                              href={`/${org}/lots/${stuck.lotId}`}
                               className="font-medium hover:underline"
                             >
-                              {item.code}
+                              {stuck.code}
                             </Link>
                             <span className="text-muted-foreground">
                               {" "}
-                              · {item.itemTypeName}
+                              · {stuck.lotTypeName}
                             </span>
                           </p>
                           <p className="text-muted-foreground text-xs">
-                            {item.statusName}
-                            {item.locationName && ` · ${item.locationName}`}
-                            {item.variantName && ` · ${item.variantName}`}
+                            {stuck.statusName}
+                            {stuck.locationName && ` · ${stuck.locationName}`}
+                            {stuck.variantName && ` · ${stuck.variantName}`}
                           </p>
                         </div>
                         <div className="shrink-0 text-right">
@@ -127,10 +127,10 @@ export function AnomalyWidget({ org }: { org: string }) {
                             variant="outline"
                             className="text-amber-600 dark:text-amber-400"
                           >
-                            {item.daysInStatus}d
+                            {stuck.daysInStatus}d
                           </Badge>
                           <p className="text-muted-foreground mt-0.5 text-[10px]">
-                            avg {item.avgDaysInStatus}d
+                            avg {stuck.avgDaysInStatus}d
                           </p>
                         </div>
                       </div>
@@ -147,12 +147,12 @@ export function AnomalyWidget({ org }: { org: string }) {
                   <div className="divide-y">
                     {data.throughputChanges.map((change) => (
                       <div
-                        key={change.itemTypeName}
+                        key={change.lotTypeName}
                         className="flex items-center justify-between gap-3 px-4 py-2.5"
                       >
                         <div>
                           <p className="text-sm font-medium">
-                            {change.itemTypeName}
+                            {change.lotTypeName}
                           </p>
                           <p className="text-muted-foreground text-xs">
                             {change.recentCount} transitions this week vs{" "}
@@ -179,20 +179,20 @@ export function AnomalyWidget({ org }: { org: string }) {
                   <div className="divide-y">
                     {data.yieldOutliers.slice(0, 10).map((outlier) => (
                       <div
-                        key={outlier.itemId}
+                        key={outlier.lotId}
                         className="flex items-start justify-between gap-3 px-4 py-2.5"
                       >
                         <div className="min-w-0">
                           <p className="text-sm">
                             <Link
-                              href={`/${org}/items/${outlier.itemId}`}
+                              href={`/${org}/lots/${outlier.lotId}`}
                               className="font-medium hover:underline"
                             >
                               {outlier.code}
                             </Link>
                             <span className="text-muted-foreground">
                               {" "}
-                              · {outlier.itemTypeName}
+                              · {outlier.lotTypeName}
                             </span>
                           </p>
                           {outlier.variantName && (

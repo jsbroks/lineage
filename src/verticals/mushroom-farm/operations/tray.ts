@@ -10,11 +10,11 @@ export function buildTrayOperations(): SeedOperationType[] {
       category: "harvest",
       inputs: [
         {
-          type: "items",
+          type: "lots",
           referenceKey: "tray",
           sortOrder: 0,
           config: {
-            itemTypeName: "Harvest Container",
+            lotTypeName: "Harvest Container",
             preconditionsStatuses: ["Open"],
           },
         },

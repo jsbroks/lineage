@@ -1,6 +1,6 @@
 export const WRITE_TOOL_NAMES = [
-  "updateItemStatus",
-  "moveItems",
+  "updateLotStatus",
+  "moveLots",
   "executeOperation",
   "bulkUpdateStatus",
   "updateAttributes",
@@ -8,7 +8,7 @@ export const WRITE_TOOL_NAMES = [
 
 export type WriteToolName = (typeof WRITE_TOOL_NAMES)[number];
 
-export type AffectedItem = {
+export type AffectedLot = {
   id: string;
   code: string;
   currentStatus?: string;
@@ -18,7 +18,7 @@ export type AffectedItem = {
 export type PendingAction = {
   type: WriteToolName;
   description: string;
-  affectedItems: AffectedItem[];
+  affectedLots: AffectedLot[];
   changes: Record<string, string>;
   payload: Record<string, unknown>;
   requiresConfirmation: true;

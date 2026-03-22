@@ -14,11 +14,11 @@ import { Separator } from "~/components/ui/separator";
 import { SelectValue } from "~/components/ui/select";
 import { ColorSelector } from "~/app/_components/ColorSelector";
 import { IconPicker } from "~/app/_components/IconPicker";
-import type { ItemTypeFormValues } from "./ItemTypeForm";
+import type { LotTypeFormValues } from "./LotTypeForm";
 
 type GeneralCardProps = {
-  base: ItemTypeFormValues;
-  setBase: React.Dispatch<React.SetStateAction<ItemTypeFormValues>>;
+  base: LotTypeFormValues;
+  setBase: React.Dispatch<React.SetStateAction<LotTypeFormValues>>;
   onNameChange: (value: string) => void;
   onCodePrefixChange: (value: string) => void;
 };
@@ -34,7 +34,7 @@ export function GeneralCard({
       <CardHeader>
         <CardTitle>General</CardTitle>
         <CardDescription>
-          Basic information about this item type.
+          Basic information about this lot type.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

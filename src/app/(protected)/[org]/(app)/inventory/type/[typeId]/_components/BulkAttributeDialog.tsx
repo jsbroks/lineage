@@ -85,14 +85,14 @@ export const BulkAttributeDialog: React.FC<BulkAttributeDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Set attributes</DialogTitle>
           <DialogDescription>
-            Update attributes on {selectedCount} selected item
+            Update attributes on {selectedCount} selected lot
             {selectedCount > 1 ? "s" : ""}. Only checked attributes will be
             changed.
           </DialogDescription>
         </DialogHeader>
         {attrDefs.length === 0 ? (
           <p className="text-muted-foreground py-4 text-center text-sm">
-            No attributes defined for this item type.
+            No attributes defined for this lot type.
           </p>
         ) : (
           <div className="space-y-3">

@@ -134,7 +134,7 @@ export const QuickReport: React.FC<QuickReportProps> = ({
       const res = await fetch("/api/ai/report-builder", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemTypeId: typeId, prompt: aiPrompt.trim() }),
+        body: JSON.stringify({ lotTypeId: typeId, prompt: aiPrompt.trim() }),
       });
       if (!res.ok) throw new Error("Failed to generate report");
       const data = await res.json();
@@ -210,9 +210,9 @@ export const QuickReport: React.FC<QuickReportProps> = ({
     reportMetrics.length > 0;
 
   const { data: reportData, isLoading: reportLoading } =
-    api.item.aggregate.useQuery(
+    api.lot.aggregate.useQuery(
       {
-        itemTypeId: typeId,
+        lotTypeId: typeId,
         groupBy: reportGroupBy,
         metrics: reportMetrics,
         filters: {
@@ -233,9 +233,9 @@ export const QuickReport: React.FC<QuickReportProps> = ({
     aiParams.groupBy.length > 0;
 
   const { data: aiReportData, isLoading: aiReportLoading } =
-    api.item.aggregate.useQuery(
+    api.lot.aggregate.useQuery(
       {
-        itemTypeId: typeId,
+        lotTypeId: typeId,
         groupBy: aiParams?.groupBy ?? [],
         metrics: (aiParams?.metrics ?? []) as {
           field: string;
@@ -335,7 +335,7 @@ export const QuickReport: React.FC<QuickReportProps> = ({
                   What do you want to see?
                 </Label>
                 <Textarea
-                  placeholder="e.g. Count of items by status, or average spawn rate grouped by variant..."
+                  placeholder="e.g. Count of lots by status, or average spawn rate grouped by variant..."
                   className="min-h-[60px] text-xs"
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}

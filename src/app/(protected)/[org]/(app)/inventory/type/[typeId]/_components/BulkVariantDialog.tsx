@@ -48,7 +48,7 @@ export const BulkVariantDialog: React.FC<BulkVariantDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Set variant</DialogTitle>
           <DialogDescription>
-            Assign a variant to {selectedCount} selected item
+            Assign a variant to {selectedCount} selected lot
             {selectedCount > 1 ? "s" : ""}.
           </DialogDescription>
         </DialogHeader>

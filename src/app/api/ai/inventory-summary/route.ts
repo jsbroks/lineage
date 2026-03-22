@@ -4,75 +4,75 @@ import { and, count, desc, eq, gte } from "drizzle-orm";
 
 import { db } from "~/server/db";
 import {
-  item,
-  itemEvent,
-  itemType,
-  itemTypeStatusDefinition,
-  itemTypeVariant,
+  lot,
+  lotEvent,
+  lotType,
+  lotTypeStatusDefinition,
+  lotTypeVariant,
 } from "~/server/db/schema";
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
-  const { itemTypeId } = (await req.json()) as { itemTypeId: string };
+  const { lotTypeId } = (await req.json()) as { lotTypeId: string };
 
   const [it] = await db
     .select()
-    .from(itemType)
-    .where(eq(itemType.id, itemTypeId))
+    .from(lotType)
+    .where(eq(lotType.id, lotTypeId))
     .limit(1);
 
-  if (!it) return new Response("Item type not found", { status: 404 });
+  if (!it) return new Response("Lot type not found", { status: 404 });
 
   const [statusCounts, variantCounts, todaysEvents] = await Promise.all([
     db
       .select({
-        statusName: itemTypeStatusDefinition.name,
-        isInitial: itemTypeStatusDefinition.isInitial,
-        isTerminal: itemTypeStatusDefinition.isTerminal,
+        statusName: lotTypeStatusDefinition.name,
+        isInitial: lotTypeStatusDefinition.isInitial,
+        isTerminal: lotTypeStatusDefinition.isTerminal,
         total: count(),
       })
-      .from(item)
+      .from(lot)
       .innerJoin(
-        itemTypeStatusDefinition,
-        eq(item.statusId, itemTypeStatusDefinition.id),
+        lotTypeStatusDefinition,
+        eq(lot.statusId, lotTypeStatusDefinition.id),
       )
-      .where(eq(item.itemTypeId, itemTypeId))
+      .where(eq(lot.lotTypeId, lotTypeId))
       .groupBy(
-        itemTypeStatusDefinition.name,
-        itemTypeStatusDefinition.isInitial,
-        itemTypeStatusDefinition.isTerminal,
+        lotTypeStatusDefinition.name,
+        lotTypeStatusDefinition.isInitial,
+        lotTypeStatusDefinition.isTerminal,
       ),
 
     db
       .select({
-        variantName: itemTypeVariant.name,
+        variantName: lotTypeVariant.name,
         total: count(),
       })
-      .from(item)
-      .innerJoin(itemTypeVariant, eq(item.variantId, itemTypeVariant.id))
-      .where(eq(item.itemTypeId, itemTypeId))
-      .groupBy(itemTypeVariant.name),
+      .from(lot)
+      .innerJoin(lotTypeVariant, eq(lot.variantId, lotTypeVariant.id))
+      .where(eq(lot.lotTypeId, lotTypeId))
+      .groupBy(lotTypeVariant.name),
 
     (() => {
       const todayStart = new Date();
       todayStart.setHours(0, 0, 0, 0);
       return db
         .select({
-          message: itemEvent.message,
-          eventType: itemEvent.eventType,
-          recordedAt: itemEvent.recordedAt,
-          itemCode: item.code,
+          message: lotEvent.message,
+          eventType: lotEvent.eventType,
+          recordedAt: lotEvent.recordedAt,
+          lotCode: lot.code,
         })
-        .from(itemEvent)
-        .innerJoin(item, eq(itemEvent.itemId, item.id))
+        .from(lotEvent)
+        .innerJoin(lot, eq(lotEvent.lotId, lot.id))
         .where(
           and(
-            eq(item.itemTypeId, itemTypeId),
-            gte(itemEvent.recordedAt, todayStart),
+            eq(lot.lotTypeId, lotTypeId),
+            gte(lotEvent.recordedAt, todayStart),
           ),
         )
-        .orderBy(desc(itemEvent.recordedAt))
+        .orderBy(desc(lotEvent.recordedAt))
         .limit(200);
     })(),
   ]);
@@ -84,9 +84,9 @@ export async function POST(req: Request) {
     else inProgress += sc.total;
   }
 
-  let context = `Item Type: ${it.name}`;
+  let context = `Lot Type: ${it.name}`;
   if (it.description) context += `\nDescription: ${it.description}`;
-  context += `\nIn-Progress Items: ${inProgress}`;
+  context += `\nIn-Progress Lots: ${inProgress}`;
 
   if (statusCounts.length > 0) {
     context += `\n\nStatus Breakdown (non-terminal only):`;
@@ -97,7 +97,7 @@ export async function POST(req: Request) {
       context += `\n- ${label}: ${sc.total}`;
     }
     if (terminal > 0) {
-      context += `\n\n(${terminal} items in terminal/completed statuses — excluded from counts above)`;
+      context += `\n\n(${terminal} lots in terminal/completed statuses — excluded from counts above)`;
     }
   }
 
@@ -118,7 +118,7 @@ export async function POST(req: Request) {
     }
     context += `\nEvent type breakdown: ${[...byType.entries()].map(([t, c]) => `${t}: ${c}`).join(", ")}`;
     for (const ev of todaysEvents.slice(0, 30)) {
-      context += `\n- [${ev.eventType}] ${ev.itemCode}: ${ev.message ?? "no details"}`;
+      context += `\n- [${ev.eventType}] ${ev.lotCode}: ${ev.message ?? "no details"}`;
     }
     if (todaysEvents.length > 30) {
       context += `\n... and ${todaysEvents.length - 30} more events`;
@@ -131,11 +131,11 @@ export async function POST(req: Request) {
 You are a concise inventory analyst providing a daily briefing for a production tracking system.
 Given the current state and today's activity for an inventory type, write a brief 2-4 sentence summary.
 
-Focus on: what happened today, current in-progress items, and anything noteworthy.
-Do NOT highlight terminal/completed item counts or percentages as insights — those grow monotonically and are not actionable. Only mention completed items if they were completed today as part of today's activity.
+Focus on: what happened today, current in-progress lots, and anything noteworthy.
+Do NOT highlight terminal/completed lot counts or percentages as insights — those grow monotonically and are not actionable. Only mention completed lots if they were completed today as part of today's activity.
 
 Be specific with numbers.
-Do not state the item type name in the summary.
+Do not state the lot type name in the summary.
 If there's no activity today, note that and focus on the current in-progress state.`,
     prompt: context,
   });

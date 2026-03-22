@@ -5,7 +5,7 @@ import { resolvableValueSchema } from "../operation-context";
 export const incrementAttribute = createAction({
   id: "increment-attribute",
   name: "Increment Attribute",
-  description: "Increment a numeric attribute on targeted items",
+  description: "Increment a numeric attribute on targeted lots",
 
   schema: z.object({
     attrKey: z.string(),
@@ -15,11 +15,11 @@ export const incrementAttribute = createAction({
   handler: (ctx, step) => {
     const { attrKey, amount: rawAmount } = step.config;
     const result = new ActionResult();
-    const items = ctx.itemsFromTarget(step.target);
+    const lots = ctx.lotsFromTarget(step.target);
 
-    if (items.length === 0) {
+    if (lots.length === 0) {
       result.skipped = true;
-      result.message = `No items found for target: ${step.target}`;
+      result.message = `No lots found for target: ${step.target}`;
       return result;
     }
 
@@ -32,19 +32,18 @@ export const incrementAttribute = createAction({
       return result;
     }
 
-    for (const item of items) {
-      const currentAttrs = (item.attributes ?? {}) as Record<string, unknown>;
+    for (const lot of lots) {
+      const currentAttrs = (lot.attributes ?? {}) as Record<string, unknown>;
       const currentValue = Number(currentAttrs[attrKey] ?? 0);
       const newValue = currentValue + incrementBy;
 
-      // Spread existing attributes to prevent data loss on persist
-      result.updateItem(item.id, {
+      result.updateLot(lot.id, {
         attributes: { ...currentAttrs, [attrKey]: newValue },
       });
     }
 
-    const total = items.length;
-    const plural = total === 1 ? "item" : "items";
+    const total = lots.length;
+    const plural = total === 1 ? "lot" : "lots";
     result.message = `Incremented ${attrKey} by ${incrementBy} for ${total} ${plural}`;
 
     return result;

@@ -55,7 +55,7 @@ export default function OperationTypeDetailPage() {
     { enabled: !isNew },
   );
 
-  const { data: itemTypes = [] } = api.itemType.list.useQuery();
+  const { data: lotTypes = [] } = api.lotType.list.useQuery();
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -214,7 +214,7 @@ export default function OperationTypeDetailPage() {
             <InputsSection
               operationTypeId={opType.id}
               inputs={opType.inputs}
-              itemTypes={itemTypes}
+              lotTypes={lotTypes}
             />
             <StepsSection operationTypeId={opType.id} steps={opType.steps} />
           </>
@@ -225,7 +225,7 @@ export default function OperationTypeDetailPage() {
 }
 
 // ---------------------------------------------------------------------------
-// Inputs Section (unified items + fields)
+// Inputs Section (unified lots + fields)
 // ---------------------------------------------------------------------------
 
 type InputEntry = {
@@ -239,8 +239,8 @@ type InputEntry = {
   options: Record<string, unknown> | null;
   defaultValue: unknown;
   sortOrder: number;
-  itemConfig: {
-    itemTypeId: string;
+  lotConfig: {
+    lotTypeId: string;
     minCount: number;
     maxCount: number | null;
     preconditionsStatuses: string[] | null;
@@ -250,13 +250,13 @@ type InputEntry = {
 type InputsSectionProps = {
   operationTypeId: string;
   inputs: InputEntry[];
-  itemTypes: { id: string; name: string }[];
+  lotTypes: { id: string; name: string }[];
 };
 
 function InputsSection({
   operationTypeId,
   inputs,
-  itemTypes,
+  lotTypes,
 }: InputsSectionProps) {
   const utils = api.useUtils();
 
@@ -295,18 +295,18 @@ function InputsSection({
           <div>
             <CardTitle>Inputs</CardTitle>
             <CardDescription>
-              Item types and data fields used by this task.
+              Lot types and data fields used by this task.
             </CardDescription>
           </div>
           <div className="flex gap-1">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setAdding("items")}
+              onClick={() => setAdding("lots")}
               className="gap-1"
             >
               <Plus className="size-3.5" />
-              Item Input
+              Lot Input
             </Button>
             <Button
               variant="ghost"
@@ -332,7 +332,7 @@ function InputsSection({
             editingId === inp.id ? (
               <InputForm
                 key={inp.id}
-                itemTypes={itemTypes}
+                lotTypes={lotTypes}
                 initial={inp}
                 onSave={async (data) => {
                   await updateMutation.mutateAsync({ id: inp.id, ...data });
@@ -351,14 +351,14 @@ function InputsSection({
                     {inp.referenceKey}
                   </span>
                   <Badge variant="outline" className="text-xs">
-                    {inp.type === "items"
-                      ? itemTypes.find(
-                          (it) => it.id === inp.itemConfig?.itemTypeId,
-                        )?.name ?? "Item"
+                    {inp.type === "lots"
+                      ? lotTypes.find(
+                          (lt) => lt.id === inp.lotConfig?.lotTypeId,
+                        )?.name ?? "Lot"
                       : inp.type}
                   </Badge>
                   {(inp.required ||
-                    (inp.itemConfig && inp.itemConfig.minCount > 0)) && (
+                    (inp.lotConfig && inp.lotConfig.minCount > 0)) && (
                     <Badge
                       variant="ghost"
                       className="bg-blue-300/20 text-xs text-blue-600"
@@ -366,13 +366,13 @@ function InputsSection({
                       Required
                     </Badge>
                   )}
-                  {inp.itemConfig?.preconditionsStatuses &&
-                    inp.itemConfig.preconditionsStatuses.length > 0 && (
+                  {inp.lotConfig?.preconditionsStatuses &&
+                    inp.lotConfig.preconditionsStatuses.length > 0 && (
                       <Badge
                         variant="ghost"
                         className="bg-blue-300/20 text-xs text-blue-600"
                       >
-                        {inp.itemConfig.preconditionsStatuses.join(", ")}
+                        {inp.lotConfig.preconditionsStatuses.join(", ")}
                       </Badge>
                     )}
                 </div>
@@ -400,7 +400,7 @@ function InputsSection({
 
           {adding && (
             <InputForm
-              itemTypes={itemTypes}
+              lotTypes={lotTypes}
               defaultType={adding}
               onSave={async (data) => {
                 await addMutation.mutateAsync({
@@ -419,7 +419,7 @@ function InputsSection({
 }
 
 // ---------------------------------------------------------------------------
-// Input Form (inline — handles both item and field types)
+// Input Form (inline — handles both lot and field types)
 // ---------------------------------------------------------------------------
 
 type InputFormData = {
@@ -431,21 +431,21 @@ type InputFormData = {
   sortOrder: number;
   options: Record<string, unknown> | null;
   defaultValue: unknown;
-  itemTypeId?: string;
+  lotTypeId?: string;
   minCount?: number;
   maxCount?: number | null;
   preconditionsStatuses?: string[] | null;
 };
 
 function InputForm({
-  itemTypes,
+  lotTypes,
   initial,
   defaultType,
   onSave,
   onCancel,
   saving,
 }: {
-  itemTypes: { id: string; name: string }[];
+  lotTypes: { id: string; name: string }[];
   initial?: InputEntry;
   defaultType?: string;
   onSave: (data: InputFormData) => Promise<void>;
@@ -463,28 +463,28 @@ function InputForm({
     ((initial?.options as { enum?: string[] } | null)?.enum ?? []).join(", "),
   );
 
-  const [itemTypeId, setItemTypeId] = useState(
-    initial?.itemConfig?.itemTypeId ?? itemTypes[0]?.id ?? "",
+  const [lotTypeId, setLotTypeId] = useState(
+    initial?.lotConfig?.lotTypeId ?? lotTypes[0]?.id ?? "",
   );
   const [qtyMin, setQtyMin] = useState(
-    String(initial?.itemConfig?.minCount ?? ""),
+    String(initial?.lotConfig?.minCount ?? ""),
   );
   const [qtyMax, setQtyMax] = useState(
-    initial?.itemConfig?.maxCount != null
-      ? String(initial.itemConfig.maxCount)
+    initial?.lotConfig?.maxCount != null
+      ? String(initial.lotConfig.maxCount)
       : "",
   );
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>(
-    initial?.itemConfig?.preconditionsStatuses ?? [],
+    initial?.lotConfig?.preconditionsStatuses ?? [],
   );
   const [statusInput, setStatusInput] = useState("");
 
-  const isItems = inputType === "items";
+  const isLots = inputType === "lots";
 
   const { data: availableStatuses = [] } =
-    api.operationType.statusesForItemType.useQuery(
-      { itemTypeId },
-      { enabled: !!itemTypeId && isItems },
+    api.operationType.statusesForLotType.useQuery(
+      { lotTypeId },
+      { enabled: !!lotTypeId && isLots },
     );
 
   const toggleStatus = (name: string) => {
@@ -512,9 +512,9 @@ function InputForm({
       sortOrder: Number(sortOrder) || 0,
       options: enumOptions ? { enum: enumOptions } : null,
       defaultValue: null,
-      ...(isItems
+      ...(isLots
         ? {
-            itemTypeId,
+            lotTypeId,
             minCount: parseInt(qtyMin, 10) || 0,
             maxCount: qtyMax.trim() ? parseInt(qtyMax, 10) || null : null,
             preconditionsStatuses:
@@ -531,7 +531,7 @@ function InputForm({
     >
       <div className="mb-3 flex items-center justify-between">
         <span className="text-xs font-medium tracking-wider uppercase">
-          {initial ? "Edit" : "New"} {isItems ? "item input" : "field"}
+          {initial ? "Edit" : "New"} {isLots ? "lot input" : "field"}
         </span>
         <Button
           type="button"
@@ -548,7 +548,7 @@ function InputForm({
           <label className="text-xs font-medium">Reference Key</label>
           <Input
             required
-            placeholder={isItems ? "primary" : "weight_kg"}
+            placeholder={isLots ? "primary" : "weight_kg"}
             value={referenceKey}
             onChange={(e) => setReferenceKey(e.target.value)}
           />
@@ -560,7 +560,7 @@ function InputForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="items">Item Input</SelectItem>
+              <SelectItem value="lots">Lot Input</SelectItem>
               {FIELD_TYPES.map((ft) => (
                 <SelectItem key={ft} value={ft}>
                   {ft}
@@ -570,18 +570,18 @@ function InputForm({
           </Select>
         </div>
 
-        {isItems && (
+        {isLots && (
           <>
             <div className="space-y-1">
-              <label className="text-xs font-medium">Item Category</label>
-              <Select value={itemTypeId} onValueChange={setItemTypeId}>
+              <label className="text-xs font-medium">Lot Category</label>
+              <Select value={lotTypeId} onValueChange={setLotTypeId}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {itemTypes.map((it) => (
-                    <SelectItem key={it.id} value={it.id}>
-                      {it.name}
+                  {lotTypes.map((lt) => (
+                    <SelectItem key={lt.id} value={lt.id}>
+                      {lt.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -608,7 +608,7 @@ function InputForm({
           </>
         )}
 
-        {!isItems && (
+        {!isLots && (
           <>
             <div className="space-y-1 sm:col-span-2">
               <label className="text-xs font-medium">Label</label>
@@ -660,11 +660,11 @@ function InputForm({
         </label>
       </div>
 
-      {isItems && (
+      {isLots && (
         <div className="mt-3 space-y-1 sm:col-span-2">
           <label className="text-xs font-medium">Status Preconditions</label>
           <p className="text-muted-foreground text-xs">
-            Only items in these statuses will be accepted. Leave empty for any
+            Only lots in these statuses will be accepted. Leave empty for any
             status.
           </p>
           {availableStatuses.length > 0 ? (
@@ -739,8 +739,8 @@ function InputForm({
             ? "Saving..."
             : initial
               ? "Update Input"
-              : isItems
-                ? "Add Item Input"
+              : isLots
+                ? "Add Lot Input"
                 : "Add Field"}
         </Button>
       </div>

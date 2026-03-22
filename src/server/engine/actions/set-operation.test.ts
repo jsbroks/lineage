@@ -44,7 +44,7 @@ function makeCtx({ fields = [] }: CtxInput = {}): OperationContext {
     attributes: {},
     createdAt: new Date("2025-01-01"),
     steps: [],
-    inputItems: [],
+    inputLots: [],
     inputLocations: [],
     inputValues: operationValues,
   });
@@ -172,15 +172,15 @@ describe("setOperation", () => {
       expect(result).toBeInstanceOf(ActionResult);
     });
 
-    it("does not produce item changes", () => {
+    it("does not produce lot changes", () => {
       const result = setOperation.handler(
         makeCtx(),
         makeStep({ config: { notes: "test" } }),
       );
 
-      expect(result.items.create).toEqual([]);
-      expect(result.items.update).toEqual({});
-      expect(result.items.link).toEqual([]);
+      expect(result.lots.create).toEqual([]);
+      expect(result.lots.update).toEqual({});
+      expect(result.lots.link).toEqual([]);
     });
   });
 });

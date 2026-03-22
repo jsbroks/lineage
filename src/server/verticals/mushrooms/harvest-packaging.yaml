@@ -2,34 +2,34 @@ vertical: mushrooms
 version: 3
 name: harvest_packaging_flow
 description: >
-  Harvest-to-shipment operations. Barcodes are a special item type
-  representing the physical label. An operation assigns a barcode item
-  to a product item, after which scanning the barcode resolves to
+  Harvest-to-shipment operations. Barcodes are a special lot type
+  representing the physical label. An operation assigns a barcode lot
+  to a product lot, after which scanning the barcode resolves to
   the product it represents.
 
 # ── Workflow ─────────────────────────────────────────────────────────
 #
-# 1. Office batch-creates barcode items (item type: barcode, status: printed).
-#    Each barcode item has an identifier (the barcode value) and optionally
+# 1. Office batch-creates barcode lots (lot type: barcode, status: printed).
+#    Each barcode lot has an identifier (the barcode value) and optionally
 #    an assigned_to user (the packer).
 #
 # 2. Workers place a barcode label into each box as they pack.
 #    No scanning, no devices — purely physical.
 #
 # 3. QA scans the barcode. This runs the "harvest" operation:
-#    - A new packaged_product item is created (status: approved)
-#    - The barcode item is linked to the product via lineage (labels)
-#    - The barcode item transitions from "printed" → "assigned"
+#    - A new packaged_product lot is created (status: approved)
+#    - The barcode lot is linked to the product via lineage (labels)
+#    - The barcode lot transitions from "printed" → "assigned"
 #    - The operator provides the grow room and harvest date
 #
 # 4. From this point on, scanning the barcode resolves to the
-#    packaged_product item it labels (impersonation via lineage).
+#    packaged_product lot it labels (impersonation via lineage).
 #
 # 5. If a barcode is never scanned, it stays in "printed" status —
 #    visible as unaccounted inventory.
 # ─────────────────────────────────────────────────────────────────────
 
-item_types:
+lot_types:
   - key: packaged_product
     name: Packaged Product
     category: product
@@ -85,10 +85,10 @@ item_types:
 # ── Barcode resolution ──────────────────────────────────────────────
 #
 # When a barcode is scanned, the system:
-#   1. Finds the barcode item by identifier value
+#   1. Finds the barcode lot by identifier value
 #   2. If status is "assigned", follows the "labels" lineage link
-#      to the target item and returns that item (impersonation)
-#   3. If status is "printed", returns the barcode item itself
+#      to the target lot and returns that lot (impersonation)
+#   3. If status is "printed", returns the barcode lot itself
 #      (available for assignment via an operation)
 # ─────────────────────────────────────────────────────────────────────
 
@@ -99,21 +99,21 @@ operation_types:
   - key: harvest
     name: Harvest
     description: >
-      Scan a printed barcode item. The operation creates a new
-      packaged_product item, links the barcode to it, and records
+      Scan a printed barcode lot. The operation creates a new
+      packaged_product lot, links the barcode to it, and records
       the grow room and harvest date.
 
     inputs:
       - key: packaged_good
-        type: items
-        item_type: packaged_good
+        type: lots
+        lot_type: packaged_good
         scan: barcode
         required: true
         qty: { min: 1 }
         preconditions:
           status: [printed]
       - key: composte_number
-        type: item
+        type: lot
         description: Grow room the product was harvested from
         required: true
       - key: harvest_date
@@ -149,8 +149,8 @@ operation_types:
       then link those products onto a skid for shipment.
     inputs:
       - key: boxes
-        type: items
-        item_type: packaged_product
+        type: lots
+        lot_type: packaged_product
         scan: barcode
         resolve: true
         required: true
@@ -158,8 +158,8 @@ operation_types:
         preconditions:
           status: [approved]
       - key: skid
-        type: items
-        item_type: skid
+        type: lots
+        lot_type: skid
         scan: barcode
         required: true
         qty: { min: 1, max: 1 }

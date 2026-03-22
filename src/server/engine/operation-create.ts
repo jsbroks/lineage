@@ -28,14 +28,14 @@ export const createOperation = async (
     if (value === undefined || value === null) continue;
 
     switch (def.type) {
-      case "items": {
-        const itemIds = value as string[];
-        if (itemIds.length > 0) {
-          await tx.insert(schema.operationInputItem).values(
-            itemIds.map((itemId) => ({
+      case "lots": {
+        const lotIds = value as string[];
+        if (lotIds.length > 0) {
+          await tx.insert(schema.operationInputLot).values(
+            lotIds.map((lotId) => ({
               operationId: operation.id,
               key: def.referenceKey,
-              itemId,
+              lotId,
             })),
           );
         }

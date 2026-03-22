@@ -4,7 +4,7 @@ import { ActionResult, createAction } from "./actions";
 export const setLineage = createAction({
   id: "set-lineage",
   name: "Set Lineage",
-  description: "Record parent-child relationships between items",
+  description: "Record parent-child relationships between lots",
 
   schema: z.object({
     parent: z.string(),
@@ -16,27 +16,27 @@ export const setLineage = createAction({
     const { parent, children, relationship } = step.config;
     const result = new ActionResult();
 
-    const parentItems = ctx.itemsFromTarget(parent);
-    const childItems = ctx.itemsFromTarget(children);
+    const parentLots = ctx.lotsFromTarget(parent);
+    const childLots = ctx.lotsFromTarget(children);
 
-    if (parentItems.length === 0) {
+    if (parentLots.length === 0) {
       result.skipped = true;
-      result.message = `No parent items found for target: ${parent}`;
+      result.message = `No parent lots found for target: ${parent}`;
       return result;
     }
 
-    if (childItems.length === 0) {
+    if (childLots.length === 0) {
       result.skipped = true;
-      result.message = `No child items found for target: ${children}`;
+      result.message = `No child lots found for target: ${children}`;
       return result;
     }
 
     const now = new Date();
-    for (const parentItem of parentItems) {
-      for (const childItem of childItems) {
-        result.items.link.push({
-          parentItemId: parentItem.id,
-          childItemId: childItem.id,
+    for (const parentLot of parentLots) {
+      for (const childLot of childLots) {
+        result.lots.link.push({
+          parentLotId: parentLot.id,
+          childLotId: childLot.id,
           relationship,
           operationId: ctx.operation.id,
           createdAt: now,
@@ -44,7 +44,7 @@ export const setLineage = createAction({
       }
     }
 
-    const total = parentItems.length * childItems.length;
+    const total = parentLots.length * childLots.length;
     const plural = total === 1 ? "link" : "links";
     result.message = `Created ${total} lineage ${plural}`;
 

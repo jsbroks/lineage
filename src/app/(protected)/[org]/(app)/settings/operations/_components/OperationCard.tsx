@@ -8,20 +8,20 @@ import {
   CardTitle,
 } from "~/components/ui/card";
 import { Pencil } from "lucide-react";
-import type { ItemType, OperationType } from "~/server/db/schema";
-import type { operationTypeInputItem } from "~/server/db/schema";
+import type { LotType, OperationType } from "~/server/db/schema";
+import type { operationTypeInputLot } from "~/server/db/schema";
 
-type Port = typeof operationTypeInputItem.$inferSelect;
+type Port = typeof operationTypeInputLot.$inferSelect;
 
 type PortRowProps = {
   port: Port;
-  itemType: ItemType;
+  lotType: LotType;
 };
 
-const PortRow: React.FC<PortRowProps> = ({ port, itemType }) => {
+const PortRow: React.FC<PortRowProps> = ({ port, lotType }) => {
   return (
     <div key={port.id}>
-      {itemType.name}{" "}
+      {lotType.name}{" "}
       <Badge variant="ghost" className="bg-muted text-muted-foreground text-xs">
         {port.referenceKey}
       </Badge>
@@ -32,14 +32,14 @@ const PortRow: React.FC<PortRowProps> = ({ port, itemType }) => {
 type OperationCardProps = {
   operationType: OperationType;
   ports: Port[];
-  itemTypes: ItemType[];
+  lotTypes: LotType[];
   org: string;
 };
 
 export const OperationCard: React.FC<OperationCardProps> = ({
   operationType,
   ports,
-  itemTypes,
+  lotTypes,
   org,
 }) => {
   return (
@@ -59,23 +59,23 @@ export const OperationCard: React.FC<OperationCardProps> = ({
         <CardContent>
           <div>
             <p className="text-muted-foreground mb-1 text-xs uppercase">
-              Input Items
+              Input Lots
             </p>
             <div className="space-y-0.5">
               {ports.map((port) => (
                 <PortRow
                   key={port.id}
                   port={port}
-                  itemType={
-                    itemTypes.find(
-                      (itemType) => itemType.id === port.itemTypeId,
+                  lotType={
+                    lotTypes.find(
+                      (lt) => lt.id === port.lotTypeId,
                     )!
                   }
                 />
               ))}
               {ports.length === 0 && (
                 <div className="text-muted-foreground pt-1 text-xs">
-                  No input items defined
+                  No input lots defined
                 </div>
               )}
             </div>

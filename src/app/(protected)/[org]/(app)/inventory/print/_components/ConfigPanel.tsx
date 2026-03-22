@@ -36,8 +36,8 @@ interface ConfigPanelProps {
   onTemplateChange: (template: LabelTemplate) => void;
   content: LabelContent;
   onContentChange: (content: LabelContent) => void;
-  selectedItemIds: Set<string>;
-  onSelectedItemIdsChange: (ids: Set<string>) => void;
+  selectedLotIds: Set<string>;
+  onSelectedLotIdsChange: (ids: Set<string>) => void;
   onPrint: () => void;
   initialTypeId?: string;
 }
@@ -47,8 +47,8 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
   onTemplateChange,
   content,
   onContentChange,
-  selectedItemIds,
-  onSelectedItemIdsChange,
+  selectedLotIds,
+  onSelectedLotIdsChange,
   onPrint,
   initialTypeId,
 }) => {
@@ -64,9 +64,9 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
 
   const utils = api.useUtils();
 
-  const { data: types = [] } = api.itemType.list.useQuery();
+  const { data: types = [] } = api.lotType.list.useQuery();
 
-  const { data: typeData } = api.itemType.getById.useQuery(
+  const { data: typeData } = api.lotType.getById.useQuery(
     { id: typeId },
     { enabled: !!typeId },
   );
@@ -89,18 +89,18 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
     setAttrValues(defaults);
   }, [attrDefs]);
 
-  const { data: items = [], isLoading: itemsLoading } =
-    api.item.listByType.useQuery(
-      { itemTypeId: typeId, search: search.trim() || undefined },
+  const { data: lots = [], isLoading: lotsLoading } =
+    api.lot.listByType.useQuery(
+      { lotTypeId: typeId, search: search.trim() || undefined },
       { enabled: !!typeId && sourceMode === "existing" },
     );
 
-  const batchCreate = api.item.batchCreate.useMutation({
+  const batchCreate = api.lot.batchCreate.useMutation({
     onSuccess: (data) => {
-      const newIds = new Set(data.items.map((i) => i.id));
-      onSelectedItemIdsChange(newIds);
-      void utils.item.listByType.invalidate();
-      void utils.itemType.getById.invalidate({ id: typeId });
+      const newIds = new Set(data.lots.map((i) => i.id));
+      onSelectedLotIdsChange(newIds);
+      void utils.lot.listByType.invalidate();
+      void utils.lotType.getById.invalidate({ id: typeId });
       setBatchError(null);
       setSourceMode("existing");
     },
@@ -118,23 +118,23 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
     [],
   );
 
-  const allItemIds = items.map((i) => i.id);
+  const allLotIds = lots.map((i) => i.id);
   const allSelected =
-    allItemIds.length > 0 && allItemIds.every((id) => selectedItemIds.has(id));
+    allLotIds.length > 0 && allLotIds.every((id) => selectedLotIds.has(id));
 
   function toggleAll() {
     if (allSelected) {
-      onSelectedItemIdsChange(new Set());
+      onSelectedLotIdsChange(new Set());
     } else {
-      onSelectedItemIdsChange(new Set(allItemIds));
+      onSelectedLotIdsChange(new Set(allLotIds));
     }
   }
 
-  function toggleItem(id: string) {
-    const next = new Set(selectedItemIds);
+  function toggleLot(id: string) {
+    const next = new Set(selectedLotIds);
     if (next.has(id)) next.delete(id);
     else next.add(id);
-    onSelectedItemIdsChange(next);
+    onSelectedLotIdsChange(next);
   }
 
   function toggleContent(key: keyof Omit<LabelContent, "customText">) {
@@ -153,7 +153,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
       }
     }
     batchCreate.mutate({
-      itemTypeId: typeId,
+      lotTypeId: typeId,
       useSequence: true,
       count: cnt,
       variantId: batchVariant === "none" ? null : batchVariant,
@@ -163,19 +163,19 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
   }
 
   const parsedBatchCount = parseInt(batchCount, 10);
-  const codePrefix = typeData?.itemType?.codePrefix ?? null;
+  const codePrefix = typeData?.lotType?.codePrefix ?? null;
 
   return (
     <div className="flex h-full w-80 shrink-0 flex-col overflow-hidden border-r">
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-        {/* Item Type */}
+        {/* Lot Type */}
         <div className="m-4 space-y-1.5">
-          <Label className="text-xs">Item Type</Label>
+          <Label className="text-xs">Lot Type</Label>
           <Select
             value={typeId}
             onValueChange={(v) => {
               setTypeId(v);
-              onSelectedItemIdsChange(new Set());
+              onSelectedLotIdsChange(new Set());
               setBatchError(null);
               setBatchStatus("");
               setBatchVariant("none");
@@ -207,7 +207,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              Existing Items
+              Existing Lots
             </button>
             <button
               type="button"
@@ -223,12 +223,12 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
           </div>
         )}
 
-        {/* Existing item selection */}
+        {/* Existing lot selection */}
         {typeId && sourceMode === "existing" && (
           <div className="m-4 space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label className="text-xs">Items</Label>
-              {items.length > 0 && (
+              <Label className="text-xs">Lots</Label>
+              {lots.length > 0 && (
                 <button
                   type="button"
                   onClick={toggleAll}
@@ -250,23 +250,23 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
             </div>
 
             <div className="max-h-48 space-y-0.5 overflow-y-auto rounded border p-1">
-              {itemsLoading ? (
+              {lotsLoading ? (
                 <p className="text-muted-foreground px-2 py-3 text-center text-xs">
                   Loading...
                 </p>
-              ) : items.length === 0 ? (
+              ) : lots.length === 0 ? (
                 <p className="text-muted-foreground px-2 py-3 text-center text-xs">
-                  No items found
+                  No lots found
                 </p>
               ) : (
-                items.map((it) => (
+                lots.map((it) => (
                   <label
                     key={it.id}
                     className="hover:bg-muted flex cursor-pointer items-center gap-2 rounded px-2 py-1"
                   >
                     <Checkbox
-                      checked={selectedItemIds.has(it.id)}
-                      onCheckedChange={() => toggleItem(it.id)}
+                      checked={selectedLotIds.has(it.id)}
+                      onCheckedChange={() => toggleLot(it.id)}
                     />
                     <span className="truncate font-mono text-xs">
                       {it.code}
@@ -281,10 +281,10 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
               )}
             </div>
 
-            {selectedItemIds.size > 0 && (
+            {selectedLotIds.size > 0 && (
               <p className="text-muted-foreground text-xs">
-                {selectedItemIds.size} item
-                {selectedItemIds.size !== 1 ? "s" : ""} selected
+                {selectedLotIds.size} lot
+                {selectedLotIds.size !== 1 ? "s" : ""} selected
               </p>
             )}
           </div>
@@ -368,7 +368,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
             {!codePrefix && (
               <p className="text-destructive text-xs">
                 No code prefix configured. Edit this type to set one before
-                creating items.
+                creating lots.
               </p>
             )}
 
@@ -469,10 +469,10 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
 
                 <label className="flex cursor-pointer items-center gap-2">
                   <Checkbox
-                    checked={content.showItemCode}
-                    onCheckedChange={() => toggleContent("showItemCode")}
+                    checked={content.showLotCode}
+                    onCheckedChange={() => toggleContent("showLotCode")}
                   />
-                  <span className="text-xs">Item Code</span>
+                  <span className="text-xs">Lot Code</span>
                 </label>
 
                 <label className="flex cursor-pointer items-center gap-2">
@@ -515,13 +515,13 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
         <Button
           className="w-full"
           size="sm"
-          disabled={selectedItemIds.size === 0}
+          disabled={selectedLotIds.size === 0}
           onClick={onPrint}
         >
           <Printer className="mr-1.5 size-3.5" />
           Print{" "}
-          {selectedItemIds.size > 0
-            ? `${selectedItemIds.size} labels`
+          {selectedLotIds.size > 0
+            ? `${selectedLotIds.size} labels`
             : "labels"}
         </Button>
       </div>

@@ -9,7 +9,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { itemType } from "./item-types";
+import { lotType } from "./lot-types";
 import { location } from "./location";
 
 export const operationType = pgTable("operation_type", {
@@ -42,7 +42,7 @@ export const operationTypeInput = pgTable(
     referenceKey: text("reference_key").notNull(),
     label: text("label"),
     description: text("description"),
-    type: text("type").notNull(), // 'items' | 'location' | 'string' | 'number' | 'date' | ...
+    type: text("type").notNull(), // 'lots' | 'location' | 'string' | 'number' | 'date' | ...
     required: boolean("required").notNull().default(false),
     sortOrder: integer("sort_order").notNull(),
     options: jsonb().$type<Record<string, unknown>>(),
@@ -52,31 +52,31 @@ export const operationTypeInput = pgTable(
 );
 export type OperationTypeInput = typeof operationTypeInput.$inferSelect;
 
-export const operationTypeInputItemConfig = pgTable(
-  "operation_type_input_item_config",
+export const operationTypeInputLotConfig = pgTable(
+  "operation_type_input_lot_config",
   {
     id: uuid().primaryKey().defaultRandom(),
     inputId: uuid("input_id")
       .notNull()
       .unique()
       .references(() => operationTypeInput.id, { onDelete: "cascade" }),
-    itemTypeId: uuid("item_type_id")
+    lotTypeId: uuid("lot_type_id")
       .notNull()
-      .references(() => itemType.id),
+      .references(() => lotType.id),
     minCount: integer("min_count").notNull().default(0),
     maxCount: integer("max_count"),
 
     preconditionsStatuses: jsonb("preconditions_statuses").$type<string[]>(),
   },
 );
-export type OperationTypeInputItemConfig =
-  typeof operationTypeInputItemConfig.$inferSelect;
+export type OperationTypeInputLotConfig =
+  typeof operationTypeInputLotConfig.$inferSelect;
 
 // Backward-compatible aliases (will be removed once all layers are migrated)
 /** @deprecated Use operationTypeInput */
-export const operationTypeInputItem = operationTypeInput;
+export const operationTypeInputLot = operationTypeInput;
 /** @deprecated Use OperationTypeInput */
-export type OperationTypeInputItem = OperationTypeInput;
+export type OperationTypeInputLot = OperationTypeInput;
 /** @deprecated Use operationTypeInput */
 export const operationTypeInputField = operationTypeInput;
 /** @deprecated Use OperationTypeInput */
@@ -106,23 +106,23 @@ export type OperationTypeStep = typeof operationTypeStep.$inferSelect;
 // ============================================================================
 // One table for all validation rules across the system.
 // Each rule is attached to either:
-//   - An item type (item-level validation on create or status change)
+//   - A lot type (lot-level validation on create or status change)
 //   - An operation type port (operation-level validation on scan)
 //
-// Exactly one of item_type_id or operation_type_port_id is set (not both).
+// Exactly one of lot_type_id or operation_type_port_id is set (not both).
 //
 // context determines WHEN the rule fires:
-//   - 'on_create'           : when an item of this item type is created
-//   - 'on_status:colonized' : when an item transitions to 'colonized'
-//   - 'on_status:packed'    : when an item transitions to 'packed'
-//   - 'on_scan'             : when an item is scanned into an operation port
+//   - 'on_create'           : when a lot of this lot type is created
+//   - 'on_status:colonized' : when a lot transitions to 'colonized'
+//   - 'on_status:packed'    : when a lot transitions to 'packed'
+//   - 'on_scan'             : when a lot is scanned into an operation port
 export const validationRule = pgTable(
   "validation_rule",
   {
     id: uuid().primaryKey().defaultRandom(),
 
     // orgId: uuid("org_id").references(() => organizations.id), // NULL = system default
-    itemTypeId: uuid("item_type_id").references(() => itemType.id, {
+    lotTypeId: uuid("lot_type_id").references(() => lotType.id, {
       onDelete: "cascade",
     }),
     operationTypePortId: uuid("operation_type_port_id").references(
@@ -144,5 +144,5 @@ export const validationRule = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [index().on(t.itemTypeId), index().on(t.operationTypePortId)],
+  (t) => [index().on(t.lotTypeId), index().on(t.operationTypePortId)],
 );

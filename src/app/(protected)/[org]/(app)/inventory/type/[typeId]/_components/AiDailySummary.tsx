@@ -7,10 +7,10 @@ import { Card, CardContent } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 
 interface AiDailySummaryProps {
-  itemTypeId: string;
+  lotTypeId: string;
 }
 
-export function AiDailySummary({ itemTypeId }: AiDailySummaryProps) {
+export function AiDailySummary({ lotTypeId }: AiDailySummaryProps) {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +29,7 @@ export function AiDailySummary({ itemTypeId }: AiDailySummaryProps) {
       const res = await fetch("/api/ai/inventory-summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ itemTypeId }),
+        body: JSON.stringify({ lotTypeId }),
         signal: controller.signal,
       });
 
@@ -68,7 +68,7 @@ export function AiDailySummary({ itemTypeId }: AiDailySummaryProps) {
     void fetchSummary();
     return () => abortRef.current?.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [itemTypeId]);
+  }, [lotTypeId]);
 
   if (error) {
     return (

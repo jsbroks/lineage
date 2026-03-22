@@ -17,7 +17,7 @@ export function buildOperations(flags: WorkflowFlags): SeedOperationType[] {
 
   ops.push({
     name: "Print Labels",
-    description: "Print QR code labels for items",
+    description: "Print QR code labels for lots",
     icon: "printer",
     color: "#1E293B",
     category: "admin",

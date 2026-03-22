@@ -1,15 +1,15 @@
 import { describe, it, expect } from "vitest";
 import { OperationContext, type Operation } from "./operation-context";
 import type {
-  Item,
+  Lot,
   OperationInputValue,
-  OperationInputItem,
+  OperationInputLot,
 } from "~/server/db/schema";
 
-function makeItem(overrides: Partial<Item> = {}): Item {
+function makeLot(overrides: Partial<Lot> = {}): Lot {
   return {
-    id: "item-1",
-    itemTypeId: "type-1",
+    id: "lot-1",
+    lotTypeId: "type-1",
     variantId: null,
     code: "BLK-0001",
     statusId: "status-1",
@@ -40,7 +40,7 @@ function makeOperation(overrides: Partial<Operation> = {}): Operation {
     attributes: {},
     createdAt: new Date("2025-01-01"),
     steps: [],
-    inputItems: [],
+    inputLots: [],
     inputLocations: [],
     inputValues: [],
     ...overrides,
@@ -48,24 +48,24 @@ function makeOperation(overrides: Partial<Operation> = {}): Operation {
 }
 
 function makeCtx({
-  items = {},
+  lots = {},
   fields = [],
-  operationItems,
+  operationLots,
 }: {
-  items?: Record<string, Item[]>;
+  lots?: Record<string, Lot[]>;
   fields?: { key: string; value: unknown }[];
-  operationItems?: OperationInputItem[];
+  operationLots?: OperationInputLot[];
 } = {}): OperationContext {
-  const allItems: Item[] = Object.values(items).flat();
+  const allLots: Lot[] = Object.values(lots).flat();
 
-  const opItems: OperationInputItem[] =
-    operationItems ??
-    Object.entries(items).flatMap(([key, list]) =>
-      list.map((item) => ({
-        id: `oi-${item.id}`,
+  const opLots: OperationInputLot[] =
+    operationLots ??
+    Object.entries(lots).flatMap(([key, list]) =>
+      list.map((lot) => ({
+        id: `oi-${lot.id}`,
         key,
         operationId: "op-1",
-        itemId: item.id,
+        lotId: lot.id,
       })),
     );
 
@@ -77,9 +77,9 @@ function makeCtx({
   }));
 
   const ctx = new OperationContext(
-    makeOperation({ inputValues: opValues, inputItems: opItems, inputLocations: [] }),
+    makeOperation({ inputValues: opValues, inputLots: opLots, inputLocations: [] }),
   );
-  ctx.items = Object.fromEntries(allItems.map((i) => [i.id, i]));
+  ctx.lots = Object.fromEntries(allLots.map((i) => [i.id, i]));
 
   return ctx;
 }
@@ -96,10 +96,10 @@ describe("OperationContext", () => {
       expect(ctx.get(["operation", "status"])).toBe("completed");
     });
 
-    it("retrieves an item by id from the items record", () => {
-      const item = makeItem({ id: "item-abc" });
-      const ctx = makeCtx({ items: { target: [item] } });
-      expect(ctx.get(["items", "item-abc", "code"])).toBe("BLK-0001");
+    it("retrieves a lot by id from the lots record", () => {
+      const lot = makeLot({ id: "lot-abc" });
+      const ctx = makeCtx({ lots: { target: [lot] } });
+      expect(ctx.get(["lots", "lot-abc", "code"])).toBe("BLK-0001");
     });
 
     it("returns undefined for a non-existent path", () => {
@@ -108,65 +108,65 @@ describe("OperationContext", () => {
     });
   });
 
-  describe("itemsFromTarget", () => {
+  describe("lotsFromTarget", () => {
     it("returns an empty array when ref is null", () => {
       const ctx = makeCtx();
-      expect(ctx.itemsFromTarget(null)).toEqual([]);
+      expect(ctx.lotsFromTarget(null)).toEqual([]);
     });
 
     it("returns an empty array when ref is undefined", () => {
       const ctx = makeCtx();
-      expect(ctx.itemsFromTarget(undefined)).toEqual([]);
+      expect(ctx.lotsFromTarget(undefined)).toEqual([]);
     });
 
-    it("returns an empty array when no items match the ref", () => {
+    it("returns an empty array when no lots match the ref", () => {
       const ctx = makeCtx({
-        items: { source: [makeItem({ id: "item-1" })] },
+        lots: { source: [makeLot({ id: "lot-1" })] },
       });
-      expect(ctx.itemsFromTarget("target")).toEqual([]);
+      expect(ctx.lotsFromTarget("target")).toEqual([]);
     });
 
-    it("returns matching items for a given ref key", () => {
-      const item = makeItem({ id: "item-1" });
-      const ctx = makeCtx({ items: { target: [item] } });
+    it("returns matching lots for a given ref key", () => {
+      const lot = makeLot({ id: "lot-1" });
+      const ctx = makeCtx({ lots: { target: [lot] } });
 
-      const result = ctx.itemsFromTarget("target");
+      const result = ctx.lotsFromTarget("target");
       expect(result).toHaveLength(1);
-      expect(result[0]!.id).toBe("item-1");
+      expect(result[0]!.id).toBe("lot-1");
     });
 
-    it("returns multiple items for the same ref key", () => {
-      const item1 = makeItem({ id: "item-1", code: "BLK-0001" });
-      const item2 = makeItem({ id: "item-2", code: "BLK-0002" });
-      const ctx = makeCtx({ items: { target: [item1, item2] } });
+    it("returns multiple lots for the same ref key", () => {
+      const lot1 = makeLot({ id: "lot-1", code: "BLK-0001" });
+      const lot2 = makeLot({ id: "lot-2", code: "BLK-0002" });
+      const ctx = makeCtx({ lots: { target: [lot1, lot2] } });
 
-      const result = ctx.itemsFromTarget("target");
+      const result = ctx.lotsFromTarget("target");
       expect(result).toHaveLength(2);
-      expect(result.map((i) => i.id)).toEqual(["item-1", "item-2"]);
+      expect(result.map((i) => i.id)).toEqual(["lot-1", "lot-2"]);
     });
 
-    it("deduplicates items with the same itemId", () => {
-      const item = makeItem({ id: "item-1" });
+    it("deduplicates lots with the same lotId", () => {
+      const lot = makeLot({ id: "lot-1" });
       const ctx = makeCtx({
-        items: { target: [item] },
-        operationItems: [
-          { id: "oi-1", key: "target", operationId: "op-1", itemId: "item-1" },
-          { id: "oi-2", key: "target", operationId: "op-1", itemId: "item-1" },
+        lots: { target: [lot] },
+        operationLots: [
+          { id: "oi-1", key: "target", operationId: "op-1", lotId: "lot-1" },
+          { id: "oi-2", key: "target", operationId: "op-1", lotId: "lot-1" },
         ],
       });
 
-      const result = ctx.itemsFromTarget("target");
+      const result = ctx.lotsFromTarget("target");
       expect(result).toHaveLength(1);
     });
 
-    it("skips operation items with null itemId", () => {
+    it("skips operation lots with null lotId", () => {
       const ctx = makeCtx({
-        operationItems: [
-          { id: "oi-1", key: "target", operationId: "op-1", itemId: null },
+        operationLots: [
+          { id: "oi-1", key: "target", operationId: "op-1", lotId: null },
         ],
       });
 
-      expect(ctx.itemsFromTarget("target")).toEqual([]);
+      expect(ctx.lotsFromTarget("target")).toEqual([]);
     });
   });
 

@@ -25,8 +25,8 @@ description: >
 # 3. Create substrate recipes in inventory (e.g. "sawdust" with
 #    optional ingredient lists).
 #
-# 4. Create spawn items in inventory, recording variety, supplier,
-#    strain, container type, and item number.
+# 4. Create spawn lots in inventory, recording variety, supplier,
+#    strain, container type, and lot number.
 #
 # Per-batch production cycle:
 #
@@ -85,7 +85,7 @@ description: >
 # for extended periods.
 # ─────────────────────────────────────────────────────────────────────
 
-item_types:
+lot_types:
   # ── QR Label ───────────────────────────────────────────────────────
   # Printable labels for blocks, locations, trays, and text/variety.
   # Scanned via mobile app to identify entities.
@@ -113,8 +113,8 @@ item_types:
           allowed_to: []
 
   # ── Substrate ──────────────────────────────────────────────────────
-  # Inventory/recipe item. Created via the web interface and
-  # referenced by batches. Not a per-unit tracked item — represents
+  # Inventory/recipe lot. Created via the web interface and
+  # referenced by batches. Not a per-unit tracked lot — represents
   # a reusable recipe definition.
   - key: substrate
     name: Substrate
@@ -137,8 +137,8 @@ item_types:
           allowed_to: [active]
 
   # ── Spawn ──────────────────────────────────────────────────────────
-  # Inventory item representing a mushroom culture used for
-  # inoculation. Each spawn item records its genetics and sourcing.
+  # Inventory lot representing a mushroom culture used for
+  # inoculation. Each spawn lot records its genetics and sourcing.
   - key: spawn
     name: Spawn
     category: inventory
@@ -309,8 +309,8 @@ operation_types:
 
     inputs:
       - key: substrate
-        type: items
-        item_type: substrate
+        type: lots
+        lot_type: substrate
         required: true
         qty: { min: 1, max: 1 }
         preconditions:
@@ -326,8 +326,8 @@ operation_types:
 
     steps:
       - name: Create batch
-        action: create_item
-        item_type: batch
+        action: create_lot
+        lot_type: batch
         as: batch
         with:
           substrate: { ref: substrate }
@@ -336,7 +336,7 @@ operation_types:
 
     outputs:
       - key: batch
-        item_type: batch
+        lot_type: batch
         status: created
 
     validations:
@@ -355,8 +355,8 @@ operation_types:
 
     inputs:
       - key: batch
-        type: items
-        item_type: batch
+        type: lots
+        lot_type: batch
         required: true
         qty: { min: 1, max: 1 }
         preconditions:
@@ -405,7 +405,7 @@ operation_types:
 
     outputs:
       - key: batch
-        item_type: batch
+        lot_type: batch
         status: pasteurized
 
     validations:
@@ -427,8 +427,8 @@ operation_types:
 
     inputs:
       - key: batch
-        type: items
-        item_type: batch
+        type: lots
+        lot_type: batch
         required: true
         qty: { min: 1, max: 1 }
         preconditions:
@@ -454,9 +454,9 @@ operation_types:
 
     steps:
       - name: Create block records
-        action: create_item
+        action: create_lot
         condition: { equals: [inputs.mode, new] }
-        item_type: block
+        lot_type: block
         as: blocks
         count: { from: inputs.block_count }
         with:
@@ -471,8 +471,8 @@ operation_types:
           relationship: batch_member
 
       - name: Create QR labels
-        action: create_item
-        item_type: qr_label
+        action: create_lot
+        lot_type: qr_label
         as: labels
         count: { from: inputs.block_count }
         with:
@@ -511,10 +511,10 @@ operation_types:
 
     outputs:
       - key: blocks
-        item_type: block
+        lot_type: block
         status: uninoculated
       - key: labels
-        item_type: qr_label
+        lot_type: qr_label
 
     validations:
       - all_required_fields_provided
@@ -535,16 +535,16 @@ operation_types:
 
     inputs:
       - key: block
-        type: items
-        item_type: block
+        type: lots
+        lot_type: block
         scan: qr_code
         required: true
         qty: { min: 1 }
         preconditions:
           status: [uninoculated]
       - key: spawn
-        type: items
-        item_type: spawn
+        type: lots
+        lot_type: spawn
         required: true
         qty: { min: 1, max: 1 }
         preconditions:
@@ -592,7 +592,7 @@ operation_types:
 
     outputs:
       - key: block
-        item_type: block
+        lot_type: block
         status: inoculated
 
     validations:
@@ -613,8 +613,8 @@ operation_types:
 
     inputs:
       - key: block
-        type: items
-        item_type: block
+        type: lots
+        lot_type: block
         scan: qr_code
         required: true
         qty: { min: 1, max: 1 }
@@ -679,8 +679,8 @@ operation_types:
         options: [pasteurization, inoculation, colonization, fruiting, storage]
         auto: true
       - key: blocks
-        type: items
-        item_type: block
+        type: lots
+        lot_type: block
         scan: qr_code
         required: true
         qty: { min: 1 }
@@ -721,8 +721,8 @@ operation_types:
 
     inputs:
       - key: blocks
-        type: items
-        item_type: block
+        type: lots
+        lot_type: block
         scan: qr_code
         required: true
         qty: { min: 1 }
@@ -778,16 +778,16 @@ operation_types:
 
     inputs:
       - key: blocks
-        type: items
-        item_type: block
+        type: lots
+        lot_type: block
         scan: qr_code
         required: true
         qty: { min: 1 }
         preconditions:
           status: [fruiting, harvesting]
       - key: tray
-        type: items
-        item_type: tray
+        type: lots
+        lot_type: tray
         scan: qr_code
         required: false
         qty: { min: 0, max: 1 }
@@ -847,7 +847,7 @@ operation_types:
 
     outputs:
       - key: blocks
-        item_type: block
+        lot_type: block
         status: harvesting
 
     validations:
@@ -866,8 +866,8 @@ operation_types:
 
     inputs:
       - key: blocks
-        type: items
-        item_type: block
+        type: lots
+        lot_type: block
         scan: qr_code
         required: true
         qty: { min: 1 }
@@ -896,8 +896,8 @@ operation_types:
 
     inputs:
       - key: blocks
-        type: items
-        item_type: block
+        type: lots
+        lot_type: block
         scan: qr_code
         required: true
         qty: { min: 1 }
@@ -948,8 +948,8 @@ operation_types:
 
     inputs:
       - key: tray
-        type: items
-        item_type: tray
+        type: lots
+        lot_type: tray
         scan: qr_code
         required: true
         qty: { min: 1, max: 1 }
@@ -975,7 +975,7 @@ operation_types:
 
     outputs:
       - key: tray
-        item_type: tray
+        lot_type: tray
         status: closed
 
     validations:

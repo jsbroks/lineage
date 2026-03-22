@@ -1,14 +1,14 @@
 /**
- * Given a set of items the user has scanned / selected, returns operation
- * types ranked by how well the items satisfy their input port definitions.
+ * Given a set of lots the user has scanned / selected, returns operation
+ * types ranked by how well the lots satisfy their input port definitions.
  *
  * Scoring per operation type:
  *
  *   For each INPUT port:
- *     +3  required port fully satisfied (item type match + status match + qty in range)
- *     +2  required port item type matches but status doesn't match preconditions
+ *     +3  required port fully satisfied (lot type match + status match + qty in range)
+ *     +2  required port lot type matches but status doesn't match preconditions
  *     +1  optional port satisfied
- *     -10 required port with zero matching items (hard penalty)
+ *     -10 required port with zero matching lots (hard penalty)
  *
  *   Bonus:
  *     +2  every required port is satisfied (ready to execute)
@@ -18,29 +18,29 @@
 
 import { asc, eq, inArray } from "drizzle-orm";
 import {
-  item,
-  itemTypeStatusDefinition,
+  lot,
+  lotTypeStatusDefinition,
   operationType,
   operationTypeInput,
-  operationTypeInputItemConfig,
+  operationTypeInputLotConfig,
 } from "~/server/db/schema";
 import type { db as dbInstance } from "~/server/db";
 
 type Db = typeof dbInstance;
 
-type ItemSummary = {
+type LotSummary = {
   id: string;
-  itemTypeId: string;
+  lotTypeId: string;
   statusId: string;
 };
 
-export type ItemInputMatch = {
+export type LotInputMatch = {
   referenceKey: string;
-  itemTypeId: string;
+  lotTypeId: string;
   preconditionsStatuses: string[] | null;
   qtyMin: number;
   qtyMax: number | null;
-  matchedItemIds: string[];
+  matchedLotIds: string[];
   satisfied: boolean;
   statusMismatch: boolean;
 };
@@ -54,31 +54,31 @@ export type SuggestedOperation = {
   };
   score: number;
   ready: boolean;
-  ports: ItemInputMatch[];
+  ports: LotInputMatch[];
 };
 
 export async function suggestOperations(
   db: Db,
-  itemIds: string[],
+  lotIds: string[],
 ): Promise<SuggestedOperation[]> {
-  if (itemIds.length === 0) return [];
+  if (lotIds.length === 0) return [];
 
-  const items = await db
+  const lots = await db
     .select({
-      id: item.id,
-      itemTypeId: item.itemTypeId,
-      statusId: item.statusId,
+      id: lot.id,
+      lotTypeId: lot.lotTypeId,
+      statusId: lot.statusId,
     })
-    .from(item)
-    .where(inArray(item.id, itemIds));
+    .from(lot)
+    .where(inArray(lot.id, lotIds));
 
-  if (items.length === 0) return [];
+  if (lots.length === 0) return [];
 
-  const itemsByType = new Map<string, ItemSummary[]>();
-  for (const l of items) {
-    const arr = itemsByType.get(l.itemTypeId) ?? [];
+  const lotsByType = new Map<string, LotSummary[]>();
+  for (const l of lots) {
+    const arr = lotsByType.get(l.lotTypeId) ?? [];
     arr.push(l);
-    itemsByType.set(l.itemTypeId, arr);
+    lotsByType.set(l.lotTypeId, arr);
   }
 
   const opTypes = await db
@@ -86,74 +86,74 @@ export async function suggestOperations(
     .from(operationType)
     .orderBy(asc(operationType.name));
 
-  const allItemInputs = await db
+  const allLotInputs = await db
     .select()
     .from(operationTypeInput)
-    .where(eq(operationTypeInput.type, "items"));
+    .where(eq(operationTypeInput.type, "lots"));
 
-  const allItemConfigs = allItemInputs.length > 0
+  const allLotConfigs = allLotInputs.length > 0
     ? await db
         .select()
-        .from(operationTypeInputItemConfig)
+        .from(operationTypeInputLotConfig)
         .where(
           inArray(
-            operationTypeInputItemConfig.inputId,
-            allItemInputs.map((i) => i.id),
+            operationTypeInputLotConfig.inputId,
+            allLotInputs.map((i) => i.id),
           ),
         )
     : [];
 
   const configByInputId = new Map(
-    allItemConfigs.map((c) => [c.inputId, c]),
+    allLotConfigs.map((c) => [c.inputId, c]),
   );
 
-  type ItemPort = (typeof allItemInputs)[number] & {
-    itemTypeId: string;
+  type LotPort = (typeof allLotInputs)[number] & {
+    lotTypeId: string;
     minCount: number;
     maxCount: number | null;
     preconditionsStatuses: string[] | null;
   };
 
-  const ports: ItemPort[] = allItemInputs
+  const ports: LotPort[] = allLotInputs
     .map((inp) => {
       const cfg = configByInputId.get(inp.id);
       if (!cfg) return null;
       return {
         ...inp,
-        itemTypeId: cfg.itemTypeId,
+        lotTypeId: cfg.lotTypeId,
         minCount: cfg.minCount,
         maxCount: cfg.maxCount,
         preconditionsStatuses: cfg.preconditionsStatuses,
       };
     })
-    .filter((p): p is ItemPort => p !== null);
+    .filter((p): p is LotPort => p !== null);
 
-  const portsByOpType = new Map<string, ItemPort[]>();
+  const portsByOpType = new Map<string, LotPort[]>();
   for (const port of ports) {
     const arr = portsByOpType.get(port.operationTypeId) ?? [];
     arr.push(port);
     portsByOpType.set(port.operationTypeId, arr);
   }
 
-  const portItemTypeIds = [...new Set(ports.map((p) => p.itemTypeId))];
+  const portLotTypeIds = [...new Set(ports.map((p) => p.lotTypeId))];
   const statusDefsForTypes =
-    portItemTypeIds.length > 0
+    portLotTypeIds.length > 0
       ? await db
           .select({
-            id: itemTypeStatusDefinition.id,
-            name: itemTypeStatusDefinition.name,
-            itemTypeId: itemTypeStatusDefinition.itemTypeId,
+            id: lotTypeStatusDefinition.id,
+            name: lotTypeStatusDefinition.name,
+            lotTypeId: lotTypeStatusDefinition.lotTypeId,
           })
-          .from(itemTypeStatusDefinition)
-          .where(inArray(itemTypeStatusDefinition.itemTypeId, portItemTypeIds))
+          .from(lotTypeStatusDefinition)
+          .where(inArray(lotTypeStatusDefinition.lotTypeId, portLotTypeIds))
       : [];
 
   const statusNameToId = new Map<string, Map<string, string>>();
   for (const sd of statusDefsForTypes) {
-    let inner = statusNameToId.get(sd.itemTypeId);
+    let inner = statusNameToId.get(sd.lotTypeId);
     if (!inner) {
       inner = new Map();
-      statusNameToId.set(sd.itemTypeId, inner);
+      statusNameToId.set(sd.lotTypeId, inner);
     }
     inner.set(sd.name, sd.id);
   }
@@ -166,17 +166,17 @@ export async function suggestOperations(
 
     let score = 0;
     let allRequiredSatisfied = true;
-    const portMatches: ItemInputMatch[] = [];
+    const portMatches: LotInputMatch[] = [];
 
     for (const port of inputPorts) {
-      const candidates = itemsByType.get(port.itemTypeId) ?? [];
+      const candidates = lotsByType.get(port.lotTypeId) ?? [];
       const qtyMin = port.minCount;
       const qtyMax = port.maxCount;
       const isRequired = qtyMin > 0;
 
       let statusOk: Set<string> | null = null;
       if (port.preconditionsStatuses && port.preconditionsStatuses.length > 0) {
-        const lookup = statusNameToId.get(port.itemTypeId);
+        const lookup = statusNameToId.get(port.lotTypeId);
         const resolvedIds = port.preconditionsStatuses
           .map((name) => lookup?.get(name))
           .filter((id): id is string => !!id);
@@ -212,11 +212,11 @@ export async function suggestOperations(
 
       portMatches.push({
         referenceKey: port.referenceKey,
-        itemTypeId: port.itemTypeId,
+        lotTypeId: port.lotTypeId,
         preconditionsStatuses: port.preconditionsStatuses,
         qtyMin,
         qtyMax,
-        matchedItemIds: matched.map((l) => l.id),
+        matchedLotIds: matched.map((l) => l.id),
         satisfied,
         statusMismatch,
       });

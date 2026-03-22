@@ -19,11 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import type { InputItemRow, StepRow } from "./OperationTypeForm";
+import type { InputRow, StepRow } from "./OperationTypeForm";
 
 type StepsCardProps = {
   steps: StepRow[];
-  inputItems: InputItemRow[];
+  inputLots: InputRow[];
   onAdd: () => void;
   onRemove: (idx: number) => void;
   onUpdate: (idx: number, patch: Partial<StepRow>) => void;
@@ -31,7 +31,7 @@ type StepsCardProps = {
 
 export function StepsCard({
   steps,
-  inputItems,
+  inputLots,
   onAdd,
   onRemove,
   onUpdate,
@@ -63,7 +63,7 @@ export function StepsCard({
                     <Input
                       value={step.name}
                       onChange={(e) => onUpdate(idx, { name: e.target.value })}
-                      placeholder="Set Item Status"
+                      placeholder="Set Lot Status"
                     />
                   </div>
                   <div className="w-36 space-y-1">
@@ -76,18 +76,18 @@ export function StepsCard({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="set-item">Set Item</SelectItem>
+                        <SelectItem value="set-lot">Set Lot</SelectItem>
                         <SelectItem value="set-operation">
                           Set Operation
                         </SelectItem>
                         <SelectItem value="set-lineage">Set Lineage</SelectItem>
-                        <SelectItem value="create-item">Create Item</SelectItem>
+                        <SelectItem value="create-lot">Create Lot</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="w-36 space-y-1">
                     <Label className="text-xs">Target</Label>
-                    {inputItems.length > 0 ? (
+                    {inputLots.length > 0 ? (
                       <Select
                         value={step.target || undefined}
                         onValueChange={(val) => onUpdate(idx, { target: val })}
@@ -96,7 +96,7 @@ export function StepsCard({
                           <SelectValue placeholder="Select target..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {inputItems
+                          {inputLots
                             .filter((it) => it.referenceKey)
                             .map((it) => (
                               <SelectItem

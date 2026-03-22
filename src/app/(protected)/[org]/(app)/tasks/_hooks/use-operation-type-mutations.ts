@@ -39,9 +39,9 @@ export function useOperationTypeMutations() {
           type: inp.type,
           required: inp.required,
           sortOrder: i,
-          ...(inp.type === "items"
+          ...(inp.type === "lots"
             ? {
-                itemTypeId: inp.itemTypeId,
+                lotTypeId: inp.lotTypeId,
                 minCount: inp.qtyMin ? parseInt(inp.qtyMin, 10) || 0 : 0,
                 maxCount: inp.qtyMax
                   ? parseInt(inp.qtyMax, 10) || null

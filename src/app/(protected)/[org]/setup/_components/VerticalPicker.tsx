@@ -24,7 +24,7 @@ export function VerticalPicker({
           What kind of operation do you run?
         </h2>
         <p className="text-muted-foreground text-sm">
-          Choose a template to pre-populate your item types, workflows, and
+          Choose a template to pre-populate your lot types, workflows, and
           locations. You can customize everything afterwards.
         </p>
       </div>

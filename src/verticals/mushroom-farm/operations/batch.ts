@@ -32,11 +32,11 @@ export function buildBatchOperations(): SeedOperationType[] {
       category: "substrate",
       inputs: [
         {
-          type: "items",
+          type: "lots",
           referenceKey: "batch",
           sortOrder: 0,
           config: {
-            itemTypeName: "Substrate Batch",
+            lotTypeName: "Substrate Batch",
             preconditionsStatuses: ["Mixing"],
           },
         },

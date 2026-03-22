@@ -54,19 +54,19 @@ export default function EditTaskTypePage() {
         referenceKey: inp.referenceKey,
         label: inp.label ?? "",
         description: inp.description ?? "",
-        type: inp.type,
+        type: inp.type === "items" ? "lots" : inp.type,
         required: inp.required,
         sortOrder: inp.sortOrder,
-        ...(inp.type === "items" && inp.itemConfig
+        ...((inp.type === "items" || inp.type === "lots") && inp.lotConfig
           ? {
-              itemTypeId: inp.itemConfig.itemTypeId,
-              qtyMin: String(inp.itemConfig.minCount ?? 0),
+              lotTypeId: inp.lotConfig.lotTypeId,
+              qtyMin: String(inp.lotConfig.minCount ?? 0),
               qtyMax:
-                inp.itemConfig.maxCount != null
-                  ? String(inp.itemConfig.maxCount)
+                inp.lotConfig.maxCount != null
+                  ? String(inp.lotConfig.maxCount)
                   : "",
               preconditionsStatuses:
-                (inp.itemConfig.preconditionsStatuses as string[]) ?? [],
+                (inp.lotConfig.preconditionsStatuses as string[]) ?? [],
             }
           : {}),
       })),

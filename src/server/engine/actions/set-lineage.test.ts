@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import { setLineage } from "./set-lineage";
 import { ActionResult } from "./actions";
 import { OperationContext } from "../operation-context";
-import type { Item } from "~/server/db/schema";
+import type { Lot } from "~/server/db/schema";
 
-function makeItem(overrides: Partial<Item> = {}): Item {
+function makeLot(overrides: Partial<Lot> = {}): Lot {
   return {
-    id: "item-1",
-    itemTypeId: "type-1",
+    id: "lot-1",
+    lotTypeId: "type-1",
     variantId: null,
     code: "BLK-001",
     statusId: "status-1",
@@ -22,7 +22,7 @@ function makeItem(overrides: Partial<Item> = {}): Item {
     createdAt: new Date("2025-01-01"),
     updatedAt: new Date("2025-01-01"),
     ...overrides,
-  } as Item;
+  } as Lot;
 }
 
 type StepInput = {
@@ -42,18 +42,18 @@ function makeStep({ target = null, config = {} }: StepInput = {}) {
 }
 
 type CtxInput = {
-  items?: Record<string, Item[]>;
+  lots?: Record<string, Lot[]>;
 };
 
-function makeCtx({ items = {} }: CtxInput = {}): OperationContext {
-  const allItems: Item[] = Object.values(items).flat();
+function makeCtx({ lots = {} }: CtxInput = {}): OperationContext {
+  const allLots: Lot[] = Object.values(lots).flat();
 
-  const operationItems = Object.entries(items).flatMap(([key, list]) =>
-    list.map((item) => ({
-      id: `oi-${item.id}`,
+  const operationLots = Object.entries(lots).flatMap(([key, list]) =>
+    list.map((lot) => ({
+      id: `oi-${lot.id}`,
       key,
       operationId: "op-1",
-      itemId: item.id,
+      lotId: lot.id,
     })),
   );
 
@@ -69,12 +69,12 @@ function makeCtx({ items = {} }: CtxInput = {}): OperationContext {
     attributes: {},
     createdAt: new Date("2025-01-01"),
     steps: [],
-    inputItems: operationItems,
+    inputLots: operationLots,
     inputLocations: [],
     inputValues: [],
   });
 
-  ctx.items = Object.fromEntries(allItems.map((i) => [i.id, i]));
+  ctx.lots = Object.fromEntries(allLots.map((i) => [i.id, i]));
 
   return ctx;
 }
@@ -97,10 +97,10 @@ describe("setLineage", () => {
     });
   });
 
-  describe("when no parent items found", () => {
+  describe("when no parent lots found", () => {
     it("returns skipped", () => {
-      const child = makeItem({ id: "c1" });
-      const ctx = makeCtx({ items: { blocks: [child] } });
+      const child = makeLot({ id: "c1" });
+      const ctx = makeCtx({ lots: { blocks: [child] } });
       const result = setLineage.handler(
         ctx,
         makeStep({
@@ -113,14 +113,14 @@ describe("setLineage", () => {
       );
 
       expect(result.skipped).toBe(true);
-      expect(result.message).toMatch(/No parent items found/);
+      expect(result.message).toMatch(/No parent lots found/);
     });
   });
 
-  describe("when no child items found", () => {
+  describe("when no child lots found", () => {
     it("returns skipped", () => {
-      const parent = makeItem({ id: "p1" });
-      const ctx = makeCtx({ items: { batch: [parent] } });
+      const parent = makeLot({ id: "p1" });
+      const ctx = makeCtx({ lots: { batch: [parent] } });
       const result = setLineage.handler(
         ctx,
         makeStep({
@@ -133,16 +133,16 @@ describe("setLineage", () => {
       );
 
       expect(result.skipped).toBe(true);
-      expect(result.message).toMatch(/No child items found/);
+      expect(result.message).toMatch(/No child lots found/);
     });
   });
 
   describe("successful lineage creation", () => {
     it("creates a single link for one parent and one child", () => {
-      const parent = makeItem({ id: "p1" });
-      const child = makeItem({ id: "c1" });
+      const parent = makeLot({ id: "p1" });
+      const child = makeLot({ id: "c1" });
       const ctx = makeCtx({
-        items: { batch: [parent], blocks: [child] },
+        lots: { batch: [parent], blocks: [child] },
       });
 
       const result = setLineage.handler(
@@ -158,10 +158,10 @@ describe("setLineage", () => {
 
       expect(result.success).toBe(true);
       expect(result.skipped).toBe(false);
-      expect(result.items.link).toHaveLength(1);
-      expect(result.items.link[0]).toMatchObject({
-        parentItemId: "p1",
-        childItemId: "c1",
+      expect(result.lots.link).toHaveLength(1);
+      expect(result.lots.link[0]).toMatchObject({
+        parentLotId: "p1",
+        childLotId: "c1",
         relationship: "batch_member",
         operationId: "op-1",
       });
@@ -169,14 +169,14 @@ describe("setLineage", () => {
     });
 
     it("creates links for one parent and multiple children", () => {
-      const parent = makeItem({ id: "p1" });
+      const parent = makeLot({ id: "p1" });
       const children = [
-        makeItem({ id: "c1" }),
-        makeItem({ id: "c2" }),
-        makeItem({ id: "c3" }),
+        makeLot({ id: "c1" }),
+        makeLot({ id: "c2" }),
+        makeLot({ id: "c3" }),
       ];
       const ctx = makeCtx({
-        items: { batch: [parent], blocks: children },
+        lots: { batch: [parent], blocks: children },
       });
 
       const result = setLineage.handler(
@@ -190,8 +190,8 @@ describe("setLineage", () => {
         }),
       );
 
-      expect(result.items.link).toHaveLength(3);
-      expect(result.items.link.map((l) => l.childItemId)).toEqual([
+      expect(result.lots.link).toHaveLength(3);
+      expect(result.lots.link.map((l) => l.childLotId)).toEqual([
         "c1",
         "c2",
         "c3",
@@ -200,10 +200,10 @@ describe("setLineage", () => {
     });
 
     it("creates cross-product links for multiple parents and children", () => {
-      const parents = [makeItem({ id: "p1" }), makeItem({ id: "p2" })];
-      const children = [makeItem({ id: "c1" }), makeItem({ id: "c2" })];
+      const parents = [makeLot({ id: "p1" }), makeLot({ id: "p2" })];
+      const children = [makeLot({ id: "c1" }), makeLot({ id: "c2" })];
       const ctx = makeCtx({
-        items: { batch: parents, blocks: children },
+        lots: { batch: parents, blocks: children },
       });
 
       const result = setLineage.handler(
@@ -217,15 +217,15 @@ describe("setLineage", () => {
         }),
       );
 
-      expect(result.items.link).toHaveLength(4);
+      expect(result.lots.link).toHaveLength(4);
       expect(result.message).toBe("Created 4 lineage links");
     });
 
     it("sets the operationId on all links", () => {
-      const parent = makeItem({ id: "p1" });
-      const child = makeItem({ id: "c1" });
+      const parent = makeLot({ id: "p1" });
+      const child = makeLot({ id: "c1" });
       const ctx = makeCtx({
-        items: { batch: [parent], blocks: [child] },
+        lots: { batch: [parent], blocks: [child] },
       });
 
       const result = setLineage.handler(
@@ -239,7 +239,7 @@ describe("setLineage", () => {
         }),
       );
 
-      for (const link of result.items.link) {
+      for (const link of result.lots.link) {
         expect(link.operationId).toBe("op-1");
       }
     });
@@ -261,10 +261,10 @@ describe("setLineage", () => {
     });
 
     it("returns empty create and update on success", () => {
-      const parent = makeItem({ id: "p1" });
-      const child = makeItem({ id: "c1" });
+      const parent = makeLot({ id: "p1" });
+      const child = makeLot({ id: "c1" });
       const ctx = makeCtx({
-        items: { batch: [parent], blocks: [child] },
+        lots: { batch: [parent], blocks: [child] },
       });
 
       const result = setLineage.handler(
@@ -278,8 +278,8 @@ describe("setLineage", () => {
         }),
       );
 
-      expect(result.items.create).toEqual([]);
-      expect(result.items.update).toEqual({});
+      expect(result.lots.create).toEqual([]);
+      expect(result.lots.update).toEqual({});
     });
   });
 });

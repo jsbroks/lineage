@@ -27,7 +27,7 @@ const TIERS = [
     highlighted: false,
     features: [
       "1 user",
-      "Up to 500 items",
+      "Up to 500 lots",
       "All core features (scan, track, lineage)",
       "Community support",
     ],
@@ -43,7 +43,7 @@ const TIERS = [
     badge: "Most popular",
     features: [
       "Unlimited users",
-      "Unlimited items",
+      "Unlimited lots",
       "AI-powered insights",
       "Shopify integration",
       "QuickBooks & Xero sync",
@@ -77,9 +77,9 @@ const FAQS = [
       "Yes — upgrade, downgrade, or cancel at any time. Changes take effect at the start of your next billing cycle.",
   },
   {
-    question: "What happens when I hit 500 items on Free?",
+    question: "What happens when I hit 500 lots on Free?",
     answer:
-      "You can still view and manage existing items, but you won't be able to create new ones until you upgrade or archive some items.",
+      "You can still view and manage existing lots, but you won't be able to create new ones until you upgrade or archive some lots.",
   },
   {
     question: "Is there a free trial for Pro?",
@@ -87,9 +87,9 @@ const FAQS = [
       "Yes. Pro comes with a 14-day free trial — no credit card required. You'll get full access to all Pro features.",
   },
   {
-    question: "What counts as an 'item'?",
+    question: "What counts as a 'lot'?",
     answer:
-      "An item is anything you track in Lineage — a substrate bag, grain jar, fruiting block, harvest batch, or package. Each gets its own QR code and lineage history.",
+      "A lot is anything you track in Lineage — a substrate bag, grain jar, fruiting block, harvest batch, or package. Each gets its own QR code and lineage history.",
   },
 ];
 

@@ -1,6 +1,6 @@
 import type { ZodType } from "zod";
 import type { OperationContext } from "../operation-context";
-import type { Item, ItemLineage, OperationTypeStep } from "~/server/db/schema";
+import type { Lot, LotLineage, OperationTypeStep } from "~/server/db/schema";
 import _ from "lodash";
 
 type CreateActionOptions<T extends Record<string, unknown>> = {
@@ -50,10 +50,10 @@ export type ActionHandler<T = any> = (
 ) => ActionResult;
 
 // export type ActionResult = {
-//   items: {
-//     create: Item[];
-//     update: Record<string, Partial<Omit<Item, "id">>>;
-//     link: Omit<ItemLineage, "id">[];
+//   lots: {
+//     create: Lot[];
+//     update: Record<string, Partial<Omit<Lot, "id">>>;
+//     link: Omit<LotLineage, "id">[];
 //   };
 
 //   success: boolean;
@@ -64,21 +64,21 @@ export type ActionHandler<T = any> = (
 //   details: object;
 // };
 
-type ActionResultItems = {
-  create: Omit<Item, "id">[];
-  update: Record<string, Partial<Omit<Item, "id">>>;
-  link: Omit<ItemLineage, "id">[];
+type ActionResultLots = {
+  create: Omit<Lot, "id">[];
+  update: Record<string, Partial<Omit<Lot, "id">>>;
+  link: Omit<LotLineage, "id">[];
 };
 
 export type ActionResultEvent = {
-  itemId: string;
+  lotId: string;
   eventType: string;
   message?: string;
   payload?: Record<string, unknown>;
 };
 
 export class ActionResult {
-  items: ActionResultItems = { create: [], update: {}, link: [] };
+  lots: ActionResultLots = { create: [], update: {}, link: [] };
   events: ActionResultEvent[] = [];
   operationUpdate: Record<string, unknown> = {};
 
@@ -89,9 +89,9 @@ export class ActionResult {
 
   constructor() {}
 
-  updateItem(itemId: string, changes: Partial<Omit<Item, "id">>) {
-    this.items.update[itemId] = _.merge(
-      this.items.update[itemId] ?? {},
+  updateLot(lotId: string, changes: Partial<Omit<Lot, "id">>) {
+    this.lots.update[lotId] = _.merge(
+      this.lots.update[lotId] ?? {},
       _.cloneDeep(changes),
     );
   }
@@ -101,15 +101,15 @@ export class ActionResult {
   }
 }
 
-export const combineItemOps = (results: ActionResult[]) => {
-  const creates = results.flatMap((r) => r.items.create);
-  const links = results.flatMap((r) => r.items.link);
+export const combineLotOps = (results: ActionResult[]) => {
+  const creates = results.flatMap((r) => r.lots.create);
+  const links = results.flatMap((r) => r.lots.link);
   const events = results.flatMap((r) => r.events);
   const operationUpdate = _.merge({}, ...results.map((r) => r.operationUpdate));
   return {
     updates: _.chain(results)
-      .map((r) => r.items.update)
-      .reduce<Record<string, Partial<Omit<Item, "id">>>>(
+      .map((r) => r.lots.update)
+      .reduce<Record<string, Partial<Omit<Lot, "id">>>>(
         (acc, updates) => _.merge(acc, updates),
         {},
       )

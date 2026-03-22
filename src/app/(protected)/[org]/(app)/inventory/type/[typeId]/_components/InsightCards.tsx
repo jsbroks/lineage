@@ -2,7 +2,7 @@ import { Clock, Package, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 
 interface InsightCardsProps {
-  totalItems: number;
+  totalLots: number;
   statusInsights: { initial: number; active: number; terminal: number };
 }
 
@@ -14,7 +14,7 @@ export const InsightCards: React.FC<InsightCardsProps> = ({
   const pct = (n: number) =>
     inProgress > 0
       ? `${Math.round((n / inProgress) * 100)}% of in progress`
-      : "No items yet";
+      : "No lots yet";
 
   return (
     <div className="grid gap-4 sm:grid-cols-3">

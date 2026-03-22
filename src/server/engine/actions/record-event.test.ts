@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import { recordEvent } from "./record-event";
 import { ActionResult } from "./actions";
 import { OperationContext } from "../operation-context";
-import type { Item, OperationInputValue } from "~/server/db/schema";
+import type { Lot, OperationInputValue } from "~/server/db/schema";
 
-function makeItem(overrides: Partial<Item> = {}): Item {
+function makeLot(overrides: Partial<Lot> = {}): Lot {
   return {
-    id: "item-1",
-    itemTypeId: "type-1",
+    id: "lot-1",
+    lotTypeId: "type-1",
     variantId: null,
     code: "BLK-001",
     statusId: "status-1",
@@ -22,7 +22,7 @@ function makeItem(overrides: Partial<Item> = {}): Item {
     createdAt: new Date("2025-01-01"),
     updatedAt: new Date("2025-01-01"),
     ...overrides,
-  } as Item;
+  } as Lot;
 }
 
 type StepInput = {
@@ -42,19 +42,19 @@ function makeStep({ target = "source", config = {} }: StepInput = {}) {
 }
 
 type CtxInput = {
-  items?: Record<string, Item[]>;
+  lots?: Record<string, Lot[]>;
   fields?: { key: string; value: unknown }[];
 };
 
-function makeCtx({ items = {}, fields = [] }: CtxInput = {}): OperationContext {
-  const allItems: Item[] = Object.values(items).flat();
+function makeCtx({ lots = {}, fields = [] }: CtxInput = {}): OperationContext {
+  const allLots: Lot[] = Object.values(lots).flat();
 
-  const operationItems = Object.entries(items).flatMap(([key, list]) =>
-    list.map((item) => ({
-      id: `oi-${item.id}`,
+  const operationLots = Object.entries(lots).flatMap(([key, list]) =>
+    list.map((lot) => ({
+      id: `oi-${lot.id}`,
       key,
       operationId: "op-1",
-      itemId: item.id,
+      lotId: lot.id,
     })),
   );
 
@@ -77,12 +77,12 @@ function makeCtx({ items = {}, fields = [] }: CtxInput = {}): OperationContext {
     attributes: {},
     createdAt: new Date("2025-01-01"),
     steps: [],
-    inputItems: operationItems,
+    inputLots: operationLots,
     inputLocations: [],
     inputValues: operationValues,
   });
 
-  ctx.items = Object.fromEntries(allItems.map((i) => [i.id, i]));
+  ctx.lots = Object.fromEntries(allLots.map((i) => [i.id, i]));
 
   return ctx;
 }
@@ -105,7 +105,7 @@ describe("recordEvent", () => {
     });
   });
 
-  describe("when no items match target", () => {
+  describe("when no lots match target", () => {
     it("returns skipped", () => {
       const result = recordEvent.handler(
         makeCtx(),
@@ -113,14 +113,14 @@ describe("recordEvent", () => {
       );
 
       expect(result.skipped).toBe(true);
-      expect(result.message).toMatch(/No items found for target/);
+      expect(result.message).toMatch(/No lots found for target/);
     });
   });
 
   describe("successful event recording", () => {
-    it("records an event for a single item", () => {
-      const item = makeItem({ id: "a" });
-      const ctx = makeCtx({ items: { source: [item] } });
+    it("records an event for a single lot", () => {
+      const lot = makeLot({ id: "a" });
+      const ctx = makeCtx({ lots: { source: [lot] } });
 
       const result = recordEvent.handler(
         ctx,
@@ -131,19 +131,19 @@ describe("recordEvent", () => {
       expect(result.skipped).toBe(false);
       expect(result.events).toHaveLength(1);
       expect(result.events[0]).toMatchObject({
-        itemId: "a",
+        lotId: "a",
         eventType: "observation",
       });
       expect(result.message).toBe("Recorded 1 event");
     });
 
-    it("records events for multiple items", () => {
-      const items = [
-        makeItem({ id: "a" }),
-        makeItem({ id: "b" }),
-        makeItem({ id: "c" }),
+    it("records events for multiple lots", () => {
+      const lots = [
+        makeLot({ id: "a" }),
+        makeLot({ id: "b" }),
+        makeLot({ id: "c" }),
       ];
-      const ctx = makeCtx({ items: { source: items } });
+      const ctx = makeCtx({ lots: { source: lots } });
 
       const result = recordEvent.handler(
         ctx,
@@ -151,13 +151,13 @@ describe("recordEvent", () => {
       );
 
       expect(result.events).toHaveLength(3);
-      expect(result.events.map((e) => e.itemId)).toEqual(["a", "b", "c"]);
+      expect(result.events.map((e) => e.lotId)).toEqual(["a", "b", "c"]);
       expect(result.message).toBe("Recorded 3 events");
     });
 
     it("includes a literal message", () => {
-      const item = makeItem({ id: "a" });
-      const ctx = makeCtx({ items: { source: [item] } });
+      const lot = makeLot({ id: "a" });
+      const ctx = makeCtx({ lots: { source: [lot] } });
 
       const result = recordEvent.handler(
         ctx,
@@ -170,9 +170,9 @@ describe("recordEvent", () => {
     });
 
     it("resolves message from an input field reference", () => {
-      const item = makeItem({ id: "a" });
+      const lot = makeLot({ id: "a" });
       const ctx = makeCtx({
-        items: { source: [item] },
+        lots: { source: [lot] },
         fields: [{ key: "note", value: "Contamination spotted" }],
       });
 
@@ -190,8 +190,8 @@ describe("recordEvent", () => {
     });
 
     it("includes literal payload", () => {
-      const item = makeItem({ id: "a" });
-      const ctx = makeCtx({ items: { source: [item] } });
+      const lot = makeLot({ id: "a" });
+      const ctx = makeCtx({ lots: { source: [lot] } });
 
       const result = recordEvent.handler(
         ctx,
@@ -210,9 +210,9 @@ describe("recordEvent", () => {
     });
 
     it("resolves payload values from input field references", () => {
-      const item = makeItem({ id: "a" });
+      const lot = makeLot({ id: "a" });
       const ctx = makeCtx({
-        items: { source: [item] },
+        lots: { source: [lot] },
         fields: [{ key: "weight", value: 3.2 }],
       });
 
@@ -230,8 +230,8 @@ describe("recordEvent", () => {
     });
 
     it("omits payload when none provided", () => {
-      const item = makeItem({ id: "a" });
-      const ctx = makeCtx({ items: { source: [item] } });
+      const lot = makeLot({ id: "a" });
+      const ctx = makeCtx({ lots: { source: [lot] } });
 
       const result = recordEvent.handler(
         ctx,
@@ -251,18 +251,18 @@ describe("recordEvent", () => {
       expect(result).toBeInstanceOf(ActionResult);
     });
 
-    it("does not produce item changes", () => {
-      const item = makeItem({ id: "a" });
-      const ctx = makeCtx({ items: { source: [item] } });
+    it("does not produce lot changes", () => {
+      const lot = makeLot({ id: "a" });
+      const ctx = makeCtx({ lots: { source: [lot] } });
 
       const result = recordEvent.handler(
         ctx,
         makeStep({ config: { eventType: "observation" } }),
       );
 
-      expect(result.items.create).toEqual([]);
-      expect(result.items.update).toEqual({});
-      expect(result.items.link).toEqual([]);
+      expect(result.lots.create).toEqual([]);
+      expect(result.lots.update).toEqual({});
+      expect(result.lots.link).toEqual([]);
     });
   });
 });

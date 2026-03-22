@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "~/components/ui/button";
 import { GeneralCard } from "./GeneralCard";
-import { SimpleInputItemsCard } from "./SimpleInputItemsCard";
+import { SimpleInputLotsCard } from "./SimpleInputLotsCard";
 import { SimpleInputFieldsCard } from "./SimpleInputFieldsCard";
 import { SimpleStepsCard } from "./SimpleStepsCard";
 import {
@@ -29,7 +29,7 @@ export type InputRow = {
   type: string;
   required: boolean;
   sortOrder: number;
-  itemTypeId?: string;
+  lotTypeId?: string;
   qtyMin?: string;
   qtyMax?: string;
   preconditionsStatuses?: string[];
@@ -101,20 +101,20 @@ export function OperationTypeForm({
     await onSubmit({ base, inputs, steps });
   };
 
-  const inputItems = inputs.filter((i) => i.type === "items");
-  const inputFields = inputs.filter((i) => i.type !== "items");
+  const inputLots = inputs.filter((i) => i.type === "lots");
+  const inputFields = inputs.filter((i) => i.type !== "lots");
 
-  const addInputItem = () =>
+  const addInputLot = () =>
     setInputs((prev) => [
       ...prev,
       {
-        type: "items",
+        type: "lots",
         referenceKey: "",
         label: "",
         description: "",
         required: false,
         sortOrder: prev.length,
-        itemTypeId: "",
+        lotTypeId: "",
         qtyMin: "1",
         qtyMax: "",
         preconditionsStatuses: [],
@@ -126,7 +126,7 @@ export function OperationTypeForm({
 
   const updateInput = (idx: number, patch: Partial<InputRow>) =>
     setInputs((prev) =>
-      prev.map((item, i) => (i === idx ? { ...item, ...patch } : item)),
+      prev.map((row, i) => (i === idx ? { ...row, ...patch } : row)),
     );
 
   const addInputField = () =>
@@ -142,23 +142,23 @@ export function OperationTypeForm({
       },
     ]);
 
-  const itemInputIndices = inputs
-    .map((inp, i) => (inp.type === "items" ? i : -1))
+  const lotInputIndices = inputs
+    .map((inp, i) => (inp.type === "lots" ? i : -1))
     .filter((i) => i >= 0);
   const fieldInputIndices = inputs
-    .map((inp, i) => (inp.type !== "items" ? i : -1))
+    .map((inp, i) => (inp.type !== "lots" ? i : -1))
     .filter((i) => i >= 0);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <GeneralCard base={base} setBase={setBase} />
 
-      <SimpleInputItemsCard
-        inputItems={itemInputIndices.map((i) => inputs[i]!)}
-        onAdd={addInputItem}
-        onRemove={(localIdx) => removeInput(itemInputIndices[localIdx]!)}
+      <SimpleInputLotsCard
+        inputLots={lotInputIndices.map((i) => inputs[i]!)}
+        onAdd={addInputLot}
+        onRemove={(localIdx) => removeInput(lotInputIndices[localIdx]!)}
         onUpdate={(localIdx, patch) =>
-          updateInput(itemInputIndices[localIdx]!, patch)
+          updateInput(lotInputIndices[localIdx]!, patch)
         }
       />
 
@@ -173,7 +173,7 @@ export function OperationTypeForm({
 
       <SimpleStepsCard
         steps={simpleSteps}
-        inputItems={inputItems}
+        inputLots={inputLots}
         inputFields={inputFields}
         onUpdate={setSimpleSteps}
       />

@@ -2,27 +2,27 @@ import { eq, sql } from "drizzle-orm";
 import {
   ActionRegistry,
   ActionResult,
-  combineItemOps,
+  combineLotOps,
 } from "./actions/actions";
 import { OperationContext } from "./operation-context";
 import type { Tx } from "./types";
 import * as schema from "../db/schema";
 import { createOperation, type OperationInputs } from "./operation-create";
-import { createItem } from "./actions/create-item";
+import { createLot } from "./actions/create-lot";
 import { incrementAttribute } from "./actions/increment-attribute";
 import { recordEvent } from "./actions/record-event";
-import { setItemAttr } from "./actions/set-item-attr";
-import { setItemStatus } from "./actions/set-item-status";
+import { setLotAttr } from "./actions/set-lot-attr";
+import { setLotStatus } from "./actions/set-lot-status";
 import { setLineage } from "./actions/set-lineage";
 import { setOperation } from "./actions/set-operation";
 import _ from "lodash";
 
 const actionsRegistry = new ActionRegistry()
-  .register(createItem)
+  .register(createLot)
   .register(incrementAttribute)
   .register(recordEvent)
-  .register(setItemAttr)
-  .register(setItemStatus)
+  .register(setLotAttr)
+  .register(setLotStatus)
   .register(setLineage)
   .register(setOperation);
 
@@ -35,8 +35,8 @@ export type ExecuteResult = {
     success: boolean;
     detail?: string;
   }[];
-  itemsCreated: string[];
-  itemsUpdated: string[];
+  lotsCreated: string[];
+  lotsUpdated: string[];
   lineageCreated: number;
 };
 
@@ -53,10 +53,10 @@ export const createAndExecute = async (
   const ctx = await OperationContext.create(tx, operation.id);
   const results = execute(ctx);
 
-  const itemOps = combineItemOps(results.map(({ result }) => result));
-  const itemsCreated = [];
-  const itemsUpdated = Object.keys(itemOps.updates);
-  const lineageCreated = itemOps.links.length;
+  const lotOps = combineLotOps(results.map(({ result }) => result));
+  const lotsCreated = [];
+  const lotsUpdated = Object.keys(lotOps.updates);
+  const lineageCreated = lotOps.links.length;
 
   if (results.length > 0) {
     await tx
@@ -88,7 +88,7 @@ export const createAndExecute = async (
 
     const now = new Date();
     const events: {
-      itemId: string;
+      lotId: string;
       eventType: string;
       operationId: string;
       oldStatus?: string | null;
@@ -98,15 +98,15 @@ export const createAndExecute = async (
     }[] = [];
 
     await Promise.all(
-      Object.entries(itemOps.updates).map(([id, values]) => {
-        const original = ctx.items[id];
+      Object.entries(lotOps.updates).map(([id, values]) => {
+        const original = ctx.lots[id];
         if (
           original &&
           values.statusId &&
           values.statusId !== original.statusId
         ) {
           events.push({
-            itemId: id,
+            lotId: id,
             eventType: "status_change",
             operationId: operation.id,
             oldStatus: original.statusId,
@@ -116,7 +116,7 @@ export const createAndExecute = async (
         }
         if (original && values.attributes) {
           events.push({
-            itemId: id,
+            lotId: id,
             eventType: "attribute_change",
             operationId: operation.id,
             payload: values.attributes as Record<string, unknown>,
@@ -124,26 +124,26 @@ export const createAndExecute = async (
           });
         }
         return tx
-          .update(schema.item)
+          .update(schema.lot)
           .set({ ...values, updatedAt: now })
-          .where(eq(schema.item.id, id));
+          .where(eq(schema.lot.id, id));
       }),
     );
 
-    if (itemOps.creates.length > 0) {
+    if (lotOps.creates.length > 0) {
       const created = await tx
-        .insert(schema.item)
-        .values(itemOps.creates)
-        .returning({ id: schema.item.id });
-      itemsCreated.push(...created.map((c) => c.id));
+        .insert(schema.lot)
+        .values(lotOps.creates)
+        .returning({ id: schema.lot.id });
+      lotsCreated.push(...created.map((c) => c.id));
     }
-    if (itemOps.links.length > 0) {
-      await tx.insert(schema.itemLineage).values(itemOps.links);
+    if (lotOps.links.length > 0) {
+      await tx.insert(schema.lotLineage).values(lotOps.links);
     }
 
-    for (const evt of itemOps.events) {
+    for (const evt of lotOps.events) {
       events.push({
-        itemId: evt.itemId,
+        lotId: evt.lotId,
         eventType: evt.eventType,
         operationId: operation.id,
         message: evt.message,
@@ -152,13 +152,13 @@ export const createAndExecute = async (
     }
 
     if (events.length > 0) {
-      await tx.insert(schema.itemEvent).values(events);
+      await tx.insert(schema.lotEvent).values(events);
     }
 
-    if (Object.keys(itemOps.operationUpdate).length > 0) {
+    if (Object.keys(lotOps.operationUpdate).length > 0) {
       await tx
         .update(schema.operation)
-        .set(itemOps.operationUpdate)
+        .set(lotOps.operationUpdate)
         .where(eq(schema.operation.id, operation.id));
     }
   }
@@ -172,8 +172,8 @@ export const createAndExecute = async (
       success: result.success,
       detail: result.message || undefined,
     })),
-    itemsCreated: itemsCreated.length > 0 ? itemsCreated : [],
-    itemsUpdated: itemsUpdated.length > 0 ? itemsUpdated : [],
+    lotsCreated: lotsCreated.length > 0 ? lotsCreated : [],
+    lotsUpdated: lotsUpdated.length > 0 ? lotsUpdated : [],
     lineageCreated: lineageCreated > 0 ? lineageCreated : 0,
   };
 

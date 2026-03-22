@@ -49,7 +49,7 @@ export const PrintLabelsPage: React.FC<PrintLabelsPageProps> = ({
     return loadSavedContent() ?? DEFAULT_LABEL_CONTENT;
   });
 
-  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(
+  const [selectedLotIds, setSelectedLotIds] = useState<Set<string>>(
     new Set(),
   );
 
@@ -61,22 +61,22 @@ export const PrintLabelsPage: React.FC<PrintLabelsPageProps> = ({
     saveContent(content);
   }, [content]);
 
-  const itemIdArray = useMemo(
-    () => Array.from(selectedItemIds),
-    [selectedItemIds],
+  const lotIdArray = useMemo(
+    () => Array.from(selectedLotIds),
+    [selectedLotIds],
   );
 
-  const { data: printItems = [] } = api.item.listForPrint.useQuery(
-    { itemIds: itemIdArray },
-    { enabled: itemIdArray.length > 0 },
+  const { data: printItems = [] } = api.lot.listForPrint.useQuery(
+    { lotIds: lotIdArray },
+    { enabled: lotIdArray.length > 0 },
   );
 
   const orderedItems: PrintItem[] = useMemo(() => {
     const map = new Map(printItems.map((p) => [p.id, p]));
-    return itemIdArray
+    return lotIdArray
       .map((id) => map.get(id))
       .filter((p): p is PrintItem => !!p);
-  }, [printItems, itemIdArray]);
+  }, [printItems, lotIdArray]);
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
 
@@ -151,8 +151,8 @@ export const PrintLabelsPage: React.FC<PrintLabelsPageProps> = ({
                 onTemplateChange={setTemplate}
                 content={content}
                 onContentChange={setContent}
-                selectedItemIds={selectedItemIds}
-                onSelectedItemIdsChange={setSelectedItemIds}
+                selectedLotIds={selectedLotIds}
+                onSelectedLotIdsChange={setSelectedLotIds}
                 onPrint={handlePrint}
                 initialTypeId={initialTypeId}
               />

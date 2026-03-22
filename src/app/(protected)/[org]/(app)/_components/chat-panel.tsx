@@ -28,8 +28,8 @@ import {
 import { useChatPanel } from "./chat-panel-context";
 
 const WRITE_TOOL_NAMES = new Set([
-  "updateItemStatus",
-  "moveItems",
+  "updateLotStatus",
+  "moveLots",
   "executeOperation",
   "bulkUpdateStatus",
   "updateAttributes",
@@ -45,7 +45,7 @@ type ActionState =
 type PendingActionResult = {
   type: string;
   description: string;
-  affectedItems: Array<{
+  affectedLots: Array<{
     id: string;
     code: string;
     currentStatus?: string;
@@ -90,7 +90,7 @@ function ConfirmationCard({
         <div className="flex items-center gap-1.5">
           <Check className="size-3.5 text-emerald-600" />
           <p className="text-xs font-medium text-emerald-700">
-            Done — {state.updated} item(s) updated
+            Done — {state.updated} lot(s) updated
           </p>
         </div>
       </div>
@@ -106,9 +106,9 @@ function ConfirmationCard({
   }
 
   const isExecuting = state.status === "executing";
-  const items = action.affectedItems;
-  const displayItems = items.slice(0, 5);
-  const remaining = items.length - displayItems.length;
+  const lots = action.affectedLots;
+  const displayLots = lots.slice(0, 5);
+  const remaining = lots.length - displayLots.length;
 
   return (
     <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
@@ -132,7 +132,7 @@ function ConfirmationCard({
       </div>
 
       <div className="mt-1.5 text-xs text-amber-600">
-        {displayItems.map((it) => it.code).join(", ")}
+        {displayLots.map((it) => it.code).join(", ")}
         {remaining > 0 && ` +${remaining} more`}
       </div>
 
@@ -223,7 +223,7 @@ export function ChatPanel() {
         const data = (await res.json()) as {
           success?: boolean;
           updated?: number;
-          result?: { itemsUpdated?: string[]; itemsCreated?: string[] };
+          result?: { lotsUpdated?: string[]; lotsCreated?: string[] };
           error?: string;
         };
         if (!res.ok || !data.success) {
@@ -238,8 +238,8 @@ export function ChatPanel() {
         }
         const updatedCount =
           data.updated ??
-          (data.result?.itemsUpdated?.length ?? 0) +
-            (data.result?.itemsCreated?.length ?? 0);
+          (data.result?.lotsUpdated?.length ?? 0) +
+            (data.result?.lotsCreated?.length ?? 0);
         setActionStates((prev) => ({
           ...prev,
           [toolCallId]: { status: "confirmed", updated: updatedCount },

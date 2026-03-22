@@ -5,11 +5,11 @@ import { eq, asc } from "drizzle-orm";
 
 import { db } from "~/server/db";
 import {
-  itemType,
-  itemTypeStatusDefinition,
-  itemTypeStatusTransition,
-  itemTypeVariant,
-  itemTypeAttributeDefinition,
+  lotType,
+  lotTypeStatusDefinition,
+  lotTypeStatusTransition,
+  lotTypeVariant,
+  lotTypeAttributeDefinition,
   location,
 } from "~/server/db/schema";
 
@@ -46,8 +46,8 @@ function resolveRelativeDate(value: string): string {
 }
 
 export async function POST(req: Request) {
-  const { itemTypeId, prompt } = (await req.json()) as {
-    itemTypeId: string;
+  const { lotTypeId, prompt } = (await req.json()) as {
+    lotTypeId: string;
     prompt: string;
   };
 
@@ -55,36 +55,36 @@ export async function POST(req: Request) {
     await Promise.all([
       db
         .select()
-        .from(itemType)
-        .where(eq(itemType.id, itemTypeId))
+        .from(lotType)
+        .where(eq(lotType.id, lotTypeId))
         .limit(1)
         .then((r) => r[0]),
       db
         .select()
-        .from(itemTypeStatusDefinition)
-        .where(eq(itemTypeStatusDefinition.itemTypeId, itemTypeId))
-        .orderBy(asc(itemTypeStatusDefinition.ordinal)),
+        .from(lotTypeStatusDefinition)
+        .where(eq(lotTypeStatusDefinition.lotTypeId, lotTypeId))
+        .orderBy(asc(lotTypeStatusDefinition.ordinal)),
       db
         .select({
-          fromId: itemTypeStatusTransition.fromStatusId,
-          toId: itemTypeStatusTransition.toStatusId,
+          fromId: lotTypeStatusTransition.fromStatusId,
+          toId: lotTypeStatusTransition.toStatusId,
         })
-        .from(itemTypeStatusTransition),
+        .from(lotTypeStatusTransition),
       db
         .select()
-        .from(itemTypeVariant)
-        .where(eq(itemTypeVariant.itemTypeId, itemTypeId))
-        .orderBy(asc(itemTypeVariant.sortOrder)),
+        .from(lotTypeVariant)
+        .where(eq(lotTypeVariant.lotTypeId, lotTypeId))
+        .orderBy(asc(lotTypeVariant.sortOrder)),
       db
         .select()
-        .from(itemTypeAttributeDefinition)
-        .where(eq(itemTypeAttributeDefinition.itemTypeId, itemTypeId))
-        .orderBy(asc(itemTypeAttributeDefinition.sortOrder)),
+        .from(lotTypeAttributeDefinition)
+        .where(eq(lotTypeAttributeDefinition.lotTypeId, lotTypeId))
+        .orderBy(asc(lotTypeAttributeDefinition.sortOrder)),
       db.select().from(location).orderBy(asc(location.name)),
     ]);
 
   if (!it)
-    return Response.json({ error: "Item type not found" }, { status: 404 });
+    return Response.json({ error: "Lot type not found" }, { status: 404 });
 
   // Build a lookup for status names by ID (for transitions)
   const statusNameById = new Map(statuses.map((s) => [s.id, s.name]));
@@ -95,18 +95,18 @@ export async function POST(req: Request) {
   lines.push(`=== TODAY'S DATE ===`);
   lines.push(`${new Date().toISOString().split("T")[0]}`);
 
-  lines.push(`\n=== ITEM TYPE ===`);
+  lines.push(`\n=== LOT TYPE ===`);
   lines.push(`Name: ${it.name}`);
   if (it.description) lines.push(`Description: ${it.description}`);
   if (it.codePrefix) lines.push(`Code prefix: ${it.codePrefix}`);
 
   // Built-in fields
-  lines.push(`\n=== BUILT-IN ITEM FIELDS ===`);
+  lines.push(`\n=== BUILT-IN LOT FIELDS ===`);
   lines.push(
-    `- "quantity" — the item's quantity (displayed as "${it.quantityName ?? "Quantity"}"). Use this when the user mentions "${it.quantityName?.toLowerCase() ?? "quantity"}", "amount", "count of quantity", etc.`,
+    `- "quantity" — the lot's quantity (displayed as "${it.quantityName ?? "Quantity"}"). Use this when the user mentions "${it.quantityName?.toLowerCase() ?? "quantity"}", "amount", "count of quantity", etc.`,
   );
   lines.push(
-    `- "value" — the item's monetary value in cents. Use for cost/price/value questions.`,
+    `- "value" — the lot's monetary value in cents. Use for cost/price/value questions.`,
   );
 
   // Statuses
@@ -114,10 +114,10 @@ export async function POST(req: Request) {
     lines.push(`\n=== STATUSES (lifecycle stages) ===`);
     for (const s of statuses) {
       let label = `- "${s.name}" (id: ${s.id})`;
-      if (s.isInitial) label += " [INITIAL — items start here]";
+      if (s.isInitial) label += " [INITIAL — lots start here]";
       if (s.isTerminal)
         label +=
-          " [TERMINAL — items end here, not useful for active inventory insights]";
+          " [TERMINAL — lots end here, not useful for active inventory insights]";
       lines.push(label);
     }
 
@@ -209,7 +209,7 @@ export async function POST(req: Request) {
           field: z
             .string()
             .describe(
-              "MUST be one of: 'quantity', 'value', or 'attr:<exactKey>'. Use 'quantity' for the item's built-in quantity/weight/amount field. Use 'attr:<key>' ONLY for custom attributes listed in the schema.",
+              "MUST be one of: 'quantity', 'value', or 'attr:<exactKey>'. Use 'quantity' for the lot's built-in quantity/weight/amount field. Use 'attr:<key>' ONLY for custom attributes listed in the schema.",
             ),
           op: z.enum(["count", "sum", "avg", "min", "max"]),
         }),
@@ -252,7 +252,7 @@ export async function POST(req: Request) {
           "A short human-readable title for this report (under 8 words)",
         ),
     }),
-    prompt: `You are a report builder for an inventory tracking system called Lineage. Given the user's natural-language request and the item type schema below, output structured aggregate query parameters.
+    prompt: `You are a report builder for an inventory tracking system called Lineage. Given the user's natural-language request and the lot type schema below, output structured aggregate query parameters.
 
 ${schemaContext}
 
@@ -260,7 +260,7 @@ User request: "${prompt}"
 
 CRITICAL RULES:
 1. Use ONLY the exact field values listed in the "VALID FIELD VALUES REFERENCE" section.
-2. The built-in "quantity" field represents ${it.quantityName ? `"${it.quantityName}"` : "the item count"}. When the user mentions "${it.quantityName?.toLowerCase() ?? "quantity"}", "weight", "amount", or similar, use field: "quantity" — NOT "attr:weight" or any made-up field.
+2. The built-in "quantity" field represents ${it.quantityName ? `"${it.quantityName}"` : "the lot count"}. When the user mentions "${it.quantityName?.toLowerCase() ?? "quantity"}", "weight", "amount", or similar, use field: "quantity" — NOT "attr:weight" or any made-up field.
 3. Use "attr:<key>" ONLY for custom attributes explicitly listed above, with the EXACT key casing shown.
 4. For filter IDs, use the exact UUIDs from the schema. Use "" for no filter.
 5. Always include at least one groupBy and one metric.

@@ -17,7 +17,7 @@ import { api } from "~/trpc/react";
 import type {
   VerticalDefinition,
   SeedData,
-  SeedItemType,
+  SeedLotType,
   SeedOperationType,
   SeedLocation,
 } from "~/verticals/types";
@@ -54,7 +54,7 @@ export function ReviewApply({
   }
 
   const totalEntities =
-    seedData.itemTypes.length +
+    seedData.lotTypes.length +
     seedData.operations.length +
     countLocations(seedData.locations);
 
@@ -70,16 +70,16 @@ export function ReviewApply({
         </p>
       </div>
 
-      {/* Item Types */}
+      {/* Lot Types */}
       <section className="flex flex-col gap-2">
         <h3 className="flex items-center gap-2 text-sm font-medium">
           <Box className="text-muted-foreground size-4" />
-          Item Types
-          <Badge variant="secondary">{seedData.itemTypes.length}</Badge>
+          Lot Types
+          <Badge variant="secondary">{seedData.lotTypes.length}</Badge>
         </h3>
         <div className="bg-muted/50 divide-y rounded-lg border">
-          {seedData.itemTypes.map((it) => (
-            <ItemTypeRow key={it.name} itemType={it} />
+          {seedData.lotTypes.map((it) => (
+            <LotTypeRow key={it.name} lotType={it} />
           ))}
         </div>
       </section>
@@ -150,7 +150,7 @@ export function ReviewApply({
   );
 }
 
-function ItemTypeRow({ itemType: it }: { itemType: SeedItemType }) {
+function LotTypeRow({ lotType: it }: { lotType: SeedLotType }) {
   return (
     <div className="flex flex-col gap-2 p-3">
       <div className="flex items-start gap-3">
@@ -237,8 +237,8 @@ function ItemTypeRow({ itemType: it }: { itemType: SeedItemType }) {
 
 function OperationRow({ operation: op }: { operation: SeedOperationType }) {
   const inputs = op.inputs ?? [];
-  const itemInputs = inputs.filter((i) => i.type === "items");
-  const fieldInputs = inputs.filter((i) => i.type !== "items");
+  const lotInputs = inputs.filter((i) => i.type === "lots");
+  const fieldInputs = inputs.filter((i) => i.type !== "lots");
   const hasInputs = inputs.length > 0;
 
   return (
@@ -254,15 +254,15 @@ function OperationRow({ operation: op }: { operation: SeedOperationType }) {
         )}
         {hasInputs && (
           <div className="mt-1 flex flex-wrap gap-1">
-            {itemInputs.map((inp) => (
+            {lotInputs.map((inp) => (
               <Badge
                 key={inp.referenceKey}
                 variant="outline"
                 className="text-[10px] font-normal"
               >
                 <Box className="mr-0.5 size-2.5" />
-                {inp.type === "items" && "config" in inp
-                  ? (inp.config as { itemTypeName?: string }).itemTypeName
+                {inp.type === "lots" && "config" in inp
+                  ? (inp.config as { lotTypeName?: string }).lotTypeName
                   : inp.referenceKey}
               </Badge>
             ))}

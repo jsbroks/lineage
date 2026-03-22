@@ -3,9 +3,9 @@ import { eq, inArray } from "drizzle-orm";
 
 import { db } from "~/server/db";
 import {
-  item,
-  itemEvent,
-  itemTypeStatusDefinition,
+  lot,
+  lotEvent,
+  lotTypeStatusDefinition,
   location,
   operationType,
 } from "~/server/db/schema";
@@ -28,43 +28,43 @@ export async function POST(req: Request) {
 
   try {
     switch (type) {
-      case "updateItemStatus":
+      case "updateLotStatus":
       case "bulkUpdateStatus": {
-        const itemIds = payload.itemIds as string[];
+        const lotIds = payload.lotIds as string[];
         const statusId = payload.statusId as string;
 
-        if (!itemIds?.length || !statusId) {
+        if (!lotIds?.length || !statusId) {
           return NextResponse.json(
-            { error: "Missing itemIds or statusId" },
+            { error: "Missing lotIds or statusId" },
             { status: 400 },
           );
         }
 
-        const oldItems = await db
-          .select({ id: item.id, statusId: item.statusId })
-          .from(item)
-          .where(inArray(item.id, itemIds));
+        const oldLots = await db
+          .select({ id: lot.id, statusId: lot.statusId })
+          .from(lot)
+          .where(inArray(lot.id, lotIds));
 
         const updated = await db
-          .update(item)
+          .update(lot)
           .set({ statusId, updatedAt: new Date() })
-          .where(inArray(item.id, itemIds))
-          .returning({ id: item.id });
+          .where(inArray(lot.id, lotIds))
+          .returning({ id: lot.id });
 
         if (updated.length > 0) {
           const allStatusIds = [
-            ...new Set([statusId, ...oldItems.map((i) => i.statusId)]),
+            ...new Set([statusId, ...oldLots.map((i) => i.statusId)]),
           ];
           const statusDefs = await db
             .select({
-              id: itemTypeStatusDefinition.id,
-              name: itemTypeStatusDefinition.name,
+              id: lotTypeStatusDefinition.id,
+              name: lotTypeStatusDefinition.name,
             })
-            .from(itemTypeStatusDefinition)
-            .where(inArray(itemTypeStatusDefinition.id, allStatusIds));
+            .from(lotTypeStatusDefinition)
+            .where(inArray(lotTypeStatusDefinition.id, allStatusIds));
           const nameMap = new Map(statusDefs.map((s) => [s.id, s.name]));
           const newName = nameMap.get(statusId) ?? "unknown";
-          const oldStatusMap = new Map(oldItems.map((i) => [i.id, i.statusId]));
+          const oldStatusMap = new Map(oldLots.map((i) => [i.id, i.statusId]));
 
           const events = updated
             .filter((u) => oldStatusMap.get(u.id) !== statusId)
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
                 ? (nameMap.get(oldStatusId) ?? "unknown")
                 : null;
               return {
-                itemId: u.id,
+                lotId: u.id,
                 eventType: "status_changed" as const,
                 oldStatus: oldStatusId ?? null,
                 newStatus: statusId,
@@ -86,20 +86,20 @@ export async function POST(req: Request) {
             });
 
           if (events.length > 0) {
-            await db.insert(itemEvent).values(events);
+            await db.insert(lotEvent).values(events);
           }
         }
 
         return NextResponse.json({ success: true, updated: updated.length });
       }
 
-      case "moveItems": {
-        const itemIds = payload.itemIds as string[];
+      case "moveLots": {
+        const lotIds = payload.lotIds as string[];
         const locationId = payload.locationId as string;
 
-        if (!itemIds?.length || !locationId) {
+        if (!lotIds?.length || !locationId) {
           return NextResponse.json(
-            { error: "Missing itemIds or locationId" },
+            { error: "Missing lotIds or locationId" },
             { status: 400 },
           );
         }
@@ -111,15 +111,15 @@ export async function POST(req: Request) {
           .limit(1);
 
         const updated = await db
-          .update(item)
+          .update(lot)
           .set({ locationId, updatedAt: new Date() })
-          .where(inArray(item.id, itemIds))
-          .returning({ id: item.id });
+          .where(inArray(lot.id, lotIds))
+          .returning({ id: lot.id });
 
         if (updated.length > 0) {
-          await db.insert(itemEvent).values(
+          await db.insert(lotEvent).values(
             updated.map((u) => ({
-              itemId: u.id,
+              lotId: u.id,
               eventType: "location_changed" as const,
               newLocationId: locationId,
               message: `Moved to ${loc?.name ?? "location"} via AI chat.`,
@@ -164,37 +164,37 @@ export async function POST(req: Request) {
       }
 
       case "updateAttributes": {
-        const itemIds = payload.itemIds as string[];
+        const lotIds = payload.lotIds as string[];
         const attributes = payload.attributes as Record<string, unknown>;
 
-        if (!itemIds?.length || !attributes) {
+        if (!lotIds?.length || !attributes) {
           return NextResponse.json(
-            { error: "Missing itemIds or attributes" },
+            { error: "Missing lotIds or attributes" },
             { status: 400 },
           );
         }
 
         let updatedCount = 0;
         const eventRows: {
-          itemId: string;
+          lotId: string;
           eventType: string;
           message: string;
           payload: Record<string, unknown>;
         }[] = [];
 
-        const existingItems = await db
-          .select({ id: item.id, attributes: item.attributes })
-          .from(item)
-          .where(inArray(item.id, itemIds));
+        const existingLots = await db
+          .select({ id: lot.id, attributes: lot.attributes })
+          .from(lot)
+          .where(inArray(lot.id, lotIds));
 
-        for (const existing of existingItems) {
+        for (const existing of existingLots) {
           const oldAttrs =
             (existing.attributes as Record<string, unknown>) ?? {};
           const merged = { ...oldAttrs, ...attributes };
           await db
-            .update(item)
+            .update(lot)
             .set({ attributes: merged, updatedAt: new Date() })
-            .where(eq(item.id, existing.id));
+            .where(eq(lot.id, existing.id));
           updatedCount++;
 
           const changes: Record<string, { from: unknown; to: unknown }> = {};
@@ -214,7 +214,7 @@ export async function POST(req: Request) {
                 : `${changedKeys.slice(0, 3).join(", ")} +${changedKeys.length - 3} more`;
 
             eventRows.push({
-              itemId: existing.id,
+              lotId: existing.id,
               eventType: "attributes_updated",
               message: `${summary} updated via AI chat.`,
               payload: { changes },
@@ -223,7 +223,7 @@ export async function POST(req: Request) {
         }
 
         if (eventRows.length > 0) {
-          await db.insert(itemEvent).values(eventRows);
+          await db.insert(lotEvent).values(eventRows);
         }
 
         return NextResponse.json({ success: true, updated: updatedCount });

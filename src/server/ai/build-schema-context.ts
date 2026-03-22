@@ -1,19 +1,19 @@
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "~/server/db";
 import {
-  itemType,
-  itemTypeVariant,
-  itemTypeAttributeDefinition,
-  itemTypeStatusDefinition,
+  lotType,
+  lotTypeVariant,
+  lotTypeAttributeDefinition,
+  lotTypeStatusDefinition,
   location,
   operationType,
   operationTypeInput,
-  operationTypeInputItemConfig,
+  operationTypeInputLotConfig,
 } from "~/server/db/schema";
 
 export type SchemaContext = {
   prompt: string;
-  itemTypes: Awaited<ReturnType<typeof loadItemTypes>>;
+  lotTypes: Awaited<ReturnType<typeof loadLotTypes>>;
   statuses: Awaited<ReturnType<typeof loadStatuses>>;
   variants: Awaited<ReturnType<typeof loadVariants>>;
   locations: Awaited<ReturnType<typeof loadLocations>>;
@@ -21,22 +21,22 @@ export type SchemaContext = {
   operationTypes: Awaited<ReturnType<typeof loadOperationTypes>>;
 };
 
-function loadItemTypes() {
-  return db.select().from(itemType).orderBy(asc(itemType.name));
+function loadLotTypes() {
+  return db.select().from(lotType).orderBy(asc(lotType.name));
 }
 
 function loadStatuses() {
   return db
     .select()
-    .from(itemTypeStatusDefinition)
-    .orderBy(asc(itemTypeStatusDefinition.ordinal));
+    .from(lotTypeStatusDefinition)
+    .orderBy(asc(lotTypeStatusDefinition.ordinal));
 }
 
 function loadVariants() {
   return db
     .select()
-    .from(itemTypeVariant)
-    .orderBy(asc(itemTypeVariant.sortOrder));
+    .from(lotTypeVariant)
+    .orderBy(asc(lotTypeVariant.sortOrder));
 }
 
 function loadLocations() {
@@ -46,8 +46,8 @@ function loadLocations() {
 function loadAttributes() {
   return db
     .select()
-    .from(itemTypeAttributeDefinition)
-    .orderBy(asc(itemTypeAttributeDefinition.sortOrder));
+    .from(lotTypeAttributeDefinition)
+    .orderBy(asc(lotTypeAttributeDefinition.sortOrder));
 }
 
 function loadOperationTypes() {
@@ -61,58 +61,58 @@ function loadOperationInputs() {
     .orderBy(asc(operationTypeInput.sortOrder));
 }
 
-function loadOperationItemConfigs() {
-  return db.select().from(operationTypeInputItemConfig);
+function loadOperationLotConfigs() {
+  return db.select().from(operationTypeInputLotConfig);
 }
 
 export async function buildSchemaContext(): Promise<SchemaContext> {
   const [
-    itemTypes,
+    lotTypes,
     statuses,
     variants,
     locations,
     attributes,
     operationTypes,
     opInputs,
-    opItemConfigs,
+    opLotConfigs,
   ] = await Promise.all([
-    loadItemTypes(),
+    loadLotTypes(),
     loadStatuses(),
     loadVariants(),
     loadLocations(),
     loadAttributes(),
     loadOperationTypes(),
     loadOperationInputs(),
-    loadOperationItemConfigs(),
+    loadOperationLotConfigs(),
   ]);
 
   const configByInputId = new Map(
-    opItemConfigs.map((c) => [c.inputId, c]),
+    opLotConfigs.map((c) => [c.inputId, c]),
   );
 
   const statusesByType = new Map<string, typeof statuses>();
   for (const s of statuses) {
-    const arr = statusesByType.get(s.itemTypeId) ?? [];
+    const arr = statusesByType.get(s.lotTypeId) ?? [];
     arr.push(s);
-    statusesByType.set(s.itemTypeId, arr);
+    statusesByType.set(s.lotTypeId, arr);
   }
 
   const variantsByType = new Map<string, typeof variants>();
   for (const v of variants) {
-    const arr = variantsByType.get(v.itemTypeId) ?? [];
+    const arr = variantsByType.get(v.lotTypeId) ?? [];
     arr.push(v);
-    variantsByType.set(v.itemTypeId, arr);
+    variantsByType.set(v.lotTypeId, arr);
   }
 
   const attrsByType = new Map<string, typeof attributes>();
   for (const a of attributes) {
-    const arr = attrsByType.get(a.itemTypeId) ?? [];
+    const arr = attrsByType.get(a.lotTypeId) ?? [];
     arr.push(a);
-    attrsByType.set(a.itemTypeId, arr);
+    attrsByType.set(a.lotTypeId, arr);
   }
 
-  const lines: string[] = ["Item Types:"];
-  for (const t of itemTypes) {
+  const lines: string[] = ["Lot Types:"];
+  for (const t of lotTypes) {
     const typeStatuses = statusesByType.get(t.id) ?? [];
     const typeVariants = variantsByType.get(t.id) ?? [];
     const typeAttrs = attrsByType.get(t.id) ?? [];
@@ -158,14 +158,14 @@ export async function buildSchemaContext(): Promise<SchemaContext> {
       if (op.description) line += ` — ${op.description}`;
 
       const inputs = inputsByOp.get(op.id) ?? [];
-      const itemInputs = inputs.filter((i) => i.type === "items");
-      const fieldInputs = inputs.filter((i) => i.type !== "items");
+      const lotInputs = inputs.filter((i) => i.type === "lots");
+      const fieldInputs = inputs.filter((i) => i.type !== "lots");
 
-      if (itemInputs.length > 0) {
-        const portLabels = itemInputs.map((inp) => {
+      if (lotInputs.length > 0) {
+        const portLabels = lotInputs.map((inp) => {
           const cfg = configByInputId.get(inp.id);
           const typeName = cfg
-            ? (itemTypes.find((t) => t.id === cfg.itemTypeId)?.name ?? "unknown")
+            ? (lotTypes.find((t) => t.id === cfg.lotTypeId)?.name ?? "unknown")
             : "unknown";
           const statusInfo =
             cfg?.preconditionsStatuses && cfg.preconditionsStatuses.length > 0
@@ -190,7 +190,7 @@ export async function buildSchemaContext(): Promise<SchemaContext> {
 
   return {
     prompt: lines.join("\n"),
-    itemTypes,
+    lotTypes,
     statuses,
     variants,
     locations,

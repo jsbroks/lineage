@@ -15,13 +15,13 @@ export type ResolvableValue = z.infer<typeof resolvableValueSchema>;
 
 export type Operation = schema.Operation & {
   steps: schema.OperationStep[];
-  inputItems: schema.OperationInputItem[];
+  inputLots: schema.OperationInputLot[];
   inputLocations: schema.OperationInputLocation[];
   inputValues: schema.OperationInputValue[];
 };
 
-export type ItemTypeWithStatusDefinitions = schema.ItemType & {
-  statusDefinitions: schema.ItemTypeStatusDefinition[];
+export type LotTypeWithStatusDefinitions = schema.LotType & {
+  statusDefinitions: schema.LotTypeStatusDefinition[];
 };
 
 export class OperationContext {
@@ -30,8 +30,8 @@ export class OperationContext {
       where: eq(schema.operation.id, operationId),
       with: {
         steps: true,
-        inputItems: {
-          with: { item: true },
+        inputLots: {
+          with: { lot: true },
         },
         inputLocations: true,
         inputValues: true,
@@ -42,22 +42,22 @@ export class OperationContext {
       throw new Error("Operation not found");
     }
 
-    const items = _.chain(op.inputItems)
-      .map((i) => i.item)
+    const lots = _.chain(op.inputLots)
+      .map((i) => i.lot)
       .compact();
 
-    const itemTypeIds = items
-      .map((i) => i.itemTypeId)
+    const lotTypeIds = lots
+      .map((i) => i.lotTypeId)
       .uniq()
       .value();
-    const itemTypes = await tx.query.itemType.findMany({
-      where: inArray(schema.itemType.id, itemTypeIds),
+    const lotTypes = await tx.query.lotType.findMany({
+      where: inArray(schema.lotType.id, lotTypeIds),
       with: {
         statusDefinitions: true,
       },
     });
 
-    const locationIds = items
+    const locationIds = lots
       .map((i) => i.locationId)
       .compact()
       .uniq()
@@ -68,15 +68,15 @@ export class OperationContext {
 
     const ctx = new OperationContext(op as Operation);
 
-    ctx.items = _.keyBy(items.value(), (i) => i.id);
-    ctx.itemTypes = _.keyBy(itemTypes, (i) => i.id);
+    ctx.lots = _.keyBy(lots.value(), (i) => i.id);
+    ctx.lotTypes = _.keyBy(lotTypes, (i) => i.id);
     ctx.locations = _.keyBy(locations, (i) => i.id);
 
     return ctx;
   }
 
-  items: Record<string, schema.Item> = {};
-  itemTypes: Record<string, ItemTypeWithStatusDefinitions> = {};
+  lots: Record<string, schema.Lot> = {};
+  lotTypes: Record<string, LotTypeWithStatusDefinitions> = {};
   locations: Record<string, schema.Location> = {};
 
   constructor(readonly operation: Operation) {
@@ -87,15 +87,15 @@ export class OperationContext {
     return _.get(this, path);
   }
 
-  itemsFromTarget(ref?: string | null): schema.Item[] {
+  lotsFromTarget(ref?: string | null): schema.Lot[] {
     if (ref == null) return [];
-    const ids = _.chain(this.operation.inputItems)
+    const ids = _.chain(this.operation.inputLots)
       .filter((i) => i.key === ref)
-      .map((i) => i.itemId)
+      .map((i) => i.lotId)
       .compact()
       .uniq()
       .value();
-    return _.compact(ids.map((id) => this.items[id]));
+    return _.compact(ids.map((id) => this.lots[id]));
   }
 
   resolveValue(val: ResolvableValue): unknown {

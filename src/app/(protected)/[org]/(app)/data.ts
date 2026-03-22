@@ -1,8 +1,8 @@
 import * as schema from "~/server/db/schema";
 
-type ItemType = typeof schema.itemType.$inferSelect;
+type LotType = typeof schema.lotType.$inferSelect;
 
-export const itemTypes: ItemType[] = [
+export const lotTypes: LotType[] = [
   {
     name: "Fruiting Bed",
     id: "fruiting_bed",

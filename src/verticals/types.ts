@@ -13,7 +13,7 @@ export interface SeedStatusDefinition {
 }
 
 export interface SeedStatusTransition {
-  /** References SeedStatusDefinition.name within the same item type */
+  /** References SeedStatusDefinition.name within the same lot type */
   from: string;
   to: string;
 }
@@ -42,7 +42,7 @@ export interface SeedAttributeDefinition {
   sortOrder: number;
 }
 
-export interface SeedItemType {
+export interface SeedLotType {
   name: string;
   description?: string;
   category: string;
@@ -62,9 +62,9 @@ export interface SeedItemType {
 // Unified operation-type inputs (discriminated union on `type`)
 // ---------------------------------------------------------------------------
 
-export interface SeedItemsInputConfig {
-  /** References SeedItemType.name — resolved to an ID at insert time */
-  itemTypeName: string;
+export interface SeedLotsInputConfig {
+  /** References SeedLotType.name — resolved to an ID at insert time */
+  lotTypeName: string;
   qtyMin?: string;
   qtyMax?: string;
   preconditionsStatuses?: string[];
@@ -77,7 +77,7 @@ export interface SeedValueInputConfig {
 
 /** Maps each input type discriminant to its config shape (intersected into the base). */
 export interface SeedInputConfigMap {
-  items: { config: SeedItemsInputConfig };
+  lots: { config: SeedLotsInputConfig };
   location: {};
   string: { config?: SeedValueInputConfig };
   number: { config?: SeedValueInputConfig };
@@ -129,7 +129,7 @@ export interface SeedLocation {
 }
 
 export interface SeedData {
-  itemTypes: SeedItemType[];
+  lotTypes: SeedLotType[];
   operations: SeedOperationType[];
   locations: SeedLocation[];
 }

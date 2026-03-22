@@ -29,7 +29,7 @@ export const SingleLabel: React.FC<SingleLabelProps> = ({
   const hasQr = content.showQrCode;
   const hasBarcode = content.showBarcode;
   const hasText =
-    content.showItemCode ||
+    content.showLotCode ||
     content.showTypeName ||
     content.showVariantName ||
     content.customText;
@@ -82,7 +82,7 @@ export const SingleLabel: React.FC<SingleLabelProps> = ({
               className={`flex flex-col gap-px ${isLandscape ? "items-start" : "items-center"}`}
               style={{ fontSize: `${fontSize}px`, lineHeight: 1.2 }}
             >
-              {content.showItemCode && (
+              {content.showLotCode && (
                 <span className="font-mono font-semibold">{item.code}</span>
               )}
               {content.showTypeName && (

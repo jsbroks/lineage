@@ -43,7 +43,7 @@ const FEATURES: NavItem[] = [
   {
     icon: WorkflowSquare03Icon,
     title: "Full Lineage",
-    description: "Trace any item back to its source materials.",
+    description: "Trace any lot back to its source materials.",
     href: "/#features",
   },
   {
@@ -55,7 +55,7 @@ const FEATURES: NavItem[] = [
   {
     icon: Layers01Icon,
     title: "Batch Operations",
-    description: "Create and update items in bulk.",
+    description: "Create and update lots in bulk.",
     href: "/#features",
   },
   {

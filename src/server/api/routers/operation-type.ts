@@ -6,9 +6,9 @@ import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import {
   operationType,
   operationTypeInput,
-  operationTypeInputItemConfig,
+  operationTypeInputLotConfig,
   operationTypeStep,
-  itemTypeStatusDefinition,
+  lotTypeStatusDefinition,
 } from "~/server/db/schema";
 
 const createOperationTypeSchema = z.object({
@@ -52,7 +52,7 @@ const inputSchema = z.object({
   sortOrder: z.number().int().default(0),
   options: z.record(z.string(), z.unknown()).nullable().optional(),
   defaultValue: z.unknown().nullable().optional(),
-  itemTypeId: z.uuid().optional(),
+  lotTypeId: z.uuid().optional(),
   minCount: z.number().int().optional(),
   maxCount: z.number().int().nullable().optional(),
   preconditionsStatuses: z.array(z.string()).nullable().optional(),
@@ -63,14 +63,14 @@ export const operationTypeRouter = createTRPCRouter({
     return ctx.db.select().from(operationType).orderBy(asc(operationType.name));
   }),
 
-  statusesForItemType: publicProcedure
-    .input(z.object({ itemTypeId: z.uuid() }))
+  statusesForLotType: publicProcedure
+    .input(z.object({ lotTypeId: z.uuid() }))
     .query(async ({ ctx, input }) => {
       return ctx.db
-        .select({ name: itemTypeStatusDefinition.name })
-        .from(itemTypeStatusDefinition)
-        .where(eq(itemTypeStatusDefinition.itemTypeId, input.itemTypeId))
-        .orderBy(asc(itemTypeStatusDefinition.ordinal));
+        .select({ name: lotTypeStatusDefinition.name })
+        .from(lotTypeStatusDefinition)
+        .where(eq(lotTypeStatusDefinition.lotTypeId, input.lotTypeId))
+        .orderBy(asc(lotTypeStatusDefinition.ordinal));
     }),
 
   getById: publicProcedure
@@ -88,7 +88,7 @@ export const operationTypeRouter = createTRPCRouter({
         });
       }
 
-      const [allInputs, itemConfigs, steps] = await Promise.all([
+      const [allInputs, lotConfigs, steps] = await Promise.all([
         ctx.db
           .select()
           .from(operationTypeInput)
@@ -96,10 +96,10 @@ export const operationTypeRouter = createTRPCRouter({
           .orderBy(asc(operationTypeInput.sortOrder)),
         ctx.db
           .select()
-          .from(operationTypeInputItemConfig)
+          .from(operationTypeInputLotConfig)
           .where(
             inArray(
-              operationTypeInputItemConfig.inputId,
+              operationTypeInputLotConfig.inputId,
               ctx.db
                 .select({ id: operationTypeInput.id })
                 .from(operationTypeInput)
@@ -114,12 +114,12 @@ export const operationTypeRouter = createTRPCRouter({
       ]);
 
       const configByInputId = new Map(
-        itemConfigs.map((c) => [c.inputId, c]),
+        lotConfigs.map((c) => [c.inputId, c]),
       );
 
       const inputs = allInputs.map((inp) => ({
         ...inp,
-        itemConfig: configByInputId.get(inp.id) ?? null,
+        lotConfig: configByInputId.get(inp.id) ?? null,
       }));
 
       return { ...op, inputs, steps };
@@ -192,10 +192,10 @@ export const operationTypeRouter = createTRPCRouter({
         })
         .returning();
 
-      if (input.type === "items" && input.itemTypeId && created) {
-        await ctx.db.insert(operationTypeInputItemConfig).values({
+      if (input.type === "lots" && input.lotTypeId && created) {
+        await ctx.db.insert(operationTypeInputLotConfig).values({
           inputId: created.id,
-          itemTypeId: input.itemTypeId,
+          lotTypeId: input.lotTypeId,
           minCount: input.minCount ?? 0,
           maxCount: input.maxCount ?? null,
           preconditionsStatuses: input.preconditionsStatuses ?? null,
@@ -208,7 +208,7 @@ export const operationTypeRouter = createTRPCRouter({
   updateInput: publicProcedure
     .input(inputSchema.required({ id: true }))
     .mutation(async ({ ctx, input }) => {
-      const { id, itemTypeId, minCount, maxCount, preconditionsStatuses, ...data } = input;
+      const { id, lotTypeId, minCount, maxCount, preconditionsStatuses, ...data } = input;
       const [updated] = await ctx.db
         .update(operationTypeInput)
         .set({
@@ -231,26 +231,26 @@ export const operationTypeRouter = createTRPCRouter({
         });
       }
 
-      if (data.type === "items" && itemTypeId) {
+      if (data.type === "lots" && lotTypeId) {
         const existing = await ctx.db
           .select()
-          .from(operationTypeInputItemConfig)
-          .where(eq(operationTypeInputItemConfig.inputId, id));
+          .from(operationTypeInputLotConfig)
+          .where(eq(operationTypeInputLotConfig.inputId, id));
 
         if (existing.length > 0) {
           await ctx.db
-            .update(operationTypeInputItemConfig)
+            .update(operationTypeInputLotConfig)
             .set({
-              itemTypeId,
+              lotTypeId,
               minCount: minCount ?? 0,
               maxCount: maxCount ?? null,
               preconditionsStatuses: preconditionsStatuses ?? null,
             })
-            .where(eq(operationTypeInputItemConfig.inputId, id));
+            .where(eq(operationTypeInputLotConfig.inputId, id));
         } else {
-          await ctx.db.insert(operationTypeInputItemConfig).values({
+          await ctx.db.insert(operationTypeInputLotConfig).values({
             inputId: id,
-            itemTypeId,
+            lotTypeId,
             minCount: minCount ?? 0,
             maxCount: maxCount ?? null,
             preconditionsStatuses: preconditionsStatuses ?? null,
@@ -325,26 +325,26 @@ export const operationTypeRouter = createTRPCRouter({
               })
               .where(eq(operationTypeInput.id, inp.id));
 
-            if (inp.type === "items" && inp.itemTypeId) {
+            if (inp.type === "lots" && inp.lotTypeId) {
               const existingConfig = await tx
                 .select()
-                .from(operationTypeInputItemConfig)
-                .where(eq(operationTypeInputItemConfig.inputId, inp.id));
+                .from(operationTypeInputLotConfig)
+                .where(eq(operationTypeInputLotConfig.inputId, inp.id));
 
               if (existingConfig.length > 0) {
                 await tx
-                  .update(operationTypeInputItemConfig)
+                  .update(operationTypeInputLotConfig)
                   .set({
-                    itemTypeId: inp.itemTypeId,
+                    lotTypeId: inp.lotTypeId,
                     minCount: inp.minCount ?? 0,
                     maxCount: inp.maxCount ?? null,
                     preconditionsStatuses: inp.preconditionsStatuses ?? null,
                   })
-                  .where(eq(operationTypeInputItemConfig.inputId, inp.id));
+                  .where(eq(operationTypeInputLotConfig.inputId, inp.id));
               } else {
-                await tx.insert(operationTypeInputItemConfig).values({
+                await tx.insert(operationTypeInputLotConfig).values({
                   inputId: inp.id,
-                  itemTypeId: inp.itemTypeId,
+                  lotTypeId: inp.lotTypeId,
                   minCount: inp.minCount ?? 0,
                   maxCount: inp.maxCount ?? null,
                   preconditionsStatuses: inp.preconditionsStatuses ?? null,
@@ -367,10 +367,10 @@ export const operationTypeRouter = createTRPCRouter({
               })
               .returning();
 
-            if (inp.type === "items" && inp.itemTypeId && created) {
-              await tx.insert(operationTypeInputItemConfig).values({
+            if (inp.type === "lots" && inp.lotTypeId && created) {
+              await tx.insert(operationTypeInputLotConfig).values({
                 inputId: created.id,
-                itemTypeId: inp.itemTypeId,
+                lotTypeId: inp.lotTypeId,
                 minCount: inp.minCount ?? 0,
                 maxCount: inp.maxCount ?? null,
                 preconditionsStatuses: inp.preconditionsStatuses ?? null,

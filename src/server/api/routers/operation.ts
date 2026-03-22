@@ -23,9 +23,9 @@ export const operationRouter = createTRPCRouter({
   actions: publicProcedure.query(() => registry.actions),
 
   suggest: publicProcedure
-    .input(z.object({ itemIds: z.array(z.uuid()).min(1) }))
+    .input(z.object({ lotIds: z.array(z.uuid()).min(1) }))
     .query(async ({ ctx, input }) => {
-      return suggestOperations(ctx.db, input.itemIds);
+      return suggestOperations(ctx.db, input.lotIds);
     }),
 
   execute: publicProcedure

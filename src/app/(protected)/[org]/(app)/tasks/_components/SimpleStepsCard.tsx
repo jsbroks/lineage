@@ -24,13 +24,13 @@ import type { InputRow } from "./OperationTypeForm";
 
 type SimpleStepsCardProps = {
   steps: SimpleStepRow[];
-  inputItems: InputRow[];
+  inputLots: InputRow[];
   inputFields: InputRow[];
   onUpdate: (steps: SimpleStepRow[]) => void;
 };
 
 const EMPTY: SimpleStepRow = {
-  action: "set-item-status",
+  action: "set-lot-status",
   targetRef: "",
   statusName: "",
   attrKey: "",
@@ -41,20 +41,20 @@ const EMPTY: SimpleStepRow = {
 
 export function SimpleStepsCard({
   steps,
-  inputItems,
+  inputLots,
   inputFields,
   onUpdate,
 }: SimpleStepsCardProps) {
-  const { data: itemTypesWithStatuses = [] } =
-    api.itemType.listWithStatuses.useQuery();
+  const { data: lotTypesWithStatuses = [] } =
+    api.lotType.listWithStatuses.useQuery();
 
   const statusesForTarget = (targetRef: string) => {
-    const inputItem = inputItems.find((i) => i.referenceKey === targetRef);
-    if (!inputItem) return [];
-    const itemType = itemTypesWithStatuses.find(
-      (t) => t.id === inputItem.itemTypeId,
+    const inputLot = inputLots.find((i) => i.referenceKey === targetRef);
+    if (!inputLot) return [];
+    const lt = lotTypesWithStatuses.find(
+      (t) => t.id === inputLot.lotTypeId,
     );
-    return itemType?.statuses ?? [];
+    return lt?.statuses ?? [];
   };
 
   const updateStep = (idx: number, patch: Partial<SimpleStepRow>) => {
@@ -84,7 +84,7 @@ export function SimpleStepsCard({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => addStep("set-item-status")}
+              onClick={() => addStep("set-lot-status")}
             >
               <Plus className="mr-1 size-3.5" /> Change status
             </Button>
@@ -92,7 +92,7 @@ export function SimpleStepsCard({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => addStep("set-item-attr")}
+              onClick={() => addStep("set-lot-attr")}
             >
               <Plus className="mr-1 size-3.5" /> Set attribute
             </Button>
@@ -103,11 +103,11 @@ export function SimpleStepsCard({
         <CardContent className="space-y-4">
           {steps.map((step, idx) => (
             <div key={idx} className="rounded-md border p-3">
-              {step.action === "set-item-status" ? (
+              {step.action === "set-lot-status" ? (
                 <ChangeStatusRow
                   step={step}
                   idx={idx}
-                  inputItems={inputItems}
+                  inputLots={inputLots}
                   statuses={statusesForTarget(step.targetRef)}
                   onUpdate={updateStep}
                   onRemove={removeStep}
@@ -116,7 +116,7 @@ export function SimpleStepsCard({
                 <SetAttributeRow
                   step={step}
                   idx={idx}
-                  inputItems={inputItems}
+                  inputLots={inputLots}
                   inputFields={inputFields}
                   onUpdate={updateStep}
                   onRemove={removeStep}
@@ -137,14 +137,14 @@ type StatusInfo = { id: string; name: string };
 function ChangeStatusRow({
   step,
   idx,
-  inputItems,
+  inputLots,
   statuses,
   onUpdate,
   onRemove,
 }: {
   step: SimpleStepRow;
   idx: number;
-  inputItems: InputRow[];
+  inputLots: InputRow[];
   statuses: StatusInfo[];
   onUpdate: (idx: number, patch: Partial<SimpleStepRow>) => void;
   onRemove: (idx: number) => void;
@@ -158,7 +158,7 @@ function ChangeStatusRow({
         <div className="min-w-[140px] flex-1 space-y-1">
           <TargetSelect
             value={step.targetRef}
-            inputItems={inputItems}
+            inputLots={inputLots}
             onChange={(val) =>
               onUpdate(idx, { targetRef: val, statusName: "" })
             }
@@ -195,14 +195,14 @@ function ChangeStatusRow({
 function SetAttributeRow({
   step,
   idx,
-  inputItems,
+  inputLots,
   inputFields,
   onUpdate,
   onRemove,
 }: {
   step: SimpleStepRow;
   idx: number;
-  inputItems: InputRow[];
+  inputLots: InputRow[];
   inputFields: InputRow[];
   onUpdate: (idx: number, patch: Partial<SimpleStepRow>) => void;
   onRemove: (idx: number) => void;
@@ -228,7 +228,7 @@ function SetAttributeRow({
           <div className="min-w-[140px] flex-1">
             <TargetSelect
               value={step.targetRef}
-              inputItems={inputItems}
+              inputLots={inputLots}
               onChange={(val) => onUpdate(idx, { targetRef: val })}
             />
           </div>
@@ -308,14 +308,14 @@ function SetAttributeRow({
 
 function TargetSelect({
   value,
-  inputItems,
+  inputLots,
   onChange,
 }: {
   value: string;
-  inputItems: InputRow[];
+  inputLots: InputRow[];
   onChange: (val: string) => void;
 }) {
-  const targets = inputItems.filter((i) => i.referenceKey);
+  const targets = inputLots.filter((i) => i.referenceKey);
 
   return (
     <Select value={value || undefined} onValueChange={onChange}>

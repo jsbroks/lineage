@@ -16,7 +16,7 @@ export default function OperationsSettingsPage() {
     api.operationType.list.useQuery();
   const { data: operationTypePorts = [] } =
     api.operationType.listPorts.useQuery();
-  const { data: itemTypes = [] } = api.itemType.list.useQuery();
+  const { data: lotTypes = [] } = api.lotType.list.useQuery();
 
   const portsByOperationType = new Map<string, typeof operationTypePorts>();
   for (const port of operationTypePorts) {
@@ -55,7 +55,7 @@ export default function OperationsSettingsPage() {
               key={op.id}
               operationType={op}
               ports={portsByOperationType.get(op.id) ?? []}
-              itemTypes={itemTypes}
+              lotTypes={lotTypes}
               org={org}
             />
           ))}

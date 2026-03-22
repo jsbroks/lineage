@@ -2,18 +2,18 @@ import { and, count, eq, gte, inArray, lt, sql } from "drizzle-orm";
 
 import { db } from "~/server/db";
 import {
-  item,
-  itemEvent,
-  itemType,
-  itemTypeStatusDefinition,
-  itemTypeVariant,
+  lot,
+  lotEvent,
+  lotType,
+  lotTypeStatusDefinition,
+  lotTypeVariant,
   location,
 } from "~/server/db/schema";
 
-export type StuckItem = {
-  itemId: string;
+export type StuckLot = {
+  lotId: string;
   code: string;
-  itemTypeName: string;
+  lotTypeName: string;
   statusName: string;
   variantName: string | null;
   locationName: string | null;
@@ -22,37 +22,37 @@ export type StuckItem = {
 };
 
 export type ThroughputChange = {
-  itemTypeName: string;
+  lotTypeName: string;
   recentCount: number;
   priorCount: number;
   changePercent: number;
 };
 
 export type YieldOutlier = {
-  itemId: string;
+  lotId: string;
   code: string;
-  itemTypeName: string;
+  lotTypeName: string;
   variantName: string | null;
   quantity: number;
   avgQuantity: number;
 };
 
 export type AnomalyReport = {
-  stuckItems: StuckItem[];
+  stuckLots: StuckLot[];
   throughputChanges: ThroughputChange[];
   yieldOutliers: YieldOutlier[];
   generatedAt: string;
 };
 
 export async function detectAnomalies(): Promise<AnomalyReport> {
-  const [stuckItems, throughputChanges, yieldOutliers] = await Promise.all([
-    detectStuckItems(),
+  const [stuckLots, throughputChanges, yieldOutliers] = await Promise.all([
+    detectStuckLots(),
     detectThroughputChanges(),
     detectYieldOutliers(),
   ]);
 
   return {
-    stuckItems,
+    stuckLots,
     throughputChanges,
     yieldOutliers,
     generatedAt: new Date().toISOString(),
@@ -69,59 +69,59 @@ function stddev(values: number[], avg: number): number {
   return Math.sqrt(variance);
 }
 
-async function detectStuckItems(): Promise<StuckItem[]> {
-  const nonTerminalItems = await db
+async function detectStuckLots(): Promise<StuckLot[]> {
+  const nonTerminalLots = await db
     .select({
-      id: item.id,
-      code: item.code,
-      itemTypeId: item.itemTypeId,
-      statusId: item.statusId,
-      variantId: item.variantId,
-      locationId: item.locationId,
-      createdAt: item.createdAt,
-      itemTypeName: itemType.name,
-      statusName: itemTypeStatusDefinition.name,
+      id: lot.id,
+      code: lot.code,
+      lotTypeId: lot.lotTypeId,
+      statusId: lot.statusId,
+      variantId: lot.variantId,
+      locationId: lot.locationId,
+      createdAt: lot.createdAt,
+      lotTypeName: lotType.name,
+      statusName: lotTypeStatusDefinition.name,
     })
-    .from(item)
+    .from(lot)
     .innerJoin(
-      itemTypeStatusDefinition,
-      eq(item.statusId, itemTypeStatusDefinition.id),
+      lotTypeStatusDefinition,
+      eq(lot.statusId, lotTypeStatusDefinition.id),
     )
-    .innerJoin(itemType, eq(item.itemTypeId, itemType.id))
-    .where(eq(itemTypeStatusDefinition.isTerminal, false));
+    .innerJoin(lotType, eq(lot.lotTypeId, lotType.id))
+    .where(eq(lotTypeStatusDefinition.isTerminal, false));
 
-  if (nonTerminalItems.length === 0) return [];
+  if (nonTerminalLots.length === 0) return [];
 
-  const itemIds = nonTerminalItems.map((i) => i.id);
+  const lotIds = nonTerminalLots.map((i) => i.id);
 
   const lastStatusChanges = await db
     .select({
-      itemId: itemEvent.itemId,
-      lastChange: sql<string>`MAX(${itemEvent.recordedAt})`.as("last_change"),
+      lotId: lotEvent.lotId,
+      lastChange: sql<string>`MAX(${lotEvent.recordedAt})`.as("last_change"),
     })
-    .from(itemEvent)
+    .from(lotEvent)
     .where(
       and(
-        inArray(itemEvent.itemId, itemIds),
-        sql`${itemEvent.eventType} IN ('status_change', 'status_changed')`,
+        inArray(lotEvent.lotId, lotIds),
+        sql`${lotEvent.eventType} IN ('status_change', 'status_changed')`,
       ),
     )
-    .groupBy(itemEvent.itemId);
+    .groupBy(lotEvent.lotId);
 
   const lastChangeMap = new Map(
-    lastStatusChanges.map((e) => [e.itemId, new Date(e.lastChange)]),
+    lastStatusChanges.map((e) => [e.lotId, new Date(e.lastChange)]),
   );
 
   const variantIds = [
     ...new Set(
-      nonTerminalItems
+      nonTerminalLots
         .map((i) => i.variantId)
         .filter((id): id is string => id != null),
     ),
   ];
   const locationIds = [
     ...new Set(
-      nonTerminalItems
+      nonTerminalLots
         .map((i) => i.locationId)
         .filter((id): id is string => id != null),
     ),
@@ -130,9 +130,9 @@ async function detectStuckItems(): Promise<StuckItem[]> {
   const [variants, locations] = await Promise.all([
     variantIds.length > 0
       ? db
-          .select({ id: itemTypeVariant.id, name: itemTypeVariant.name })
-          .from(itemTypeVariant)
-          .where(inArray(itemTypeVariant.id, variantIds))
+          .select({ id: lotTypeVariant.id, name: lotTypeVariant.name })
+          .from(lotTypeVariant)
+          .where(inArray(lotTypeVariant.id, variantIds))
       : Promise.resolve([]),
     locationIds.length > 0
       ? db
@@ -146,21 +146,21 @@ async function detectStuckItems(): Promise<StuckItem[]> {
   const locationMap = new Map(locations.map((l) => [l.id, l.name]));
 
   const now = Date.now();
-  const itemsWithDwell = nonTerminalItems.map((i) => {
+  const lotsWithDwell = nonTerminalLots.map((i) => {
     const statusEnteredAt = lastChangeMap.get(i.id) ?? i.createdAt;
     const dwellHours = (now - statusEnteredAt.getTime()) / (1000 * 60 * 60);
     return { ...i, dwellHours };
   });
 
-  const groups = new Map<string, typeof itemsWithDwell>();
-  for (const i of itemsWithDwell) {
-    const key = `${i.itemTypeId}::${i.statusId}`;
+  const groups = new Map<string, typeof lotsWithDwell>();
+  for (const i of lotsWithDwell) {
+    const key = `${i.lotTypeId}::${i.statusId}`;
     const arr = groups.get(key) ?? [];
     arr.push(i);
     groups.set(key, arr);
   }
 
-  const results: StuckItem[] = [];
+  const results: StuckLot[] = [];
 
   for (const [, group] of groups) {
     if (group.length < 3) continue;
@@ -173,9 +173,9 @@ async function detectStuckItems(): Promise<StuckItem[]> {
     for (const i of group) {
       if (i.dwellHours > threshold) {
         results.push({
-          itemId: i.id,
+          lotId: i.id,
           code: i.code,
-          itemTypeName: i.itemTypeName,
+          lotTypeName: i.lotTypeName,
           statusName: i.statusName,
           variantName: i.variantId
             ? (variantMap.get(i.variantId) ?? null)
@@ -204,47 +204,47 @@ async function detectThroughputChanges(): Promise<ThroughputChange[]> {
 
   const [recentCounts, priorCounts] = await Promise.all([
     db
-      .select({ itemTypeId: item.itemTypeId, total: count() })
-      .from(itemEvent)
-      .innerJoin(item, eq(itemEvent.itemId, item.id))
+      .select({ lotTypeId: lot.lotTypeId, total: count() })
+      .from(lotEvent)
+      .innerJoin(lot, eq(lotEvent.lotId, lot.id))
       .where(
         and(
-          gte(itemEvent.recordedAt, sevenDaysAgo),
-          sql`${itemEvent.eventType} IN ('status_change', 'status_changed')`,
+          gte(lotEvent.recordedAt, sevenDaysAgo),
+          sql`${lotEvent.eventType} IN ('status_change', 'status_changed')`,
         ),
       )
-      .groupBy(item.itemTypeId),
+      .groupBy(lot.lotTypeId),
     db
-      .select({ itemTypeId: item.itemTypeId, total: count() })
-      .from(itemEvent)
-      .innerJoin(item, eq(itemEvent.itemId, item.id))
+      .select({ lotTypeId: lot.lotTypeId, total: count() })
+      .from(lotEvent)
+      .innerJoin(lot, eq(lotEvent.lotId, lot.id))
       .where(
         and(
-          gte(itemEvent.recordedAt, fourteenDaysAgo),
-          lt(itemEvent.recordedAt, sevenDaysAgo),
-          sql`${itemEvent.eventType} IN ('status_change', 'status_changed')`,
+          gte(lotEvent.recordedAt, fourteenDaysAgo),
+          lt(lotEvent.recordedAt, sevenDaysAgo),
+          sql`${lotEvent.eventType} IN ('status_change', 'status_changed')`,
         ),
       )
-      .groupBy(item.itemTypeId),
+      .groupBy(lot.lotTypeId),
   ]);
 
   const allTypeIds = [
     ...new Set([
-      ...recentCounts.map((r) => r.itemTypeId),
-      ...priorCounts.map((r) => r.itemTypeId),
+      ...recentCounts.map((r) => r.lotTypeId),
+      ...priorCounts.map((r) => r.lotTypeId),
     ]),
   ];
 
   if (allTypeIds.length === 0) return [];
 
   const types = await db
-    .select({ id: itemType.id, name: itemType.name })
-    .from(itemType)
-    .where(inArray(itemType.id, allTypeIds));
+    .select({ id: lotType.id, name: lotType.name })
+    .from(lotType)
+    .where(inArray(lotType.id, allTypeIds));
 
   const typeNameMap = new Map(types.map((t) => [t.id, t.name]));
-  const recentMap = new Map(recentCounts.map((r) => [r.itemTypeId, r.total]));
-  const priorMap = new Map(priorCounts.map((r) => [r.itemTypeId, r.total]));
+  const recentMap = new Map(recentCounts.map((r) => [r.lotTypeId, r.total]));
+  const priorMap = new Map(priorCounts.map((r) => [r.lotTypeId, r.total]));
 
   const results: ThroughputChange[] = [];
 
@@ -258,7 +258,7 @@ async function detectThroughputChanges(): Promise<ThroughputChange[]> {
 
     if (changePercent < -30) {
       results.push({
-        itemTypeName: typeNameMap.get(typeId) ?? "Unknown",
+        lotTypeName: typeNameMap.get(typeId) ?? "Unknown",
         recentCount: recent,
         priorCount: prior,
         changePercent: Math.round(changePercent),
@@ -271,24 +271,24 @@ async function detectThroughputChanges(): Promise<ThroughputChange[]> {
 }
 
 async function detectYieldOutliers(): Promise<YieldOutlier[]> {
-  const itemsWithQuantity = await db
+  const lotsWithQuantity = await db
     .select({
-      id: item.id,
-      code: item.code,
-      itemTypeId: item.itemTypeId,
-      variantId: item.variantId,
-      quantity: item.quantity,
-      itemTypeName: itemType.name,
+      id: lot.id,
+      code: lot.code,
+      lotTypeId: lot.lotTypeId,
+      variantId: lot.variantId,
+      quantity: lot.quantity,
+      lotTypeName: lotType.name,
     })
-    .from(item)
-    .innerJoin(itemType, eq(item.itemTypeId, itemType.id))
-    .where(sql`${item.quantity}::numeric > 0`);
+    .from(lot)
+    .innerJoin(lotType, eq(lot.lotTypeId, lotType.id))
+    .where(sql`${lot.quantity}::numeric > 0`);
 
-  if (itemsWithQuantity.length === 0) return [];
+  if (lotsWithQuantity.length === 0) return [];
 
   const variantIds = [
     ...new Set(
-      itemsWithQuantity
+      lotsWithQuantity
         .map((i) => i.variantId)
         .filter((id): id is string => id != null),
     ),
@@ -297,16 +297,16 @@ async function detectYieldOutliers(): Promise<YieldOutlier[]> {
   const variants =
     variantIds.length > 0
       ? await db
-          .select({ id: itemTypeVariant.id, name: itemTypeVariant.name })
-          .from(itemTypeVariant)
-          .where(inArray(itemTypeVariant.id, variantIds))
+          .select({ id: lotTypeVariant.id, name: lotTypeVariant.name })
+          .from(lotTypeVariant)
+          .where(inArray(lotTypeVariant.id, variantIds))
       : [];
 
   const variantMap = new Map(variants.map((v) => [v.id, v.name]));
 
-  const groups = new Map<string, typeof itemsWithQuantity>();
-  for (const i of itemsWithQuantity) {
-    const key = `${i.itemTypeId}::${i.variantId ?? "none"}`;
+  const groups = new Map<string, typeof lotsWithQuantity>();
+  for (const i of lotsWithQuantity) {
+    const key = `${i.lotTypeId}::${i.variantId ?? "none"}`;
     const arr = groups.get(key) ?? [];
     arr.push(i);
     groups.set(key, arr);
@@ -327,9 +327,9 @@ async function detectYieldOutliers(): Promise<YieldOutlier[]> {
       const qty = Number(i.quantity);
       if (Math.abs(qty - avg) > 2 * sd) {
         results.push({
-          itemId: i.id,
+          lotId: i.id,
           code: i.code,
-          itemTypeName: i.itemTypeName,
+          lotTypeName: i.lotTypeName,
           variantName: i.variantId
             ? (variantMap.get(i.variantId) ?? null)
             : null,

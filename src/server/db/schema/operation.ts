@@ -11,7 +11,7 @@ import {
 import { user } from "./auth";
 import { operationType } from "./operation-types";
 import { location } from "./location";
-import { item } from "./item";
+import { lot } from "./lot";
 import { relations } from "drizzle-orm";
 
 export const operation = pgTable(
@@ -46,37 +46,37 @@ export const operationRelation = relations(operation, ({ many, one }) => ({
     fields: [operation.operationTypeId],
     references: [operationType.id],
   }),
-  inputItems: many(operationInputItem),
+  inputLots: many(operationInputLot),
   inputLocations: many(operationInputLocation),
   inputValues: many(operationInputValue),
   steps: many(operationStep),
 }));
 
-export const operationInputItem = pgTable(
-  "operation_input_item",
+export const operationInputLot = pgTable(
+  "operation_input_lot",
   {
     id: uuid().primaryKey().defaultRandom(),
     key: text("key").notNull(),
     operationId: uuid("operation_id").references(() => operation.id, {
       onDelete: "cascade",
     }),
-    itemId: uuid("item_id").references(() => item.id, { onDelete: "cascade" }),
+    lotId: uuid("lot_id").references(() => lot.id, { onDelete: "cascade" }),
   },
-  (t) => [uniqueIndex().on(t.operationId, t.key, t.itemId)],
+  (t) => [uniqueIndex().on(t.operationId, t.key, t.lotId)],
 );
 
-export type OperationInputItem = typeof operationInputItem.$inferSelect;
+export type OperationInputLot = typeof operationInputLot.$inferSelect;
 
-export const operationInputItemRelation = relations(
-  operationInputItem,
+export const operationInputLotRelation = relations(
+  operationInputLot,
   ({ one }) => ({
     operation: one(operation, {
-      fields: [operationInputItem.operationId],
+      fields: [operationInputLot.operationId],
       references: [operation.id],
     }),
-    item: one(item, {
-      fields: [operationInputItem.itemId],
-      references: [item.id],
+    lot: one(lot, {
+      fields: [operationInputLot.lotId],
+      references: [lot.id],
     }),
   }),
 );

@@ -23,7 +23,7 @@ import { getColorClasses } from "~/app/_components/ColorSelector";
 export default function InventoryPage() {
   const params = useParams<{ org: string }>();
   const { data: rows = [], isLoading } =
-    api.itemType.inventoryOverview.useQuery();
+    api.lotType.inventoryOverview.useQuery();
 
   return (
     <div className="flex min-h-full flex-col">
@@ -53,7 +53,7 @@ export default function InventoryPage() {
           </div>
         ) : rows.length === 0 ? (
           <div className="text-muted-foreground px-6 py-12 text-center text-sm">
-            No item types configured yet. Add categories in Settings to get
+            No lot types configured yet. Add categories in Settings to get
             started.
           </div>
         ) : (
@@ -69,7 +69,7 @@ export default function InventoryPage() {
             </TableHeader>
             <TableBody>
               {rows.map((row) => {
-                const key = `${row.itemTypeId}::${row.variantId ?? "_"}`;
+                const key = `${row.lotTypeId}::${row.variantId ?? "_"}`;
                 const isVariantRow = !!row.variantName;
                 const isUnassigned = row.variantId === "_unassigned";
 
@@ -89,18 +89,18 @@ export default function InventoryPage() {
                           <div
                             className={cn(
                               "flex size-8 shrink-0 items-center justify-center rounded",
-                              getColorClasses(row.itemTypeColor).bg,
-                              getColorClasses(row.itemTypeColor).text,
+                              getColorClasses(row.lotTypeColor).bg,
+                              getColorClasses(row.lotTypeColor).text,
                             )}
                             style={
-                              row.itemTypeColor
+                              row.lotTypeColor
                                 ? {
-                                    backgroundColor: row.itemTypeColor + "20",
+                                    backgroundColor: row.lotTypeColor + "20",
                                   }
                                 : undefined
                             }
                           >
-                            <Icon icon={row.itemTypeIcon} className="size-4" />
+                            <Icon icon={row.lotTypeIcon} className="size-4" />
                           </div>
                         )}
                         <div className="flex items-center gap-2">
@@ -116,10 +116,10 @@ export default function InventoryPage() {
                             </Badge>
                           ) : (
                             <Link
-                              href={`/${params.org}/inventory/type/${row.itemTypeId}`}
+                              href={`/${params.org}/inventory/type/${row.lotTypeId}`}
                               className="hover:text-primary font-medium underline-offset-4 hover:underline"
                             >
-                              {row.itemTypeName}
+                              {row.lotTypeName}
                             </Link>
                           )}
                         </div>

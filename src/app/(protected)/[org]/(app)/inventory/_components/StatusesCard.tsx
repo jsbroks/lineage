@@ -12,7 +12,7 @@ import {
 } from "~/components/ui/card";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
-import type { StatusRow } from "./ItemTypeForm";
+import type { StatusRow } from "./LotTypeForm";
 
 type StatusesCardProps = {
   statuses: StatusRow[];
@@ -34,7 +34,7 @@ export function StatusesCard({
           <div>
             <CardTitle>Statuses</CardTitle>
             <CardDescription>
-              Define the lifecycle states for this item type.
+              Define the lifecycle states for this lot type.
             </CardDescription>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={onAdd}>

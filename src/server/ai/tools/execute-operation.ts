@@ -4,10 +4,10 @@ import { asc, eq, inArray } from "drizzle-orm";
 
 import { db } from "~/server/db";
 import {
-  item,
+  lot,
   operationType,
   operationTypeInput,
-  operationTypeInputItemConfig,
+  operationTypeInputLotConfig,
 } from "~/server/db/schema";
 import type { SchemaContext } from "../build-schema-context";
 import type { PendingAction } from "./pending-action";
@@ -15,15 +15,15 @@ import type { PendingAction } from "./pending-action";
 export function createExecuteOperationTool(ctx: SchemaContext) {
   return tool({
     description:
-      "Propose executing an operation (task/workflow) on items. Operations are predefined workflows like Harvest, Inoculate, Package, etc. If required input fields are missing, returns the list of fields needed so you can ask the user. Returns a pending action that the user must confirm.",
+      "Propose executing an operation (task/workflow) on lots. Operations are predefined workflows like Harvest, Inoculate, Package, etc. If required input fields are missing, returns the list of fields needed so you can ask the user. Returns a pending action that the user must confirm.",
     inputSchema: z.object({
       operationTypeName: z
         .string()
         .describe("Name of the operation type (e.g. 'Harvest')"),
-      itemCodes: z
+      lotCodes: z
         .array(z.string())
         .min(1)
-        .describe("Item codes to use as input for the operation"),
+        .describe("Lot codes to use as input for the operation"),
       fields: z
         .record(z.string(), z.unknown())
         .optional()
@@ -32,7 +32,7 @@ export function createExecuteOperationTool(ctx: SchemaContext) {
         ),
       notes: z.string().optional().describe("Optional notes for the operation"),
     }),
-    execute: async ({ operationTypeName, itemCodes, fields, notes }) => {
+    execute: async ({ operationTypeName, lotCodes, fields, notes }) => {
       const allOpTypes = await db.select().from(operationType);
       const opType = allOpTypes.find(
         (o) => o.name.toLowerCase() === operationTypeName.toLowerCase(),
@@ -50,46 +50,46 @@ export function createExecuteOperationTool(ctx: SchemaContext) {
         .where(eq(operationTypeInput.operationTypeId, opType.id))
         .orderBy(asc(operationTypeInput.sortOrder));
 
-      const itemInputs = allInputs.filter((i) => i.type === "items");
-      const fieldInputs = allInputs.filter((i) => i.type !== "items");
+      const lotInputs = allInputs.filter((i) => i.type === "lots");
+      const fieldInputs = allInputs.filter((i) => i.type !== "lots");
 
-      const itemConfigs =
-        itemInputs.length > 0
+      const lotConfigs =
+        lotInputs.length > 0
           ? await db
               .select()
-              .from(operationTypeInputItemConfig)
+              .from(operationTypeInputLotConfig)
               .where(
                 inArray(
-                  operationTypeInputItemConfig.inputId,
-                  itemInputs.map((i) => i.id),
+                  operationTypeInputLotConfig.inputId,
+                  lotInputs.map((i) => i.id),
                 ),
               )
           : [];
       const configByInputId = new Map(
-        itemConfigs.map((c) => [c.inputId, c]),
+        lotConfigs.map((c) => [c.inputId, c]),
       );
 
-      const matchedItems = await db
+      const matchedLots = await db
         .select()
-        .from(item)
-        .where(inArray(item.code, itemCodes));
+        .from(lot)
+        .where(inArray(lot.code, lotCodes));
 
-      if (matchedItems.length === 0)
-        return { error: "No items found matching the provided codes" };
+      if (matchedLots.length === 0)
+        return { error: "No lots found matching the provided codes" };
 
-      const notFound = itemCodes.filter(
-        (c) => !matchedItems.some((i) => i.code === c),
+      const notFound = lotCodes.filter(
+        (c) => !matchedLots.some((i) => i.code === c),
       );
       if (notFound.length > 0) {
-        return { error: `Items not found: ${notFound.join(", ")}` };
+        return { error: `Lots not found: ${notFound.join(", ")}` };
       }
 
       const inputsMap: Record<string, unknown> = {};
-      for (const inp of itemInputs) {
+      for (const inp of lotInputs) {
         const cfg = configByInputId.get(inp.id);
         if (!cfg) continue;
-        const matching = matchedItems.filter(
-          (i) => i.itemTypeId === cfg.itemTypeId,
+        const matching = matchedLots.filter(
+          (i) => i.lotTypeId === cfg.lotTypeId,
         );
         if (matching.length > 0) {
           inputsMap[inp.referenceKey] = matching.map((i) => i.id);
@@ -101,19 +101,19 @@ export function createExecuteOperationTool(ctx: SchemaContext) {
           .filter(Array.isArray)
           .flat() as string[],
       );
-      const unmatched = matchedItems.filter((i) => !matchedIds.has(i.id));
+      const unmatched = matchedLots.filter((i) => !matchedIds.has(i.id));
       if (unmatched.length > 0) {
-        const portDesc = itemInputs
+        const portDesc = lotInputs
           .map((inp) => {
             const cfg = configByInputId.get(inp.id);
             const typeName = cfg
-              ? ctx.itemTypes.find((t) => t.id === cfg.itemTypeId)?.name
+              ? ctx.lotTypes.find((t) => t.id === cfg.lotTypeId)?.name
               : "unknown";
             return `${inp.referenceKey} (${typeName ?? "unknown"})`;
           })
           .join(", ");
         return {
-          error: `Some items don't match any input port: ${unmatched.map((i) => i.code).join(", ")}. This operation expects: ${portDesc}`,
+          error: `Some lots don't match any input port: ${unmatched.map((i) => i.code).join(", ")}. This operation expects: ${portDesc}`,
         };
       }
 
@@ -151,7 +151,7 @@ export function createExecuteOperationTool(ctx: SchemaContext) {
         }
       }
 
-      const affectedItems = matchedItems.map((i) => ({
+      const affectedLots = matchedLots.map((i) => ({
         id: i.id,
         code: i.code,
         currentStatus: ctx.statuses.find((s) => s.id === i.statusId)?.name,
@@ -172,8 +172,8 @@ export function createExecuteOperationTool(ctx: SchemaContext) {
 
       const pendingAction: PendingAction = {
         type: "executeOperation",
-        description: `Execute "${opType.name}" on ${matchedItems.length} item(s)`,
-        affectedItems,
+        description: `Execute "${opType.name}" on ${matchedLots.length} lot(s)`,
+        affectedLots,
         changes,
         payload: {
           operationTypeId: opType.id,

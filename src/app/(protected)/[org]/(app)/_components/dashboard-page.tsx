@@ -51,7 +51,7 @@ function OnboardingBanner({ org }: { org: string }) {
             Finish setting up your workspace
           </p>
           <p className="text-muted-foreground text-xs">
-            Configure your item types, operations, and locations with our setup
+            Configure your lot types, operations, and locations with our setup
             wizard.
           </p>
         </div>
@@ -80,10 +80,10 @@ function OnboardingBanner({ org }: { org: string }) {
 
 export function DashboardPage({ org }: { org: string }) {
   const { data: inventoryRows, isLoading: loadingInventory } =
-    api.itemType.inventoryOverview.useQuery();
+    api.lotType.inventoryOverview.useQuery();
 
   const { data: recentEvents, isLoading: loadingEvents } =
-    api.item.recentActivity.useQuery({ limit: 15 });
+    api.lot.recentActivity.useQuery({ limit: 15 });
 
   const { data: recentOps, isLoading: loadingOps } =
     api.operation.recentWithTypes.useQuery({ limit: 8 });
@@ -122,9 +122,9 @@ export function DashboardPage({ org }: { org: string }) {
             description="Log an operation"
           />
           <QuickAction
-            href={`/${org}/items/new`}
+            href={`/${org}/lots/new`}
             icon={<Plus className="size-5" />}
-            label="New Item"
+            label="New Lot"
             description="Add to inventory"
           />
           <QuickAction
@@ -205,7 +205,7 @@ export function DashboardPage({ org }: { org: string }) {
                 </div>
               ) : typeRows.length === 0 ? (
                 <div className="text-muted-foreground px-4 py-8 text-center text-sm">
-                  No item types configured yet.{" "}
+                  No lot types configured yet.{" "}
                   <Link
                     href={`/${org}/inventory/type/new`}
                     className="text-primary underline underline-offset-4"
@@ -219,27 +219,27 @@ export function DashboardPage({ org }: { org: string }) {
                     const inProgress = row.prepared + row.active;
                     return (
                       <Link
-                        key={row.itemTypeId}
-                        href={`/${org}/inventory/type/${row.itemTypeId}`}
+                        key={row.lotTypeId}
+                        href={`/${org}/inventory/type/${row.lotTypeId}`}
                         className="hover:bg-muted/50 flex items-center gap-3 px-4 py-3 transition-colors"
                       >
                         <div
                           className={cn(
                             "flex size-8 shrink-0 items-center justify-center rounded",
-                            getColorClasses(row.itemTypeColor).bg,
-                            getColorClasses(row.itemTypeColor).text,
+                            getColorClasses(row.lotTypeColor).bg,
+                            getColorClasses(row.lotTypeColor).text,
                           )}
                           style={
-                            row.itemTypeColor
-                              ? { backgroundColor: row.itemTypeColor + "20" }
+                            row.lotTypeColor
+                              ? { backgroundColor: row.lotTypeColor + "20" }
                               : undefined
                           }
                         >
-                          <Icon icon={row.itemTypeIcon} className="size-4" />
+                          <Icon icon={row.lotTypeIcon} className="size-4" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium">
-                            {row.itemTypeName}
+                            {row.lotTypeName}
                           </p>
                           <p className="text-muted-foreground text-xs">
                             {inProgress} in progress
@@ -375,28 +375,28 @@ export function DashboardPage({ org }: { org: string }) {
                     <div
                       className={cn(
                         "mt-1 flex size-6 shrink-0 items-center justify-center rounded",
-                        getColorClasses(evt.itemTypeColor).bg,
-                        getColorClasses(evt.itemTypeColor).text,
+                        getColorClasses(evt.lotTypeColor).bg,
+                        getColorClasses(evt.lotTypeColor).text,
                       )}
                       style={
-                        evt.itemTypeColor
-                          ? { backgroundColor: evt.itemTypeColor + "20" }
+                        evt.lotTypeColor
+                          ? { backgroundColor: evt.lotTypeColor + "20" }
                           : undefined
                       }
                     >
-                      <Icon icon={evt.itemTypeIcon} className="size-3" />
+                      <Icon icon={evt.lotTypeIcon} className="size-3" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm">
                         <Link
-                          href={`/${org}/items/${evt.itemId}`}
+                          href={`/${org}/lots/${evt.lotId}`}
                           className="font-medium hover:underline"
                         >
-                          {evt.itemCode}
+                          {evt.lotCode}
                         </Link>
                         <span className="text-muted-foreground">
                           {" "}
-                          · {evt.itemTypeName}
+                          · {evt.lotTypeName}
                         </span>
                       </p>
                       <p className="text-muted-foreground text-xs">
@@ -476,6 +476,6 @@ function StatCard({
 }
 
 function pct(n: number, total: number) {
-  if (total === 0) return "No items yet";
+  if (total === 0) return "No lots yet";
   return `${Math.round((n / total) * 100)}% of total`;
 }

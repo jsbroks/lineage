@@ -5,31 +5,31 @@ import type { StepRow } from "~/app/(protected)/[org]/(app)/tasks/_components/Op
 // are relevant.  Maps 1:1 to an engine action of the same name.
 
 export type SimpleStepRow = {
-  action: "set-item-status" | "set-item-attr";
+  action: "set-lot-status" | "set-lot-attr";
   targetRef: string;
-  /** set-item-status: the status name to apply */
+  /** set-lot-status: the status name to apply */
   statusName: string;
-  /** set-item-attr: the attribute key */
+  /** set-lot-attr: the attribute key */
   attrKey: string;
-  /** set-item-attr: where the value comes from */
+  /** set-lot-attr: where the value comes from */
   source: "literal" | "field";
-  /** set-item-attr + literal: the fixed value */
+  /** set-lot-attr + literal: the fixed value */
   literalValue: string;
-  /** set-item-attr + field: the input field reference key */
+  /** set-lot-attr + field: the input field reference key */
   fieldRef: string;
 };
 
 // ── Simple → StepRow conversion ─────────────────────────────────────
 
 function stepName(step: SimpleStepRow): string {
-  if (step.action === "set-item-status") {
+  if (step.action === "set-lot-status") {
     return `Set status → ${step.statusName || "?"}`;
   }
   return `Set ${step.attrKey || "attribute"}`;
 }
 
 function stepValue(step: SimpleStepRow): string {
-  if (step.action === "set-item-status") {
+  if (step.action === "set-lot-status") {
     return JSON.stringify({ status: step.statusName });
   }
 
@@ -58,7 +58,7 @@ export type ConversionResult = {
 };
 
 const EMPTY: SimpleStepRow = {
-  action: "set-item-status",
+  action: "set-lot-status",
   targetRef: "",
   statusName: "",
   attrKey: "",
@@ -80,19 +80,19 @@ export function stepRowsToSimpleSteps(rows: StepRow[]): ConversionResult {
       continue;
     }
 
-    if (row.action === "set-item-status") {
+    if (row.action === "set-lot-status") {
       const name = parsed.status;
       if (typeof name === "string") {
         steps.push({
           ...EMPTY,
-          action: "set-item-status",
+          action: "set-lot-status",
           targetRef: row.target,
           statusName: name,
         });
       } else {
         isFullyConvertible = false;
       }
-    } else if (row.action === "set-item-attr") {
+    } else if (row.action === "set-lot-attr") {
       const attrKey = parsed.attrKey;
       const val = parsed.value;
       if (typeof attrKey !== "string") {
@@ -110,7 +110,7 @@ export function stepRowsToSimpleSteps(rows: StepRow[]): ConversionResult {
         if (fromArr[0] === "inputs" && typeof fromArr[1] === "string") {
           steps.push({
             ...EMPTY,
-            action: "set-item-attr",
+            action: "set-lot-attr",
             targetRef: row.target,
             attrKey,
             source: "field",
@@ -126,7 +126,7 @@ export function stepRowsToSimpleSteps(rows: StepRow[]): ConversionResult {
       ) {
         steps.push({
           ...EMPTY,
-          action: "set-item-attr",
+          action: "set-lot-attr",
           targetRef: row.target,
           attrKey,
           source: "literal",

@@ -1,35 +1,35 @@
 import type { SchemaContext } from "../build-schema-context";
 
-export function resolveItemTypeId(
+export function resolveLotTypeId(
   ctx: SchemaContext,
   name: string,
 ): string | null {
   const lower = name.toLowerCase();
-  return ctx.itemTypes.find((t) => t.name.toLowerCase() === lower)?.id ?? null;
+  return ctx.lotTypes.find((t) => t.name.toLowerCase() === lower)?.id ?? null;
 }
 
 export function resolveStatusId(
   ctx: SchemaContext,
-  itemTypeId: string,
+  lotTypeId: string,
   name: string,
 ): string | null {
   const lower = name.toLowerCase();
   return (
     ctx.statuses.find(
-      (s) => s.itemTypeId === itemTypeId && s.name.toLowerCase() === lower,
+      (s) => s.lotTypeId === lotTypeId && s.name.toLowerCase() === lower,
     )?.id ?? null
   );
 }
 
 export function resolveVariantId(
   ctx: SchemaContext,
-  itemTypeId: string,
+  lotTypeId: string,
   name: string,
 ): string | null {
   const lower = name.toLowerCase();
   return (
     ctx.variants.find(
-      (v) => v.itemTypeId === itemTypeId && v.name.toLowerCase() === lower,
+      (v) => v.lotTypeId === lotTypeId && v.name.toLowerCase() === lower,
     )?.id ?? null
   );
 }

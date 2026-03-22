@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import { incrementAttribute } from "./increment-attribute";
 import { ActionResult } from "./actions";
 import { OperationContext } from "../operation-context";
-import type { Item, OperationInputValue } from "~/server/db/schema";
+import type { Lot, OperationInputValue } from "~/server/db/schema";
 
-function makeItem(overrides: Partial<Item> = {}): Item {
+function makeLot(overrides: Partial<Lot> = {}): Lot {
   return {
-    id: "item-1",
-    itemTypeId: "type-1",
+    id: "lot-1",
+    lotTypeId: "type-1",
     variantId: null,
     code: "BLK-001",
     statusId: "status-1",
@@ -22,7 +22,7 @@ function makeItem(overrides: Partial<Item> = {}): Item {
     createdAt: new Date("2025-01-01"),
     updatedAt: new Date("2025-01-01"),
     ...overrides,
-  } as Item;
+  } as Lot;
 }
 
 type StepInput = {
@@ -42,19 +42,19 @@ function makeStep({ target = "source", config = {} }: StepInput = {}) {
 }
 
 type CtxInput = {
-  items?: Record<string, Item[]>;
+  lots?: Record<string, Lot[]>;
   fields?: { key: string; value: unknown }[];
 };
 
-function makeCtx({ items = {}, fields = [] }: CtxInput = {}): OperationContext {
-  const allItems: Item[] = Object.values(items).flat();
+function makeCtx({ lots = {}, fields = [] }: CtxInput = {}): OperationContext {
+  const allLots: Lot[] = Object.values(lots).flat();
 
-  const operationItems = Object.entries(items).flatMap(([key, list]) =>
-    list.map((item) => ({
-      id: `oi-${item.id}`,
+  const operationLots = Object.entries(lots).flatMap(([key, list]) =>
+    list.map((lot) => ({
+      id: `oi-${lot.id}`,
       key,
       operationId: "op-1",
-      itemId: item.id,
+      lotId: lot.id,
     })),
   );
 
@@ -77,12 +77,12 @@ function makeCtx({ items = {}, fields = [] }: CtxInput = {}): OperationContext {
     attributes: {},
     createdAt: new Date("2025-01-01"),
     steps: [],
-    inputItems: operationItems,
+    inputLots: operationLots,
     inputLocations: [],
     inputValues: operationValues,
   });
 
-  ctx.items = Object.fromEntries(allItems.map((i) => [i.id, i]));
+  ctx.lots = Object.fromEntries(allLots.map((i) => [i.id, i]));
 
   return ctx;
 }
@@ -108,7 +108,7 @@ describe("incrementAttribute", () => {
     });
   });
 
-  describe("when no items match target", () => {
+  describe("when no lots match target", () => {
     it("returns skipped", () => {
       const result = incrementAttribute.handler(
         makeCtx(),
@@ -116,14 +116,14 @@ describe("incrementAttribute", () => {
       );
 
       expect(result.skipped).toBe(true);
-      expect(result.message).toMatch(/No items found for target/);
+      expect(result.message).toMatch(/No lots found for target/);
     });
   });
 
   describe("default increment (by 1)", () => {
     it("increments from 0 when attribute does not exist", () => {
-      const item = makeItem({ id: "a", attributes: {} });
-      const ctx = makeCtx({ items: { source: [item] } });
+      const lot = makeLot({ id: "a", attributes: {} });
+      const ctx = makeCtx({ lots: { source: [lot] } });
 
       const result = incrementAttribute.handler(
         ctx,
@@ -131,25 +131,25 @@ describe("incrementAttribute", () => {
       );
 
       expect(result.success).toBe(true);
-      expect(result.items.update.a!.attributes).toMatchObject({
+      expect(result.lots.update.a!.attributes).toMatchObject({
         flush_count: 1,
       });
-      expect(result.message).toBe("Incremented flush_count by 1 for 1 item");
+      expect(result.message).toBe("Incremented flush_count by 1 for 1 lot");
     });
 
     it("increments an existing numeric attribute", () => {
-      const item = makeItem({
+      const lot = makeLot({
         id: "a",
         attributes: { flush_count: 3 },
       });
-      const ctx = makeCtx({ items: { source: [item] } });
+      const ctx = makeCtx({ lots: { source: [lot] } });
 
       const result = incrementAttribute.handler(
         ctx,
         makeStep({ config: { attrKey: "flush_count" } }),
       );
 
-      expect(result.items.update.a!.attributes).toMatchObject({
+      expect(result.lots.update.a!.attributes).toMatchObject({
         flush_count: 4,
       });
     });
@@ -157,34 +157,34 @@ describe("incrementAttribute", () => {
 
   describe("custom increment amount", () => {
     it("increments by a literal amount", () => {
-      const item = makeItem({ id: "a", attributes: { weight: 10 } });
-      const ctx = makeCtx({ items: { source: [item] } });
+      const lot = makeLot({ id: "a", attributes: { weight: 10 } });
+      const ctx = makeCtx({ lots: { source: [lot] } });
 
       const result = incrementAttribute.handler(
         ctx,
         makeStep({ config: { attrKey: "weight", amount: 5 } }),
       );
 
-      expect(result.items.update.a!.attributes).toMatchObject({ weight: 15 });
-      expect(result.message).toBe("Incremented weight by 5 for 1 item");
+      expect(result.lots.update.a!.attributes).toMatchObject({ weight: 15 });
+      expect(result.message).toBe("Incremented weight by 5 for 1 lot");
     });
 
     it("decrements when amount is negative", () => {
-      const item = makeItem({ id: "a", attributes: { stock: 100 } });
-      const ctx = makeCtx({ items: { source: [item] } });
+      const lot = makeLot({ id: "a", attributes: { stock: 100 } });
+      const ctx = makeCtx({ lots: { source: [lot] } });
 
       const result = incrementAttribute.handler(
         ctx,
         makeStep({ config: { attrKey: "stock", amount: -10 } }),
       );
 
-      expect(result.items.update.a!.attributes).toMatchObject({ stock: 90 });
+      expect(result.lots.update.a!.attributes).toMatchObject({ stock: 90 });
     });
 
     it("resolves amount from an input field reference", () => {
-      const item = makeItem({ id: "a", attributes: { harvest_weight: 0 } });
+      const lot = makeLot({ id: "a", attributes: { harvest_weight: 0 } });
       const ctx = makeCtx({
-        items: { source: [item] },
+        lots: { source: [lot] },
         fields: [{ key: "weight", value: 2.5 }],
       });
 
@@ -198,15 +198,15 @@ describe("incrementAttribute", () => {
         }),
       );
 
-      expect(result.items.update.a!.attributes).toMatchObject({
+      expect(result.lots.update.a!.attributes).toMatchObject({
         harvest_weight: 2.5,
       });
     });
 
     it("returns skipped when amount resolves to NaN", () => {
-      const item = makeItem({ id: "a" });
+      const lot = makeLot({ id: "a" });
       const ctx = makeCtx({
-        items: { source: [item] },
+        lots: { source: [lot] },
         fields: [{ key: "weight", value: "not-a-number" }],
       });
 
@@ -225,47 +225,47 @@ describe("incrementAttribute", () => {
     });
   });
 
-  describe("multiple items", () => {
-    it("increments attribute on all target items", () => {
-      const items = [
-        makeItem({ id: "a", attributes: { flush_count: 1 } }),
-        makeItem({ id: "b", attributes: { flush_count: 2 } }),
-        makeItem({ id: "c", attributes: {} }),
+  describe("multiple lots", () => {
+    it("increments attribute on all target lots", () => {
+      const lots = [
+        makeLot({ id: "a", attributes: { flush_count: 1 } }),
+        makeLot({ id: "b", attributes: { flush_count: 2 } }),
+        makeLot({ id: "c", attributes: {} }),
       ];
-      const ctx = makeCtx({ items: { source: items } });
+      const ctx = makeCtx({ lots: { source: lots } });
 
       const result = incrementAttribute.handler(
         ctx,
         makeStep({ config: { attrKey: "flush_count" } }),
       );
 
-      expect(result.items.update.a!.attributes).toMatchObject({
+      expect(result.lots.update.a!.attributes).toMatchObject({
         flush_count: 2,
       });
-      expect(result.items.update.b!.attributes).toMatchObject({
+      expect(result.lots.update.b!.attributes).toMatchObject({
         flush_count: 3,
       });
-      expect(result.items.update.c!.attributes).toMatchObject({
+      expect(result.lots.update.c!.attributes).toMatchObject({
         flush_count: 1,
       });
-      expect(result.message).toBe("Incremented flush_count by 1 for 3 items");
+      expect(result.message).toBe("Incremented flush_count by 1 for 3 lots");
     });
   });
 
   describe("preserves existing attributes", () => {
     it("does not lose other attributes when incrementing", () => {
-      const item = makeItem({
+      const lot = makeLot({
         id: "a",
         attributes: { species: "oyster", flush_count: 2 },
       });
-      const ctx = makeCtx({ items: { source: [item] } });
+      const ctx = makeCtx({ lots: { source: [lot] } });
 
       const result = incrementAttribute.handler(
         ctx,
         makeStep({ config: { attrKey: "flush_count" } }),
       );
 
-      const attrs = result.items.update.a!.attributes as Record<
+      const attrs = result.lots.update.a!.attributes as Record<
         string,
         unknown
       >;
@@ -284,16 +284,16 @@ describe("incrementAttribute", () => {
     });
 
     it("returns empty create and link on success", () => {
-      const item = makeItem({ id: "a" });
-      const ctx = makeCtx({ items: { source: [item] } });
+      const lot = makeLot({ id: "a" });
+      const ctx = makeCtx({ lots: { source: [lot] } });
 
       const result = incrementAttribute.handler(
         ctx,
         makeStep({ config: { attrKey: "count" } }),
       );
 
-      expect(result.items.create).toEqual([]);
-      expect(result.items.link).toEqual([]);
+      expect(result.lots.create).toEqual([]);
+      expect(result.lots.link).toEqual([]);
     });
   });
 });

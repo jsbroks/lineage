@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import type { StatusRow, TransitionRow } from "./ItemTypeForm";
+import type { StatusRow, TransitionRow } from "./LotTypeForm";
 
 type TransitionsCardProps = {
   statuses: StatusRow[];
