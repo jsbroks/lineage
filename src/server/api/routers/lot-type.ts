@@ -2,13 +2,14 @@ import { TRPCError } from "@trpc/server";
 import { asc, eq, count, inArray, sum, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   lotType,
   lotTypeVariant,
   lotTypeOption,
   lotTypeOptionValue,
   lotTypeAttributeDefinition,
+  lotTypeIdentifier,
   lot,
   lotTypeStatusDefinition,
   lotTypeStatusTransition,
@@ -31,11 +32,11 @@ const lotTypeEditInput = lotTypeCreateInput.extend({
 });
 
 export const lotTypeRouter = createTRPCRouter({
-  list: publicProcedure.query(async ({ ctx }) => {
+  list: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.select().from(lotType).orderBy(asc(lotType.name));
   }),
 
-  listWithStatuses: publicProcedure.query(async ({ ctx }) => {
+  listWithStatuses: protectedProcedure.query(async ({ ctx }) => {
     const types = await ctx.db
       .select()
       .from(lotType)
@@ -59,7 +60,7 @@ export const lotTypeRouter = createTRPCRouter({
     }));
   }),
 
-  create: publicProcedure
+  create: protectedProcedure
     .input(lotTypeCreateInput)
     .mutation(async ({ ctx, input }) => {
       const [createdLotType] = await ctx.db
@@ -80,7 +81,7 @@ export const lotTypeRouter = createTRPCRouter({
       return createdLotType;
     }),
 
-  edit: publicProcedure
+  edit: protectedProcedure
     .input(lotTypeEditInput)
     .mutation(async ({ ctx, input }) => {
       const [updatedLotType] = await ctx.db
@@ -109,7 +110,7 @@ export const lotTypeRouter = createTRPCRouter({
       return updatedLotType;
     }),
 
-  delete: publicProcedure
+  delete: protectedProcedure
     .input(z.object({ id: z.uuid() }))
     .mutation(async ({ ctx, input }) => {
       const [deletedLotType] = await ctx.db
@@ -127,7 +128,7 @@ export const lotTypeRouter = createTRPCRouter({
       return deletedLotType;
     }),
 
-  getById: publicProcedure
+  getById: protectedProcedure
     .input(z.object({ id: z.uuid() }))
     .query(async ({ ctx, input }) => {
       const [it] = await ctx.db
@@ -197,7 +198,7 @@ export const lotTypeRouter = createTRPCRouter({
       };
     }),
 
-  saveVariants: publicProcedure
+  saveVariants: protectedProcedure
     .input(
       z.object({
         lotTypeId: z.uuid(),
@@ -306,7 +307,7 @@ export const lotTypeRouter = createTRPCRouter({
       });
     }),
 
-  saveOptions: publicProcedure
+  saveOptions: protectedProcedure
     .input(
       z.object({
         lotTypeId: z.uuid(),
@@ -378,7 +379,7 @@ export const lotTypeRouter = createTRPCRouter({
       });
     }),
 
-  saveStatuses: publicProcedure
+  saveStatuses: protectedProcedure
     .input(
       z.object({
         lotTypeId: z.uuid(),
@@ -492,7 +493,7 @@ export const lotTypeRouter = createTRPCRouter({
       });
     }),
 
-  saveAttributeDefinitions: publicProcedure
+  saveAttributeDefinitions: protectedProcedure
     .input(
       z.object({
         lotTypeId: z.uuid(),
@@ -567,7 +568,61 @@ export const lotTypeRouter = createTRPCRouter({
       });
     }),
 
-  inventoryOverview: publicProcedure.query(async ({ ctx }) => {
+  resolveByIdentifier: protectedProcedure
+    .input(z.object({ identifierValue: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const [row] = await ctx.db
+        .select({
+          lotTypeId: lotTypeIdentifier.lotTypeId,
+          lotTypeName: lotType.name,
+          variantId: lotTypeIdentifier.variantId,
+          variantName: lotTypeVariant.name,
+          identifierType: lotTypeIdentifier.identifierType,
+        })
+        .from(lotTypeIdentifier)
+        .innerJoin(lotType, eq(lotType.id, lotTypeIdentifier.lotTypeId))
+        .leftJoin(
+          lotTypeVariant,
+          eq(lotTypeVariant.id, lotTypeIdentifier.variantId),
+        )
+        .where(eq(lotTypeIdentifier.identifierValue, input.identifierValue))
+        .limit(1);
+
+      return row ?? null;
+    }),
+
+  addIdentifier: protectedProcedure
+    .input(
+      z.object({
+        lotTypeId: z.uuid(),
+        variantId: z.uuid().nullable().optional(),
+        identifierType: z.string().min(1),
+        identifierValue: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [existing] = await ctx.db
+        .select({ id: lotTypeIdentifier.id })
+        .from(lotTypeIdentifier)
+        .where(eq(lotTypeIdentifier.identifierValue, input.identifierValue))
+        .limit(1);
+
+      if (existing) return existing;
+
+      const [created] = await ctx.db
+        .insert(lotTypeIdentifier)
+        .values({
+          lotTypeId: input.lotTypeId,
+          variantId: input.variantId ?? null,
+          identifierType: input.identifierType,
+          identifierValue: input.identifierValue,
+        })
+        .returning();
+
+      return created;
+    }),
+
+  inventoryOverview: protectedProcedure.query(async ({ ctx }) => {
     const types = await ctx.db
       .select()
       .from(lotType)
@@ -581,10 +636,16 @@ export const lotTypeRouter = createTRPCRouter({
 
     const statuses = await ctx.db.select().from(lotTypeStatusDefinition);
 
-    const statusCategoryById = new Map<string, { lotTypeId: string; category: string }>();
+    const statusCategoryById = new Map<
+      string,
+      { lotTypeId: string; category: string }
+    >();
     for (const s of statuses) {
       if (!s.lotTypeId) continue;
-      statusCategoryById.set(s.id, { lotTypeId: s.lotTypeId, category: s.category });
+      statusCategoryById.set(s.id, {
+        lotTypeId: s.lotTypeId,
+        category: s.category,
+      });
     }
 
     const lotAgg = await ctx.db

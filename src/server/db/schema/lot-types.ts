@@ -102,6 +102,25 @@ export const lotTypeVariantOptionValue = pgTable(
   ],
 );
 
+export const lotTypeIdentifier = pgTable(
+  "lot_type_identifier",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    lotTypeId: uuid("lot_type_id")
+      .notNull()
+      .references(() => lotType.id, { onDelete: "cascade" }),
+    variantId: uuid("variant_id").references(() => lotTypeVariant.id, {
+      onDelete: "set null",
+    }),
+    identifierType: text("identifier_type").notNull(),
+    identifierValue: text("identifier_value").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [uniqueIndex().on(t.identifierType, t.identifierValue)],
+);
+
 export const lotTypeAttributeDefinition = pgTable(
   "lot_type_attribute_definition",
   {

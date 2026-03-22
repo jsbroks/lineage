@@ -48,11 +48,7 @@ export function SimpleInputLotsCard({
     });
   };
 
-  const toggleStatus = (
-    idx: number,
-    row: InputRow,
-    statusName: string,
-  ) => {
+  const toggleStatus = (idx: number, row: InputRow, statusName: string) => {
     const current = row.preconditionsStatuses ?? [];
     const next = current.includes(statusName)
       ? current.filter((s) => s !== statusName)
@@ -126,9 +122,9 @@ export function SimpleInputLotsCard({
                     <Label className="text-xs">Must be in status</Label>
                     <div className="flex flex-wrap gap-1.5">
                       {availableStatuses.map((s) => {
-                        const selected = (row.preconditionsStatuses ?? []).includes(
-                          s.name,
-                        );
+                        const selected = (
+                          row.preconditionsStatuses ?? []
+                        ).includes(s.name);
                         return (
                           <button
                             key={s.id}

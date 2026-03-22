@@ -43,9 +43,7 @@ export function useOperationTypeMutations() {
             ? {
                 lotTypeId: inp.lotTypeId,
                 minCount: inp.qtyMin ? parseInt(inp.qtyMin, 10) || 0 : 0,
-                maxCount: inp.qtyMax
-                  ? parseInt(inp.qtyMax, 10) || null
-                  : null,
+                maxCount: inp.qtyMax ? parseInt(inp.qtyMax, 10) || null : null,
                 preconditionsStatuses:
                   inp.preconditionsStatuses &&
                   inp.preconditionsStatuses.length > 0

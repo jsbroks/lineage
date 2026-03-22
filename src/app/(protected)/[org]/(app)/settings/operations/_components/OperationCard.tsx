@@ -66,11 +66,7 @@ export const OperationCard: React.FC<OperationCardProps> = ({
                 <PortRow
                   key={port.id}
                   port={port}
-                  lotType={
-                    lotTypes.find(
-                      (lt) => lt.id === port.lotTypeId,
-                    )!
-                  }
+                  lotType={lotTypes.find((lt) => lt.id === port.lotTypeId)!}
                 />
               ))}
               {ports.length === 0 && (

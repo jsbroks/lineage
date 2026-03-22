@@ -520,9 +520,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
         >
           <Printer className="mr-1.5 size-3.5" />
           Print{" "}
-          {selectedLotIds.size > 0
-            ? `${selectedLotIds.size} labels`
-            : "labels"}
+          {selectedLotIds.size > 0 ? `${selectedLotIds.size} labels` : "labels"}
         </Button>
       </div>
     </div>

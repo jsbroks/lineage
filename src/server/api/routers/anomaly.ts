@@ -1,8 +1,8 @@
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { detectAnomalies } from "~/server/ai/anomaly-detection";
 
 export const anomalyRouter = createTRPCRouter({
-  detect: publicProcedure.query(async () => {
+  detect: protectedProcedure.query(async () => {
     return detectAnomalies();
   }),
 });

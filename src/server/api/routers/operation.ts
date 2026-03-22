@@ -1,7 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { operation, operationType } from "~/server/db/schema";
 import { registry } from "~/server/engine/actions";
 import type { OperationInputs } from "~/server/engine/operation-create";
@@ -20,15 +20,15 @@ const executeInput = z.object({
 });
 
 export const operationRouter = createTRPCRouter({
-  actions: publicProcedure.query(() => registry.actions),
+  actions: protectedProcedure.query(() => registry.actions),
 
-  suggest: publicProcedure
+  suggest: protectedProcedure
     .input(z.object({ lotIds: z.array(z.uuid()).min(1) }))
     .query(async ({ ctx, input }) => {
       return suggestOperations(ctx.db, input.lotIds);
     }),
 
-  execute: publicProcedure
+  execute: protectedProcedure
     .input(executeInput)
     .mutation(async ({ ctx, input }) => {
       return ctx.db.transaction(async (tx) => {
@@ -54,7 +54,7 @@ export const operationRouter = createTRPCRouter({
       });
     }),
 
-  list: publicProcedure.query(async ({ ctx }) => {
+  list: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db
       .select()
       .from(operation)
@@ -62,7 +62,7 @@ export const operationRouter = createTRPCRouter({
       .limit(100);
   }),
 
-  recentWithTypes: publicProcedure
+  recentWithTypes: protectedProcedure
     .input(z.object({ limit: z.number().int().min(1).max(50).default(10) }))
     .query(async ({ ctx, input }) => {
       return ctx.db
@@ -84,7 +84,7 @@ export const operationRouter = createTRPCRouter({
         .limit(input.limit);
     }),
 
-  getById: publicProcedure
+  getById: protectedProcedure
     .input(z.object({ id: z.uuid() }))
     .query(async ({ ctx, input }) => {
       const [op] = await ctx.db

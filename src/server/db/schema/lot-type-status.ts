@@ -1,10 +1,4 @@
-import {
-  integer,
-  pgTable,
-  text,
-  uniqueIndex,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { integer, pgTable, text, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm/relations";
 import { lotType } from "~/server/db/schema/lot-types";
 

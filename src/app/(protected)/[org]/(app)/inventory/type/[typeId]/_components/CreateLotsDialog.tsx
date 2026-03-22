@@ -156,7 +156,11 @@ export const CreateLotsDialog: React.FC<CreateLotsDialogProps> = ({
             <div className="space-y-2">
               <Label>Initial status</Label>
               <Select
-                value={status || statuses.find((s) => s.category === "unstarted")?.id || ""}
+                value={
+                  status ||
+                  statuses.find((s) => s.category === "unstarted")?.id ||
+                  ""
+                }
                 onValueChange={setStatus}
               >
                 <SelectTrigger>
@@ -214,8 +218,7 @@ export const CreateLotsDialog: React.FC<CreateLotsDialogProps> = ({
           {!codePrefix && (
             <p className="text-destructive text-xs">
               This lot type has no code prefix configured. Set one via
-              &ldquo;Edit type&rdquo; before creating lots with
-              auto-sequencing.
+              &ldquo;Edit type&rdquo; before creating lots with auto-sequencing.
             </p>
           )}
 

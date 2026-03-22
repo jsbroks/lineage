@@ -8,7 +8,11 @@ import { VARIETY_CATALOG } from "../seed-data";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 
-export function VarietyPicker({ answers, onNext, onBack }: StepProps<MushroomWizardAnswers>) {
+export function VarietyPicker({
+  answers,
+  onNext,
+  onBack,
+}: StepProps<MushroomWizardAnswers>) {
   const initial = answers.varieties ?? [];
   const [selected, setSelected] = useState<string[]>(initial);
   const [custom, setCustom] = useState("");

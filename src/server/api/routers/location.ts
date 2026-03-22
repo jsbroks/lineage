@@ -1,7 +1,7 @@
 import { asc, eq, ilike } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { location } from "~/server/db/schema";
 
 const createLocationInput = z.object({
@@ -12,11 +12,11 @@ const createLocationInput = z.object({
 });
 
 export const locationRouter = createTRPCRouter({
-  list: publicProcedure.query(async ({ ctx }) => {
+  list: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.select().from(location).orderBy(asc(location.name));
   }),
 
-  getByName: publicProcedure
+  getByName: protectedProcedure
     .input(z.object({ name: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const [match] = await ctx.db
@@ -28,7 +28,7 @@ export const locationRouter = createTRPCRouter({
       return match ?? null;
     }),
 
-  setParent: publicProcedure
+  setParent: protectedProcedure
     .input(
       z.object({
         childId: z.uuid(),
@@ -45,7 +45,7 @@ export const locationRouter = createTRPCRouter({
       return updated ?? null;
     }),
 
-  create: publicProcedure
+  create: protectedProcedure
     .input(createLocationInput)
     .mutation(async ({ ctx, input }) => {
       const [createdLocation] = await ctx.db

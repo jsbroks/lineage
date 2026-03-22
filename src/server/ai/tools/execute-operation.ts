@@ -65,9 +65,7 @@ export function createExecuteOperationTool(ctx: SchemaContext) {
                 ),
               )
           : [];
-      const configByInputId = new Map(
-        lotConfigs.map((c) => [c.inputId, c]),
-      );
+      const configByInputId = new Map(lotConfigs.map((c) => [c.inputId, c]));
 
       const matchedLots = await db
         .select()
@@ -97,9 +95,7 @@ export function createExecuteOperationTool(ctx: SchemaContext) {
       }
 
       const matchedIds = new Set(
-        Object.values(inputsMap)
-          .filter(Array.isArray)
-          .flat() as string[],
+        Object.values(inputsMap).filter(Array.isArray).flat() as string[],
       );
       const unmatched = matchedLots.filter((i) => !matchedIds.has(i.id));
       if (unmatched.length > 0) {

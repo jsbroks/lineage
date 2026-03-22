@@ -67,15 +67,39 @@ export default function NewLotPage() {
   const [attributesError, setAttributesError] = useState<string | null>(null);
   const [sequenceError, setSequenceError] = useState<string | null>(null);
 
-  const { data: lotTypes = [] } = api.lotType.list.useQuery();
+  const { data: lotTypesWithStatuses = [] } =
+    api.lotType.listWithStatuses.useQuery();
+  const lotTypes = lotTypesWithStatuses;
   const { data: locations = [] } = api.location.list.useQuery();
-  const { data: lots = [], isLoading: lotsLoading } =
-    api.lot.list.useQuery();
+  const { data: lots = [], isLoading: lotsLoading } = api.lot.list.useQuery();
 
   const selectedLotType = useMemo(
-    () => lotTypes.find((it) => it.id === form.lotTypeId) ?? null,
-    [lotTypes, form.lotTypeId],
+    () => lotTypesWithStatuses.find((it) => it.id === form.lotTypeId) ?? null,
+    [lotTypesWithStatuses, form.lotTypeId],
   );
+
+  const statuses = selectedLotType?.statuses ?? [];
+
+  const statusNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const lt of lotTypesWithStatuses) {
+      for (const s of lt.statuses) {
+        map.set(s.id, s.name);
+      }
+    }
+    return map;
+  }, [lotTypesWithStatuses]);
+
+  useEffect(() => {
+    if (!selectedLotType) return;
+    const firstUnstarted = selectedLotType.statuses.find(
+      (s) => s.category === "unstarted",
+    );
+    const defaultStatus = firstUnstarted ?? selectedLotType.statuses[0];
+    if (defaultStatus) {
+      setForm((prev) => ({ ...prev, status: defaultStatus.id }));
+    }
+  }, [selectedLotType]);
 
   const createLot = api.lot.create.useMutation({
     onSuccess: async () => {
@@ -222,7 +246,7 @@ export default function NewLotPage() {
                   >
                     <p className="font-medium">{lot.code}</p>
                     <p className="text-muted-foreground text-xs">
-                      Status: {lot.statusId}
+                      Status: {statusNameMap.get(lot.statusId) ?? lot.statusId}
                     </p>
                   </Link>
                 ))}
@@ -293,16 +317,26 @@ export default function NewLotPage() {
                 </Field>
 
                 <Field>
-                  <FieldLabel htmlFor="lot-status">Status</FieldLabel>
+                  <FieldLabel>Status</FieldLabel>
                   <FieldContent>
-                    <input
-                      id="lot-status"
+                    <Select
                       value={form.status}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, status: e.target.value }))
+                      onValueChange={(value) =>
+                        setForm((prev) => ({ ...prev, status: value }))
                       }
-                      className="border-input bg-background w-full rounded-md border px-3 py-2"
-                    />
+                      disabled={statuses.length === 0}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {statuses.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </FieldContent>
                 </Field>
 

@@ -3,6 +3,7 @@ import { openai } from "@ai-sdk/openai";
 import { z } from "zod/v4";
 import { eq, asc } from "drizzle-orm";
 
+import { auth } from "~/server/better-auth";
 import { db } from "~/server/db";
 import {
   lotType,
@@ -15,10 +16,6 @@ import {
 
 export const maxDuration = 15;
 
-/**
- * Resolve relative date expressions (e.g. "-5d", "-1w", "-2m") to ISO date
- * strings. Returns the input unchanged if it's already a valid date.
- */
 function resolveRelativeDate(value: string): string {
   const match = value.match(/^-(\d+)([dwmy])$/i);
   if (!match) return value;
@@ -46,6 +43,11 @@ function resolveRelativeDate(value: string): string {
 }
 
 export async function POST(req: Request) {
+  const session = await auth.api.getSession({ headers: req.headers });
+  if (!session) {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { lotTypeId, prompt } = (await req.json()) as {
     lotTypeId: string;
     prompt: string;

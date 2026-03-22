@@ -72,9 +72,7 @@ export function InputLotsCard({
                     <Label className="text-xs">Lot Type</Label>
                     <Select
                       value={row.lotTypeId || undefined}
-                      onValueChange={(val) =>
-                        onUpdate(idx, { lotTypeId: val })
-                      }
+                      onValueChange={(val) => onUpdate(idx, { lotTypeId: val })}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select lot type..." />

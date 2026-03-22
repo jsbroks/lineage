@@ -5,11 +5,7 @@ import {
   OperationContext,
   type LotTypeWithStatusDefinitions,
 } from "../operation-context";
-import type {
-  Lot,
-  LotType,
-  LotTypeStatusDefinition,
-} from "~/server/db/schema";
+import type { Lot, LotType, LotTypeStatusDefinition } from "~/server/db/schema";
 
 function makeLot(overrides: Partial<Lot> = {}): Lot {
   return {

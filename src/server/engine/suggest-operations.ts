@@ -91,21 +91,20 @@ export async function suggestOperations(
     .from(operationTypeInput)
     .where(eq(operationTypeInput.type, "lots"));
 
-  const allLotConfigs = allLotInputs.length > 0
-    ? await db
-        .select()
-        .from(operationTypeInputLotConfig)
-        .where(
-          inArray(
-            operationTypeInputLotConfig.inputId,
-            allLotInputs.map((i) => i.id),
-          ),
-        )
-    : [];
+  const allLotConfigs =
+    allLotInputs.length > 0
+      ? await db
+          .select()
+          .from(operationTypeInputLotConfig)
+          .where(
+            inArray(
+              operationTypeInputLotConfig.inputId,
+              allLotInputs.map((i) => i.id),
+            ),
+          )
+      : [];
 
-  const configByInputId = new Map(
-    allLotConfigs.map((c) => [c.inputId, c]),
-  );
+  const configByInputId = new Map(allLotConfigs.map((c) => [c.inputId, c]));
 
   type LotPort = (typeof allLotInputs)[number] & {
     lotTypeId: string;

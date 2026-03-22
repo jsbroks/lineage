@@ -6,19 +6,25 @@ import {
 } from "ai";
 import { openai } from "@ai-sdk/openai";
 
+import { auth } from "~/server/better-auth";
 import { buildSchemaContext } from "~/server/ai/build-schema-context";
 import { createTools } from "~/server/ai/tools";
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  const session = await auth.api.getSession({ headers: req.headers });
+  if (!session) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const schemaCtx = await buildSchemaContext();
   const tools = createTools(schemaCtx);
 
   const result = streamText({
-    model: openai("gpt-5.4"),
+    model: openai(process.env.OPENAI_CHAT_MODEL ?? "gpt-4.1"),
     system: `You are a helpful inventory assistant for a production tracking system called Lineage.
 
 Here is the current schema of the inventory system:

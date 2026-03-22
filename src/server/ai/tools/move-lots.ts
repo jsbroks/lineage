@@ -25,9 +25,7 @@ export function createMoveLotsTool(ctx: SchemaContext) {
       lotTypeName: z
         .string()
         .optional()
-        .describe(
-          "Lot type name to filter by (use when not specifying codes)",
-        ),
+        .describe("Lot type name to filter by (use when not specifying codes)"),
       statusName: z.string().optional().describe("Current status to filter by"),
       variantName: z.string().optional().describe("Variant to filter by"),
       currentLocationName: z

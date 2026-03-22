@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   operationType,
   operationTypeInput,
@@ -59,11 +59,11 @@ const inputSchema = z.object({
 });
 
 export const operationTypeRouter = createTRPCRouter({
-  list: publicProcedure.query(async ({ ctx }) => {
+  list: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.select().from(operationType).orderBy(asc(operationType.name));
   }),
 
-  statusesForLotType: publicProcedure
+  statusesForLotType: protectedProcedure
     .input(z.object({ lotTypeId: z.uuid() }))
     .query(async ({ ctx, input }) => {
       return ctx.db
@@ -73,7 +73,7 @@ export const operationTypeRouter = createTRPCRouter({
         .orderBy(asc(lotTypeStatusDefinition.ordinal));
     }),
 
-  getById: publicProcedure
+  getById: protectedProcedure
     .input(z.object({ id: z.uuid() }))
     .query(async ({ ctx, input }) => {
       const [op] = await ctx.db
@@ -113,9 +113,7 @@ export const operationTypeRouter = createTRPCRouter({
           .orderBy(asc(operationTypeStep.sortOrder)),
       ]);
 
-      const configByInputId = new Map(
-        lotConfigs.map((c) => [c.inputId, c]),
-      );
+      const configByInputId = new Map(lotConfigs.map((c) => [c.inputId, c]));
 
       const inputs = allInputs.map((inp) => ({
         ...inp,
@@ -125,7 +123,7 @@ export const operationTypeRouter = createTRPCRouter({
       return { ...op, inputs, steps };
     }),
 
-  listInputs: publicProcedure
+  listInputs: protectedProcedure
     .input(z.object({ operationTypeId: z.uuid() }))
     .query(async ({ ctx, input }) => {
       return ctx.db
@@ -135,7 +133,7 @@ export const operationTypeRouter = createTRPCRouter({
         .orderBy(asc(operationTypeInput.sortOrder));
     }),
 
-  create: publicProcedure
+  create: protectedProcedure
     .input(createOperationTypeSchema)
     .mutation(async ({ ctx, input }) => {
       const [createdOperationType] = await ctx.db
@@ -150,7 +148,7 @@ export const operationTypeRouter = createTRPCRouter({
       return createdOperationType;
     }),
 
-  update: publicProcedure
+  update: protectedProcedure
     .input(updateOperationTypeSchema)
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
@@ -170,11 +168,13 @@ export const operationTypeRouter = createTRPCRouter({
       return updated;
     }),
 
-  addInput: publicProcedure
+  addInput: protectedProcedure
     .input(
-      z.object({
-        operationTypeId: z.uuid(),
-      }).and(inputSchema),
+      z
+        .object({
+          operationTypeId: z.uuid(),
+        })
+        .and(inputSchema),
     )
     .mutation(async ({ ctx, input }) => {
       const [created] = await ctx.db
@@ -205,10 +205,17 @@ export const operationTypeRouter = createTRPCRouter({
       return created;
     }),
 
-  updateInput: publicProcedure
+  updateInput: protectedProcedure
     .input(inputSchema.required({ id: true }))
     .mutation(async ({ ctx, input }) => {
-      const { id, lotTypeId, minCount, maxCount, preconditionsStatuses, ...data } = input;
+      const {
+        id,
+        lotTypeId,
+        minCount,
+        maxCount,
+        preconditionsStatuses,
+        ...data
+      } = input;
       const [updated] = await ctx.db
         .update(operationTypeInput)
         .set({
@@ -261,7 +268,7 @@ export const operationTypeRouter = createTRPCRouter({
       return updated;
     }),
 
-  deleteInput: publicProcedure
+  deleteInput: protectedProcedure
     .input(z.object({ id: z.uuid() }))
     .mutation(async ({ ctx, input }) => {
       const [deleted] = await ctx.db
@@ -279,7 +286,7 @@ export const operationTypeRouter = createTRPCRouter({
       return deleted;
     }),
 
-  saveInputs: publicProcedure
+  saveInputs: protectedProcedure
     .input(
       z.object({
         operationTypeId: z.uuid(),
@@ -291,9 +298,7 @@ export const operationTypeRouter = createTRPCRouter({
         const existing = await tx
           .select()
           .from(operationTypeInput)
-          .where(
-            eq(operationTypeInput.operationTypeId, input.operationTypeId),
-          );
+          .where(eq(operationTypeInput.operationTypeId, input.operationTypeId));
 
         const incomingIds = new Set(
           input.inputs.map((i) => i.id).filter(Boolean),
@@ -382,14 +387,12 @@ export const operationTypeRouter = createTRPCRouter({
         return tx
           .select()
           .from(operationTypeInput)
-          .where(
-            eq(operationTypeInput.operationTypeId, input.operationTypeId),
-          )
+          .where(eq(operationTypeInput.operationTypeId, input.operationTypeId))
           .orderBy(asc(operationTypeInput.sortOrder));
       });
     }),
 
-  listSteps: publicProcedure
+  listSteps: protectedProcedure
     .input(z.object({ operationTypeId: z.uuid() }))
     .query(async ({ ctx, input }) => {
       return ctx.db
@@ -399,7 +402,7 @@ export const operationTypeRouter = createTRPCRouter({
         .orderBy(asc(operationTypeStep.sortOrder));
     }),
 
-  addStep: publicProcedure
+  addStep: protectedProcedure
     .input(addOperationTypeStepInput)
     .mutation(async ({ ctx, input }) => {
       const [createdStep] = await ctx.db
@@ -417,7 +420,7 @@ export const operationTypeRouter = createTRPCRouter({
       return createdStep;
     }),
 
-  updateStep: publicProcedure
+  updateStep: protectedProcedure
     .input(updateOperationTypeStepInput)
     .mutation(async ({ ctx, input }) => {
       const { id, ...data } = input;
@@ -437,7 +440,7 @@ export const operationTypeRouter = createTRPCRouter({
       return updated;
     }),
 
-  deleteStep: publicProcedure
+  deleteStep: protectedProcedure
     .input(z.object({ id: z.uuid() }))
     .mutation(async ({ ctx, input }) => {
       const [deletedStep] = await ctx.db
@@ -455,7 +458,7 @@ export const operationTypeRouter = createTRPCRouter({
       return deletedStep;
     }),
 
-  delete: publicProcedure
+  delete: protectedProcedure
     .input(z.object({ id: z.uuid() }))
     .mutation(async ({ ctx, input }) => {
       const [deletedOperationType] = await ctx.db
@@ -473,7 +476,7 @@ export const operationTypeRouter = createTRPCRouter({
       return deletedOperationType;
     }),
 
-  saveSteps: publicProcedure
+  saveSteps: protectedProcedure
     .input(
       z.object({
         operationTypeId: z.uuid(),

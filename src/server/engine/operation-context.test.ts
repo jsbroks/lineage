@@ -77,7 +77,11 @@ function makeCtx({
   }));
 
   const ctx = new OperationContext(
-    makeOperation({ inputValues: opValues, inputLots: opLots, inputLocations: [] }),
+    makeOperation({
+      inputValues: opValues,
+      inputLots: opLots,
+      inputLocations: [],
+    }),
   );
   ctx.lots = Object.fromEntries(allLots.map((i) => [i.id, i]));
 

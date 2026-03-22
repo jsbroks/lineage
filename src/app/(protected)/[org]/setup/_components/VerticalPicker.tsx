@@ -1,6 +1,13 @@
 "use client";
 
-import { Sprout, Wheat, Factory, Beaker, Box, type LucideIcon } from "lucide-react";
+import {
+  Sprout,
+  Wheat,
+  Factory,
+  Beaker,
+  Box,
+  type LucideIcon,
+} from "lucide-react";
 import type { VerticalDefinition } from "~/verticals/types";
 
 const ICON_MAP: Record<string, LucideIcon> = {

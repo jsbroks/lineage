@@ -2,11 +2,16 @@ import { generateObject } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { z } from "zod/v4";
 
+import { auth } from "~/server/better-auth";
 import { buildSchemaContext } from "~/server/ai/build-schema-context";
 
 export const maxDuration = 15;
 
-export async function GET() {
+export async function GET(req: Request) {
+  const session = await auth.api.getSession({ headers: req.headers });
+  if (!session) {
+    return new Response("Unauthorized", { status: 401 });
+  }
   const schemaCtx = await buildSchemaContext();
 
   if (schemaCtx.lotTypes.length === 0) {

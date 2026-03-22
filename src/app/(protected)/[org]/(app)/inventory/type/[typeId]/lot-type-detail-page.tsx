@@ -231,10 +231,7 @@ export default function LotTypeDetailPage() {
 
           <AiDailySummary lotTypeId={typeId} />
 
-          <InsightCards
-            totalLots={totalLots}
-            statusInsights={statusInsights}
-          />
+          <InsightCards totalLots={totalLots} statusInsights={statusInsights} />
 
           <QuickReport
             typeId={typeId}

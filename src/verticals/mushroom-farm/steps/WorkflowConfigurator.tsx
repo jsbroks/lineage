@@ -49,7 +49,11 @@ const WORKFLOW_OPTIONS: WorkflowOption[] = [
   },
 ];
 
-export function WorkflowConfigurator({ answers, onNext, onBack }: StepProps<MushroomWizardAnswers>) {
+export function WorkflowConfigurator({
+  answers,
+  onNext,
+  onBack,
+}: StepProps<MushroomWizardAnswers>) {
   const [flags, setFlags] = useState<WorkflowFlags>({
     ...DEFAULT_WORKFLOW_FLAGS,
     ...answers.workflowFlags,

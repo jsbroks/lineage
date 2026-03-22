@@ -51,9 +51,7 @@ export function SimpleStepsCard({
   const statusesForTarget = (targetRef: string) => {
     const inputLot = inputLots.find((i) => i.referenceKey === targetRef);
     if (!inputLot) return [];
-    const lt = lotTypesWithStatuses.find(
-      (t) => t.id === inputLot.lotTypeId,
-    );
+    const lt = lotTypesWithStatuses.find((t) => t.id === inputLot.lotTypeId);
     return lt?.statuses ?? [];
   };
 

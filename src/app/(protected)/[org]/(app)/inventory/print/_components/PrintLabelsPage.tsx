@@ -49,9 +49,7 @@ export const PrintLabelsPage: React.FC<PrintLabelsPageProps> = ({
     return loadSavedContent() ?? DEFAULT_LABEL_CONTENT;
   });
 
-  const [selectedLotIds, setSelectedLotIds] = useState<Set<string>>(
-    new Set(),
-  );
+  const [selectedLotIds, setSelectedLotIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     saveTemplate(template.id);

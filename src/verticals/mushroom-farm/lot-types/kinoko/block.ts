@@ -24,9 +24,24 @@ export function buildKinokoBlock(varieties: string[]): SeedLotType {
       optionSelections: { Variety: v },
     })),
     statuses: [
-      { name: "Inoculated", color: "#8B5CF6", category: "unstarted", ordinal: 0 },
-      { name: "Colonizing", color: "#F59E0B", category: "in_progress", ordinal: 1 },
-      { name: "Fruiting", color: "#22C55E", category: "in_progress", ordinal: 2 },
+      {
+        name: "Inoculated",
+        color: "#8B5CF6",
+        category: "unstarted",
+        ordinal: 0,
+      },
+      {
+        name: "Colonizing",
+        color: "#F59E0B",
+        category: "in_progress",
+        ordinal: 1,
+      },
+      {
+        name: "Fruiting",
+        color: "#22C55E",
+        category: "in_progress",
+        ordinal: 2,
+      },
       { name: "Disposed", color: "#6B7280", category: "done", ordinal: 3 },
     ],
     transitions: [
@@ -37,8 +52,18 @@ export function buildKinokoBlock(varieties: string[]): SeedLotType {
       { from: "Colonizing", to: "Disposed" },
     ],
     attributes: [
-      { attrKey: "inoculation_date", dataType: "date", isRequired: true, sortOrder: 0 },
-      { attrKey: "location", dataType: "text", isRequired: false, sortOrder: 1 },
+      {
+        attrKey: "inoculation_date",
+        dataType: "date",
+        isRequired: true,
+        sortOrder: 0,
+      },
+      {
+        attrKey: "location",
+        dataType: "text",
+        isRequired: false,
+        sortOrder: 1,
+      },
     ],
   };
 }

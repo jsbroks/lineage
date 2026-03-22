@@ -265,10 +265,7 @@ describe("incrementAttribute", () => {
         makeStep({ config: { attrKey: "flush_count" } }),
       );
 
-      const attrs = result.lots.update.a!.attributes as Record<
-        string,
-        unknown
-      >;
+      const attrs = result.lots.update.a!.attributes as Record<string, unknown>;
       expect(attrs.species).toBe("oyster");
       expect(attrs.flush_count).toBe(3);
     });

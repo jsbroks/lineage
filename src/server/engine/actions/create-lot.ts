@@ -48,8 +48,7 @@ export const createLot = createAction({
       }
     }
 
-    const prefix =
-      lotType.codePrefix ?? lotType.name.toUpperCase().slice(0, 3);
+    const prefix = lotType.codePrefix ?? lotType.name.toUpperCase().slice(0, 3);
     const startNum = lotType.codeNextNumber ?? 1;
 
     for (let i = 0; i < resolvedCount; i++) {

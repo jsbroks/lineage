@@ -24,7 +24,12 @@ export function buildKinokoSpawn(varieties: string[]): SeedLotType {
       optionSelections: { Variety: v },
     })),
     statuses: [
-      { name: "Available", color: "#22C55E", category: "unstarted", ordinal: 0 },
+      {
+        name: "Available",
+        color: "#22C55E",
+        category: "unstarted",
+        ordinal: 0,
+      },
       { name: "In Use", color: "#3B82F6", category: "in_progress", ordinal: 1 },
       { name: "Depleted", color: "#6B7280", category: "done", ordinal: 2 },
     ],

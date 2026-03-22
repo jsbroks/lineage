@@ -86,9 +86,7 @@ export async function buildSchemaContext(): Promise<SchemaContext> {
     loadOperationLotConfigs(),
   ]);
 
-  const configByInputId = new Map(
-    opLotConfigs.map((c) => [c.inputId, c]),
-  );
+  const configByInputId = new Map(opLotConfigs.map((c) => [c.inputId, c]));
 
   const statusesByType = new Map<string, typeof statuses>();
   for (const s of statuses) {

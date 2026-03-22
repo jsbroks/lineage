@@ -205,8 +205,16 @@ async function insertOperationType(
           type: inp.type,
           required: inp.required ?? false,
           sortOrder: inp.sortOrder,
-          options: (inp.type !== "lots" && inp.type !== "location" && inp.config?.options) || null,
-          defaultValue: (inp.type !== "lots" && inp.type !== "location" && inp.config?.defaultValue) ?? null,
+          options:
+            (inp.type !== "lots" &&
+              inp.type !== "location" &&
+              inp.config?.options) ||
+            null,
+          defaultValue:
+            (inp.type !== "lots" &&
+              inp.type !== "location" &&
+              inp.config?.defaultValue) ??
+            null,
         })
         .returning();
 

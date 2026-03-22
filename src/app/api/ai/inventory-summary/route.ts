@@ -2,6 +2,7 @@ import { streamText } from "ai";
 import { openai } from "@ai-sdk/openai";
 import { and, count, desc, eq, gte } from "drizzle-orm";
 
+import { auth } from "~/server/better-auth";
 import { db } from "~/server/db";
 import {
   lot,
@@ -14,6 +15,11 @@ import {
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  const session = await auth.api.getSession({ headers: req.headers });
+  if (!session) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
   const { lotTypeId } = (await req.json()) as { lotTypeId: string };
 
   const [it] = await db
@@ -37,10 +43,7 @@ export async function POST(req: Request) {
         eq(lot.statusId, lotTypeStatusDefinition.id),
       )
       .where(eq(lot.lotTypeId, lotTypeId))
-      .groupBy(
-        lotTypeStatusDefinition.name,
-        lotTypeStatusDefinition.category,
-      ),
+      .groupBy(lotTypeStatusDefinition.name, lotTypeStatusDefinition.category),
 
     db
       .select({
@@ -78,7 +81,8 @@ export async function POST(req: Request) {
   let inProgress = 0;
   let terminal = 0;
   for (const sc of statusCounts) {
-    if (sc.category === "done" || sc.category === "canceled") terminal += sc.total;
+    if (sc.category === "done" || sc.category === "canceled")
+      terminal += sc.total;
     else inProgress += sc.total;
   }
 
@@ -124,7 +128,7 @@ export async function POST(req: Request) {
   }
 
   const result = streamText({
-    model: openai("gpt-5.4"),
+    model: openai(process.env.OPENAI_CHAT_MODEL ?? "gpt-4.1"),
     system: `
 You are a concise inventory analyst providing a daily briefing for a production tracking system.
 Given the current state and today's activity for an inventory type, write a brief 2-4 sentence summary.

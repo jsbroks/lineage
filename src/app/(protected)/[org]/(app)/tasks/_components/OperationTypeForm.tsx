@@ -79,9 +79,7 @@ export function OperationTypeForm({
   const [base, setBase] = useState<OperationTypeBaseValues>(
     initialData?.base ?? EMPTY_BASE,
   );
-  const [inputs, setInputs] = useState<InputRow[]>(
-    initialData?.inputs ?? [],
-  );
+  const [inputs, setInputs] = useState<InputRow[]>(initialData?.inputs ?? []);
   const [simpleSteps, setSimpleSteps] = useState<SimpleStepRow[]>(
     initialConversion.steps,
   );

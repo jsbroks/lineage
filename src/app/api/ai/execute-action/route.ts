@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { eq, inArray } from "drizzle-orm";
 
+import { auth } from "~/server/better-auth";
 import { db } from "~/server/db";
 import {
   lot,
@@ -12,6 +13,11 @@ import {
 import { createAndExecute } from "~/server/engine/operation-execute";
 
 export async function POST(req: Request) {
+  const session = await auth.api.getSession({ headers: req.headers });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = (await req.json()) as {
     type: string;
     payload: Record<string, unknown>;

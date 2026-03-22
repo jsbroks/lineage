@@ -12,8 +12,18 @@ export function buildBatchLotType(): SeedLotType {
     codePrefix: "SB",
     statuses: [
       { name: "Mixing", color: "#F59E0B", category: "unstarted", ordinal: 0 },
-      { name: "Pasteurizing", color: "#EF4444", category: "in_progress", ordinal: 1 },
-      { name: "Cooling", color: "#3B82F6", category: "in_progress", ordinal: 2 },
+      {
+        name: "Pasteurizing",
+        color: "#EF4444",
+        category: "in_progress",
+        ordinal: 1,
+      },
+      {
+        name: "Cooling",
+        color: "#3B82F6",
+        category: "in_progress",
+        ordinal: 2,
+      },
       { name: "Ready", color: "#22C55E", category: "in_progress", ordinal: 3 },
       { name: "Used", color: "#6B7280", category: "done", ordinal: 4 },
     ],

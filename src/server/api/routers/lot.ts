@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, count, desc, eq, ilike, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
-import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import {
   lotType,
   lotTypeVariant,
@@ -83,12 +83,70 @@ const batchCreateLotsInput = z
     }
   });
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function resolveStatusId(
+  tx: any,
+  lotTypeId: string,
+  statusInput: string,
+): Promise<string> {
+  if (UUID_RE.test(statusInput)) {
+    const [match] = await tx
+      .select({ id: lotTypeStatusDefinition.id })
+      .from(lotTypeStatusDefinition)
+      .where(
+        and(
+          eq(lotTypeStatusDefinition.id, statusInput),
+          eq(lotTypeStatusDefinition.lotTypeId, lotTypeId),
+        ),
+      )
+      .limit(1);
+    if (match) return match.id as string;
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Status ID "${statusInput}" does not belong to this lot type.`,
+    });
+  }
+
+  const [byName] = await tx
+    .select({ id: lotTypeStatusDefinition.id })
+    .from(lotTypeStatusDefinition)
+    .where(
+      and(
+        eq(lotTypeStatusDefinition.lotTypeId, lotTypeId),
+        eq(lotTypeStatusDefinition.name, statusInput),
+      ),
+    )
+    .limit(1);
+  if (byName) return byName.id as string;
+
+  const [fallback] = await tx
+    .select({ id: lotTypeStatusDefinition.id })
+    .from(lotTypeStatusDefinition)
+    .where(
+      and(
+        eq(lotTypeStatusDefinition.lotTypeId, lotTypeId),
+        eq(lotTypeStatusDefinition.category, "unstarted"),
+      ),
+    )
+    .orderBy(asc(lotTypeStatusDefinition.ordinal))
+    .limit(1);
+  if (fallback) return fallback.id as string;
+
+  throw new TRPCError({
+    code: "BAD_REQUEST",
+    message: `Could not resolve status "${statusInput}" for this lot type. No statuses are configured.`,
+  });
+}
+
 export const lotRouter = createTRPCRouter({
-  list: publicProcedure.query(async ({ ctx }) => {
+  list: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.select().from(lot).orderBy(desc(lot.createdAt));
   }),
 
-  recentActivity: publicProcedure
+  recentActivity: protectedProcedure
     .input(z.object({ limit: z.number().int().min(1).max(50).default(20) }))
     .query(async ({ ctx, input }) => {
       const events = await ctx.db
@@ -112,7 +170,7 @@ export const lotRouter = createTRPCRouter({
       return events;
     }),
 
-  getByCode: publicProcedure
+  getByCode: protectedProcedure
     .input(z.object({ code: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const [currentLot] = await ctx.db
@@ -159,7 +217,7 @@ export const lotRouter = createTRPCRouter({
       };
     }),
 
-  create: publicProcedure
+  create: protectedProcedure
     .input(createLotInput)
     .mutation(async ({ ctx, input }) => {
       const createdLot = await ctx.db.transaction(async (tx) => {
@@ -168,6 +226,12 @@ export const lotRouter = createTRPCRouter({
           .from(lotType)
           .where(eq(lotType.id, input.lotTypeId))
           .limit(1);
+
+        const resolvedStatusId = await resolveStatusId(
+          tx,
+          input.lotTypeId,
+          input.status,
+        );
 
         let codeValue = input.code ?? "";
 
@@ -193,7 +257,7 @@ export const lotRouter = createTRPCRouter({
           .values({
             lotTypeId: input.lotTypeId,
             code: codeValue,
-            statusId: input.status,
+            statusId: resolvedStatusId,
             quantityUnit: it?.quantityDefaultUnit ?? "each",
             locationId: input.locationId,
             notes: input.notes,
@@ -260,7 +324,7 @@ export const lotRouter = createTRPCRouter({
       return createdLot;
     }),
 
-  getById: publicProcedure
+  getById: protectedProcedure
     .input(z.object({ lotId: z.uuid() }))
     .query(async ({ ctx, input }) => {
       const [currentLot] = await ctx.db
@@ -356,9 +420,8 @@ export const lotRouter = createTRPCRouter({
         parentLineage: parentLinks.map((link) => ({
           link,
           lot:
-            parentLots.find(
-              (parentLot) => parentLot.id === link.parentLotId,
-            ) ?? null,
+            parentLots.find((parentLot) => parentLot.id === link.parentLotId) ??
+            null,
         })),
         childLineage: childLinks.map((link) => ({
           link,
@@ -369,10 +432,16 @@ export const lotRouter = createTRPCRouter({
       };
     }),
 
-  batchCreate: publicProcedure
+  batchCreate: protectedProcedure
     .input(batchCreateLotsInput)
     .mutation(async ({ ctx, input }) => {
       return ctx.db.transaction(async (tx) => {
+        const resolvedStatusId = await resolveStatusId(
+          tx,
+          input.lotTypeId,
+          input.status,
+        );
+
         let uniqueCodes: string[];
 
         if (input.useSequence) {
@@ -452,7 +521,7 @@ export const lotRouter = createTRPCRouter({
               lotTypeId: input.lotTypeId,
               variantId: input.variantId ?? null,
               code,
-              statusId: input.status,
+              statusId: resolvedStatusId,
               locationId: input.locationId,
               attributes: input.attributes ?? {},
             })),
@@ -490,7 +559,7 @@ export const lotRouter = createTRPCRouter({
       });
     }),
 
-  listByType: publicProcedure
+  listByType: protectedProcedure
     .input(
       z.object({
         lotTypeId: z.uuid(),
@@ -530,7 +599,7 @@ export const lotRouter = createTRPCRouter({
       return lots;
     }),
 
-  listForPrint: publicProcedure
+  listForPrint: protectedProcedure
     .input(
       z.object({
         lotIds: z.array(z.uuid()).min(1).max(500),
@@ -552,7 +621,7 @@ export const lotRouter = createTRPCRouter({
       return rows;
     }),
 
-  statusCountsByType: publicProcedure
+  statusCountsByType: protectedProcedure
     .input(z.object({ lotTypeId: z.uuid() }))
     .query(async ({ ctx, input }) => {
       const rows = await ctx.db
@@ -573,7 +642,7 @@ export const lotRouter = createTRPCRouter({
       return { counts: rows, statuses };
     }),
 
-  updateAttributes: publicProcedure
+  updateAttributes: protectedProcedure
     .input(
       z.object({
         lotId: z.uuid(),
@@ -660,7 +729,7 @@ export const lotRouter = createTRPCRouter({
       return updated;
     }),
 
-  bulkSetLocation: publicProcedure
+  bulkSetLocation: protectedProcedure
     .input(
       z.object({
         lotIds: z.array(z.uuid()).min(1).max(1000),
@@ -695,7 +764,7 @@ export const lotRouter = createTRPCRouter({
       return { updated: updated.length };
     }),
 
-  bulkUpdateStatus: publicProcedure
+  bulkUpdateStatus: protectedProcedure
     .input(
       z.object({
         lotIds: z.array(z.uuid()).min(1).max(1000),
@@ -755,7 +824,7 @@ export const lotRouter = createTRPCRouter({
       return { updated: updated.length };
     }),
 
-  bulkSetVariant: publicProcedure
+  bulkSetVariant: protectedProcedure
     .input(
       z.object({
         lotIds: z.array(z.uuid()).min(1).max(1000),
@@ -909,7 +978,7 @@ export const lotRouter = createTRPCRouter({
       return { updated: updated.length };
     }),
 
-  bulkSetAttributes: publicProcedure
+  bulkSetAttributes: protectedProcedure
     .input(
       z.object({
         lotIds: z.array(z.uuid()).min(1).max(1000),
@@ -971,7 +1040,7 @@ export const lotRouter = createTRPCRouter({
       return { updated: updatedCount };
     }),
 
-  bulkDelete: publicProcedure
+  bulkDelete: protectedProcedure
     .input(z.object({ lotIds: z.array(z.uuid()).min(1).max(1000) }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db
@@ -995,7 +1064,93 @@ export const lotRouter = createTRPCRouter({
       return { deleted: deleted.length };
     }),
 
-  aggregate: publicProcedure
+  resolveIdentifier: protectedProcedure
+    .input(z.object({ identifierValue: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const [ident] = await ctx.db
+        .select({ lotId: lotIdentifier.lotId })
+        .from(lotIdentifier)
+        .where(eq(lotIdentifier.identifierValue, input.identifierValue))
+        .limit(1);
+
+      if (!ident) return null;
+
+      const [currentLot] = await ctx.db
+        .select()
+        .from(lot)
+        .where(eq(lot.id, ident.lotId))
+        .limit(1);
+
+      if (!currentLot) return null;
+
+      const [currentLotType] = await ctx.db
+        .select()
+        .from(lotType)
+        .where(eq(lotType.id, currentLot.lotTypeId))
+        .limit(1);
+
+      const [status] = await ctx.db
+        .select({
+          name: lotTypeStatusDefinition.name,
+          color: lotTypeStatusDefinition.color,
+        })
+        .from(lotTypeStatusDefinition)
+        .where(eq(lotTypeStatusDefinition.id, currentLot.statusId))
+        .limit(1);
+
+      const [variant] = currentLot.variantId
+        ? await ctx.db
+            .select({ name: lotTypeVariant.name })
+            .from(lotTypeVariant)
+            .where(eq(lotTypeVariant.id, currentLot.variantId))
+            .limit(1)
+        : [undefined];
+
+      return {
+        lot: currentLot,
+        lotType: currentLotType ?? null,
+        status: status ?? null,
+        variant: variant ?? null,
+      };
+    }),
+
+  addIdentifier: protectedProcedure
+    .input(
+      z.object({
+        lotId: z.uuid(),
+        identifierType: z.string().min(1),
+        identifierValue: z.string().min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [existing] = await ctx.db
+        .select()
+        .from(lotIdentifier)
+        .where(eq(lotIdentifier.identifierValue, input.identifierValue))
+        .limit(1);
+
+      if (existing) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "This identifier is already linked to a lot.",
+        });
+      }
+
+      const [created] = await ctx.db
+        .insert(lotIdentifier)
+        .values({
+          lotId: input.lotId,
+          identifierType: input.identifierType,
+          identifierValue: input.identifierValue,
+          linkedAt: new Date(),
+          isActive: true,
+        })
+        .returning();
+
+      return created;
+    }),
+
+  aggregate: protectedProcedure
     .input(
       z.object({
         lotTypeId: z.uuid(),

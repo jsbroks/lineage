@@ -25,12 +25,37 @@ export function buildSporehubsGrowUnit(varieties: string[]): SeedLotType {
       optionSelections: { Variety: v },
     })),
     statuses: [
-      { name: "Inoculated", color: "#8B5CF6", category: "unstarted", ordinal: 0 },
-      { name: "Colonizing", color: "#F59E0B", category: "in_progress", ordinal: 1 },
-      { name: "Fruiting", color: "#22C55E", category: "in_progress", ordinal: 2 },
-      { name: "Resting", color: "#6B7280", category: "in_progress", ordinal: 3 },
+      {
+        name: "Inoculated",
+        color: "#8B5CF6",
+        category: "unstarted",
+        ordinal: 0,
+      },
+      {
+        name: "Colonizing",
+        color: "#F59E0B",
+        category: "in_progress",
+        ordinal: 1,
+      },
+      {
+        name: "Fruiting",
+        color: "#22C55E",
+        category: "in_progress",
+        ordinal: 2,
+      },
+      {
+        name: "Resting",
+        color: "#6B7280",
+        category: "in_progress",
+        ordinal: 3,
+      },
       { name: "Spent", color: "#9CA3AF", category: "done", ordinal: 4 },
-      { name: "Contaminated", color: "#EF4444", category: "canceled", ordinal: 5 },
+      {
+        name: "Contaminated",
+        color: "#EF4444",
+        category: "canceled",
+        ordinal: 5,
+      },
     ],
     transitions: [
       { from: "Inoculated", to: "Colonizing" },
@@ -44,8 +69,18 @@ export function buildSporehubsGrowUnit(varieties: string[]): SeedLotType {
       { from: "Fruiting", to: "Contaminated" },
     ],
     attributes: [
-      { attrKey: "inoculation_date", dataType: "date", isRequired: true, sortOrder: 0 },
-      { attrKey: "flush_number", dataType: "number", isRequired: false, sortOrder: 1 },
+      {
+        attrKey: "inoculation_date",
+        dataType: "date",
+        isRequired: true,
+        sortOrder: 0,
+      },
+      {
+        attrKey: "flush_number",
+        dataType: "number",
+        isRequired: false,
+        sortOrder: 1,
+      },
     ],
   };
 }

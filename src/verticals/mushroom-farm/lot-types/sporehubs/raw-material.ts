@@ -26,19 +26,69 @@ export function buildSporehubsRawMaterial(): SeedLotType {
       },
     ],
     variants: [
-      { name: "Unicorn Bags", isDefault: true, sortOrder: 0, optionSelections: { Category: "Bags & Containers" } },
-      { name: "Grow Bags (5 lb)", isDefault: false, sortOrder: 1, optionSelections: { Category: "Bags & Containers" } },
-      { name: "Alcohol (70%)", isDefault: false, sortOrder: 2, optionSelections: { Category: "Sterilization" } },
-      { name: "Hydrogen Peroxide", isDefault: false, sortOrder: 3, optionSelections: { Category: "Sterilization" } },
-      { name: "Clamshell Packs", isDefault: false, sortOrder: 4, optionSelections: { Category: "Packaging" } },
-      { name: "Shrink Wrap", isDefault: false, sortOrder: 5, optionSelections: { Category: "Packaging" } },
-      { name: "Nitrile Gloves", isDefault: false, sortOrder: 6, optionSelections: { Category: "PPE" } },
-      { name: "Gypsum", isDefault: false, sortOrder: 7, optionSelections: { Category: "Nutrients & Additives" } },
+      {
+        name: "Unicorn Bags",
+        isDefault: true,
+        sortOrder: 0,
+        optionSelections: { Category: "Bags & Containers" },
+      },
+      {
+        name: "Grow Bags (5 lb)",
+        isDefault: false,
+        sortOrder: 1,
+        optionSelections: { Category: "Bags & Containers" },
+      },
+      {
+        name: "Alcohol (70%)",
+        isDefault: false,
+        sortOrder: 2,
+        optionSelections: { Category: "Sterilization" },
+      },
+      {
+        name: "Hydrogen Peroxide",
+        isDefault: false,
+        sortOrder: 3,
+        optionSelections: { Category: "Sterilization" },
+      },
+      {
+        name: "Clamshell Packs",
+        isDefault: false,
+        sortOrder: 4,
+        optionSelections: { Category: "Packaging" },
+      },
+      {
+        name: "Shrink Wrap",
+        isDefault: false,
+        sortOrder: 5,
+        optionSelections: { Category: "Packaging" },
+      },
+      {
+        name: "Nitrile Gloves",
+        isDefault: false,
+        sortOrder: 6,
+        optionSelections: { Category: "PPE" },
+      },
+      {
+        name: "Gypsum",
+        isDefault: false,
+        sortOrder: 7,
+        optionSelections: { Category: "Nutrients & Additives" },
+      },
     ],
     statuses: [
       { name: "In Stock", color: "#22C55E", category: "unstarted", ordinal: 0 },
-      { name: "Low Stock", color: "#F59E0B", category: "in_progress", ordinal: 1 },
-      { name: "Out of Stock", color: "#EF4444", category: "in_progress", ordinal: 2 },
+      {
+        name: "Low Stock",
+        color: "#F59E0B",
+        category: "in_progress",
+        ordinal: 1,
+      },
+      {
+        name: "Out of Stock",
+        color: "#EF4444",
+        category: "in_progress",
+        ordinal: 2,
+      },
       { name: "Discontinued", color: "#6B7280", category: "done", ordinal: 3 },
     ],
     transitions: [
@@ -51,9 +101,25 @@ export function buildSporehubsRawMaterial(): SeedLotType {
       { from: "Out of Stock", to: "Discontinued" },
     ],
     attributes: [
-      { attrKey: "reorder_threshold", dataType: "number", isRequired: false, sortOrder: 0 },
-      { attrKey: "supplier", dataType: "text", isRequired: false, sortOrder: 1 },
-      { attrKey: "unit_cost", dataType: "number", isRequired: false, unit: "USD", sortOrder: 2 },
+      {
+        attrKey: "reorder_threshold",
+        dataType: "number",
+        isRequired: false,
+        sortOrder: 0,
+      },
+      {
+        attrKey: "supplier",
+        dataType: "text",
+        isRequired: false,
+        sortOrder: 1,
+      },
+      {
+        attrKey: "unit_cost",
+        dataType: "number",
+        isRequired: false,
+        unit: "USD",
+        sortOrder: 2,
+      },
     ],
   };
 }

@@ -1,8 +1,5 @@
 import type { SeedData, SeedLotType } from "../types";
-import {
-  DEFAULT_WORKFLOW_FLAGS,
-  type MushroomWizardAnswers,
-} from "./config";
+import { DEFAULT_WORKFLOW_FLAGS, type MushroomWizardAnswers } from "./config";
 import {
   buildSpawnLotType,
   buildBatchLotType,

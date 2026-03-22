@@ -37,7 +37,12 @@ export function buildSporehubsSpawn(varieties: string[]): SeedLotType {
       { name: "In Stock", color: "#22C55E", category: "unstarted", ordinal: 0 },
       { name: "In Use", color: "#3B82F6", category: "in_progress", ordinal: 1 },
       { name: "Depleted", color: "#6B7280", category: "done", ordinal: 2 },
-      { name: "Contaminated", color: "#EF4444", category: "canceled", ordinal: 3 },
+      {
+        name: "Contaminated",
+        color: "#EF4444",
+        category: "canceled",
+        ordinal: 3,
+      },
     ],
     transitions: [
       { from: "In Stock", to: "In Use" },
@@ -46,9 +51,25 @@ export function buildSporehubsSpawn(varieties: string[]): SeedLotType {
       { from: "In Use", to: "Contaminated" },
     ],
     attributes: [
-      { attrKey: "supplier", dataType: "text", isRequired: false, sortOrder: 0 },
-      { attrKey: "lot_number", dataType: "text", isRequired: false, sortOrder: 1 },
-      { attrKey: "unit_cost", dataType: "number", isRequired: false, unit: "USD", sortOrder: 2 },
+      {
+        attrKey: "supplier",
+        dataType: "text",
+        isRequired: false,
+        sortOrder: 0,
+      },
+      {
+        attrKey: "lot_number",
+        dataType: "text",
+        isRequired: false,
+        sortOrder: 1,
+      },
+      {
+        attrKey: "unit_cost",
+        dataType: "number",
+        isRequired: false,
+        unit: "USD",
+        sortOrder: 2,
+      },
     ],
   };
 }

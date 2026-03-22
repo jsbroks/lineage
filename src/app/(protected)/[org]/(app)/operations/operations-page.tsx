@@ -341,8 +341,8 @@ export default function OperationsPage() {
                   </Button>
                   {!chosenOp.ready && (
                     <p className="text-muted-foreground mt-2 text-xs">
-                      Not all required lots are present. Add more lots or
-                      choose a different task.
+                      Not all required lots are present. Add more lots or choose
+                      a different task.
                     </p>
                   )}
                 </div>

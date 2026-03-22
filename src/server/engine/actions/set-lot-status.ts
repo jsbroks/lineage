@@ -1,6 +1,5 @@
 import { ActionResult, createAction } from "./actions";
 import { z } from "zod";
-import _ from "lodash";
 
 export const setLotStatus = createAction({
   id: "set-lot-status",

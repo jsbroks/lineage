@@ -352,9 +352,9 @@ function InputsSection({
                   </span>
                   <Badge variant="outline" className="text-xs">
                     {inp.type === "lots"
-                      ? lotTypes.find(
+                      ? (lotTypes.find(
                           (lt) => lt.id === inp.lotConfig?.lotTypeId,
-                        )?.name ?? "Lot"
+                        )?.name ?? "Lot")
                       : inp.type}
                   </Badge>
                   {(inp.required ||
