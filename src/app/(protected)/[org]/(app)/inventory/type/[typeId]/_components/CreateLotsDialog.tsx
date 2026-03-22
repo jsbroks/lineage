@@ -88,7 +88,7 @@ export const CreateLotsDialog: React.FC<CreateLotsDialogProps> = ({
   const handleConfirm = () => {
     const cnt = parseInt(count, 10);
     if (!cnt || cnt < 1) return;
-    const initialStatus = statuses.find((s) => s.isInitial);
+    const initialStatus = statuses.find((s) => s.category === "unstarted");
     const attributes: Record<string, unknown> = {};
     for (const d of attrDefs) {
       const v = attrValues[d.attrKey];
@@ -156,7 +156,7 @@ export const CreateLotsDialog: React.FC<CreateLotsDialogProps> = ({
             <div className="space-y-2">
               <Label>Initial status</Label>
               <Select
-                value={status || statuses.find((s) => s.isInitial)?.id || ""}
+                value={status || statuses.find((s) => s.category === "unstarted")?.id || ""}
                 onValueChange={setStatus}
               >
                 <SelectTrigger>

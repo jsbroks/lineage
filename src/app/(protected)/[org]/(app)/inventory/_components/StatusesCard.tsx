@@ -10,9 +10,22 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import type { StatusRow } from "./LotTypeForm";
+
+const CATEGORY_LABELS: Record<StatusRow["category"], string> = {
+  unstarted: "Unstarted",
+  in_progress: "In Progress",
+  done: "Done",
+  canceled: "Canceled",
+};
 
 type StatusesCardProps = {
   statuses: StatusRow[];
@@ -63,24 +76,30 @@ export function StatusesCard({
                   placeholder="#color"
                   className="w-24"
                 />
-                <label className="flex items-center gap-1.5 text-xs whitespace-nowrap">
-                  <Checkbox
-                    checked={s.isInitial}
-                    onCheckedChange={(val) =>
-                      onUpdate(idx, { isInitial: val === true })
-                    }
-                  />
-                  Initial
-                </label>
-                <label className="flex items-center gap-1.5 text-xs whitespace-nowrap">
-                  <Checkbox
-                    checked={s.isTerminal}
-                    onCheckedChange={(val) =>
-                      onUpdate(idx, { isTerminal: val === true })
-                    }
-                  />
-                  Terminal
-                </label>
+                <Select
+                  value={s.category}
+                  onValueChange={(val) =>
+                    onUpdate(idx, {
+                      category: val as StatusRow["category"],
+                    })
+                  }
+                >
+                  <SelectTrigger className="w-[130px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(
+                      Object.entries(CATEGORY_LABELS) as [
+                        StatusRow["category"],
+                        string,
+                      ][]
+                    ).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <Button
                 type="button"

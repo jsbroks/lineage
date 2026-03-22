@@ -1,9 +1,10 @@
-import type { VerticalDefinition } from "../types";
+import { defineVertical } from "../types";
+import type { MushroomWizardAnswers } from "./config";
 import { buildMushroomFarmSeedData } from "./seed-data";
 import { VarietyPicker } from "./steps/VarietyPicker";
 import { WorkflowConfigurator } from "./steps/WorkflowConfigurator";
 
-export const mushroomFarmVertical: VerticalDefinition = {
+export const mushroomFarmVertical = defineVertical<MushroomWizardAnswers>({
   key: "mushroom-farm",
   name: "Mushroom Farm",
   description:
@@ -22,4 +23,4 @@ export const mushroomFarmVertical: VerticalDefinition = {
     },
   ],
   buildSeedData: buildMushroomFarmSeedData,
-};
+});

@@ -144,7 +144,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
   function handleBatchCreate() {
     const cnt = parseInt(batchCount, 10);
     if (!cnt || cnt < 1 || !typeId) return;
-    const initialStatus = statuses.find((s) => s.isInitial);
+    const initialStatus = statuses.find((s) => s.category === "unstarted");
     const attributes: Record<string, unknown> = {};
     for (const d of attrDefs) {
       const v = attrValues[d.attrKey];

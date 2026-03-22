@@ -88,7 +88,9 @@ async function detectStuckLots(): Promise<StuckLot[]> {
       eq(lot.statusId, lotTypeStatusDefinition.id),
     )
     .innerJoin(lotType, eq(lot.lotTypeId, lotType.id))
-    .where(eq(lotTypeStatusDefinition.isTerminal, false));
+    .where(
+      inArray(lotTypeStatusDefinition.category, ["unstarted", "in_progress"]),
+    );
 
   if (nonTerminalLots.length === 0) return [];
 

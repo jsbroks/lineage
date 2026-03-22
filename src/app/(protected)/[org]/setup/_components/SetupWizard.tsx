@@ -26,6 +26,10 @@ export function SetupWizard({ org }: { org: string }) {
     onSuccess: () => router.push(`/${org}`),
   });
 
+  const applyMutation = api.onboarding.applySetup.useMutation({
+    onSuccess: () => router.push(`/${org}`),
+  });
+
   const totalSteps = selectedVertical
     ? 1 + selectedVertical.steps.length + 1
     : 1;
@@ -36,14 +40,21 @@ export function SetupWizard({ org }: { org: string }) {
         ? 1 + stepIndex
         : totalSteps - 1;
 
-  const handlePickVertical = useCallback((key: string) => {
-    const v = getVertical(key);
-    if (!v) return;
-    setSelectedVertical(v);
-    setPhase("vertical-steps");
-    setStepIndex(0);
-    setAnswers({});
-  }, []);
+  const handlePickVertical = useCallback(
+    (key: string) => {
+      const v = getVertical(key);
+      if (!v) return;
+      setSelectedVertical(v);
+      setAnswers({});
+      if (v.steps.length === 0) {
+        applyMutation.mutate({ verticalKey: key, answers: {} });
+      } else {
+        setPhase("vertical-steps");
+        setStepIndex(0);
+      }
+    },
+    [applyMutation],
+  );
 
   const handleStepNext = useCallback(
     (stepAnswers: Record<string, unknown>) => {

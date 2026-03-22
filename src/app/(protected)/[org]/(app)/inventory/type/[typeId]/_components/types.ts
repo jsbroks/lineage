@@ -2,8 +2,7 @@ export interface StatusDef {
   id: string;
   name: string;
   color: string | null;
-  isInitial: boolean;
-  isTerminal: boolean;
+  category: string;
 }
 
 export interface VariantDef {

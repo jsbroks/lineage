@@ -20,8 +20,7 @@ function makeStatusDef(
     lotTypeId: "type-1",
     name: "Created",
     color: null,
-    isInitial: true,
-    isTerminal: false,
+    category: "unstarted",
     ordinal: 0,
     ...overrides,
   };
@@ -162,7 +161,7 @@ describe("createLot", () => {
         lotTypes: {
           "type-1": makeLotType({
             statusDefinitions: [
-              makeStatusDef({ isInitial: false, name: "Active" }),
+              makeStatusDef({ category: "in_progress", name: "Active" }),
             ],
           }),
         },
@@ -204,7 +203,7 @@ describe("createLot", () => {
         lotTypes: {
           "type-1": makeLotType({
             statusDefinitions: [
-              makeStatusDef({ id: "status-init", isInitial: true }),
+              makeStatusDef({ id: "status-init", category: "unstarted" }),
             ],
           }),
         },

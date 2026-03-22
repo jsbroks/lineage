@@ -121,8 +121,7 @@ export async function buildSchemaContext(): Promise<SchemaContext> {
     if (t.codePrefix) line += ` (prefix: ${t.codePrefix})`;
     if (typeStatuses.length > 0) {
       const statusLabels = typeStatuses.map((s) => {
-        if (s.isTerminal) return `${s.name} (terminal)`;
-        if (s.isInitial) return `${s.name} (initial)`;
+        if (s.category !== "in_progress") return `${s.name} (${s.category})`;
         return s.name;
       });
       line += ` — Statuses: ${statusLabels.join(", ")}`;

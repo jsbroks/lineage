@@ -66,13 +66,15 @@ lots:
     status:
       - name: Created
         to: [Approved, Discarded]
+        category: unstarted
       - name: Approved
         to: [Discarded, Shipped, Discarded]
+        category: in_progress
       - name: Shipped
         to: [Discarded]
-        isTerminal: true
+        category: done
       - name: Discarded
-        isTerminal: true
+        category: canceled
     customAttributes:
       - name: Harvest By
         type: string
@@ -97,12 +99,15 @@ lots:
     status:
       - name: Created
         to: [Ready]
+        category: unstarted
       - name: Ready
         to: [Staged]
+        category: in_progress
       - name: Staged
         to: [Shipped]
+        category: in_progress
       - name: Discarded
-        isTerminal: true
+        category: canceled
     customAttributes:
       - name: Destination
         type: string

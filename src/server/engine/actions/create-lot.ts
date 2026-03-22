@@ -24,7 +24,9 @@ export const createLot = createAction({
       return result;
     }
 
-    const initialStatus = lotType.statusDefinitions.find((sd) => sd.isInitial);
+    const initialStatus = lotType.statusDefinitions.find(
+      (sd) => sd.category === "unstarted",
+    );
     if (!initialStatus) {
       result.skipped = true;
       result.message = `No initial status defined for lot type: ${lotType.name}`;

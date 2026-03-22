@@ -82,8 +82,7 @@ async function insertLotType(tx: Tx, seed: SeedLotType) {
         lotTypeId: typeId,
         name: s.name,
         color: s.color ?? null,
-        isInitial: s.isInitial,
-        isTerminal: s.isTerminal,
+        category: s.category,
         ordinal: s.ordinal,
       })),
     )

@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { Plus, X } from "lucide-react";
 import type { StepProps } from "../../types";
+import type { MushroomWizardAnswers } from "../config";
 import { VARIETY_CATALOG } from "../seed-data";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 
-export function VarietyPicker({ answers, onNext, onBack }: StepProps) {
-  const initial = (answers.varieties as string[] | undefined) ?? [];
+export function VarietyPicker({ answers, onNext, onBack }: StepProps<MushroomWizardAnswers>) {
+  const initial = answers.varieties ?? [];
   const [selected, setSelected] = useState<string[]>(initial);
   const [custom, setCustom] = useState("");
 

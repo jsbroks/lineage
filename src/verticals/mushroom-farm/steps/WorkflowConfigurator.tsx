@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { Boxes, Bug, Package, Thermometer } from "lucide-react";
 import type { StepProps } from "../../types";
-import { DEFAULT_WORKFLOW_FLAGS, type WorkflowFlags } from "../seed-data";
+import {
+  DEFAULT_WORKFLOW_FLAGS,
+  type WorkflowFlags,
+  type MushroomWizardAnswers,
+} from "../config";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 
@@ -45,12 +49,10 @@ const WORKFLOW_OPTIONS: WorkflowOption[] = [
   },
 ];
 
-export function WorkflowConfigurator({ answers, onNext, onBack }: StepProps) {
-  const initial =
-    (answers.workflowFlags as Partial<WorkflowFlags> | undefined) ?? {};
+export function WorkflowConfigurator({ answers, onNext, onBack }: StepProps<MushroomWizardAnswers>) {
   const [flags, setFlags] = useState<WorkflowFlags>({
     ...DEFAULT_WORKFLOW_FLAGS,
-    ...initial,
+    ...answers.workflowFlags,
   });
 
   function toggle(key: keyof WorkflowFlags) {

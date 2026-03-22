@@ -1,5 +1,4 @@
 import {
-  boolean,
   integer,
   pgTable,
   text,
@@ -18,8 +17,7 @@ export const lotTypeStatusDefinition = pgTable(
       .notNull(),
     name: text().notNull(),
     color: text(),
-    isInitial: boolean("is_initial").notNull().default(false),
-    isTerminal: boolean("is_terminal").notNull().default(false),
+    category: text().notNull().default("unstarted"),
     ordinal: integer().notNull().default(0),
   },
   (t) => [],

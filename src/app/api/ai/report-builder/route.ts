@@ -114,10 +114,13 @@ export async function POST(req: Request) {
     lines.push(`\n=== STATUSES (lifecycle stages) ===`);
     for (const s of statuses) {
       let label = `- "${s.name}" (id: ${s.id})`;
-      if (s.isInitial) label += " [INITIAL — lots start here]";
-      if (s.isTerminal)
+      if (s.category === "unstarted") label += " [UNSTARTED — lots start here]";
+      else if (s.category === "done")
         label +=
-          " [TERMINAL — lots end here, not useful for active inventory insights]";
+          " [DONE — lots end here, not useful for active inventory insights]";
+      else if (s.category === "canceled")
+        label +=
+          " [CANCELED — lots ended abnormally, not useful for active inventory insights]";
       lines.push(label);
     }
 

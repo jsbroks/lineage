@@ -63,8 +63,7 @@ export type StatusRow = {
   id?: string;
   name: string;
   color: string;
-  isInitial: boolean;
-  isTerminal: boolean;
+  category: "unstarted" | "in_progress" | "done" | "canceled";
 };
 
 export type TransitionRow = {
@@ -267,8 +266,7 @@ export function LotTypeForm({
       {
         name: "",
         color: "",
-        isInitial: prev.length === 0,
-        isTerminal: false,
+        category: prev.length === 0 ? "unstarted" : "in_progress",
       },
     ]);
   };

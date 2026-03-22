@@ -76,8 +76,7 @@ export default function EditLotTypePage() {
         id: s.id,
         name: s.name,
         color: s.color ?? "",
-        isInitial: s.isInitial,
-        isTerminal: s.isTerminal,
+        category: s.category as "unstarted" | "in_progress" | "done" | "canceled",
       })),
       transitions: data.transitions.map((t) => {
         const from = data.statuses.find((s) => s.id === t.fromStatusId);

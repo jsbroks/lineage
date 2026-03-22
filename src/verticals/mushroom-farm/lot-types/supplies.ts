@@ -11,18 +11,8 @@ export function buildSuppliesLotType(): SeedLotType {
     color: "#10B981",
     codePrefix: "SP",
     statuses: [
-      {
-        name: "In Stock",
-        isInitial: true,
-        isTerminal: false,
-        ordinal: 0,
-      },
-      {
-        name: "Depleted",
-        isInitial: false,
-        isTerminal: true,
-        ordinal: 1,
-      },
+      { name: "In Stock", category: "unstarted", ordinal: 0 },
+      { name: "Depleted", category: "done", ordinal: 1 },
     ],
     transitions: [{ from: "In Stock", to: "Depleted" }],
     attributes: [],

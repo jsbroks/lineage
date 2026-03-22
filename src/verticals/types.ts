@@ -4,11 +4,19 @@ import type { ComponentType } from "react";
 // Seed data shapes — mirror the DB insert shapes without IDs (assigned at insert)
 // ---------------------------------------------------------------------------
 
+export const STATUS_CATEGORIES = [
+  "unstarted",
+  "in_progress",
+  "done",
+  "canceled",
+] as const;
+
+export type StatusCategory = (typeof STATUS_CATEGORIES)[number];
+
 export interface SeedStatusDefinition {
   name: string;
   color?: string;
-  isInitial: boolean;
-  isTerminal: boolean;
+  category: StatusCategory;
   ordinal: number;
 }
 
@@ -138,16 +146,16 @@ export interface SeedData {
 // Wizard step / vertical definition
 // ---------------------------------------------------------------------------
 
-export interface StepProps {
-  answers: Record<string, unknown>;
-  onNext: (stepAnswers: Record<string, unknown>) => void;
+export interface StepProps<T = Record<string, unknown>> {
+  answers: T;
+  onNext: (stepAnswers: Partial<T>) => void;
   onBack: () => void;
 }
 
-export interface VerticalStep {
+export interface VerticalStep<T = Record<string, unknown>> {
   key: string;
   title: string;
-  component: ComponentType<StepProps>;
+  component: ComponentType<StepProps<T>>;
 }
 
 export interface VerticalDefinition {
@@ -157,4 +165,19 @@ export interface VerticalDefinition {
   icon: string;
   steps: VerticalStep[];
   buildSeedData: (answers: Record<string, unknown>) => SeedData;
+}
+
+/**
+ * Type-safe vertical builder — enforces that all steps and buildSeedData
+ * agree on the answer shape `T`, then erases the generic for the registry.
+ */
+export function defineVertical<T extends Record<string, unknown>>(def: {
+  key: string;
+  name: string;
+  description: string;
+  icon: string;
+  steps: VerticalStep<T>[];
+  buildSeedData: (answers: T) => SeedData;
+}): VerticalDefinition {
+  return def as VerticalDefinition;
 }

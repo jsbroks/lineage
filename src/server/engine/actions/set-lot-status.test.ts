@@ -40,8 +40,7 @@ function makeStatusDef(
     lotTypeId: "type-1",
     name: "Approved",
     color: null,
-    isInitial: false,
-    isTerminal: false,
+    category: "in_progress",
     ordinal: 0,
     ...overrides,
   };

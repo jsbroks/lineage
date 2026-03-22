@@ -41,8 +41,7 @@ interface LotsTableProps {
     {
       name: string;
       color: string | null;
-      isInitial: boolean;
-      isTerminal: boolean;
+      category: string;
     }
   >;
   selected: Set<string>;

@@ -28,8 +28,7 @@ export async function POST(req: Request) {
     db
       .select({
         statusName: lotTypeStatusDefinition.name,
-        isInitial: lotTypeStatusDefinition.isInitial,
-        isTerminal: lotTypeStatusDefinition.isTerminal,
+        category: lotTypeStatusDefinition.category,
         total: count(),
       })
       .from(lot)
@@ -40,8 +39,7 @@ export async function POST(req: Request) {
       .where(eq(lot.lotTypeId, lotTypeId))
       .groupBy(
         lotTypeStatusDefinition.name,
-        lotTypeStatusDefinition.isInitial,
-        lotTypeStatusDefinition.isTerminal,
+        lotTypeStatusDefinition.category,
       ),
 
     db
@@ -80,7 +78,7 @@ export async function POST(req: Request) {
   let inProgress = 0;
   let terminal = 0;
   for (const sc of statusCounts) {
-    if (sc.isTerminal) terminal += sc.total;
+    if (sc.category === "done" || sc.category === "canceled") terminal += sc.total;
     else inProgress += sc.total;
   }
 
@@ -89,15 +87,15 @@ export async function POST(req: Request) {
   context += `\nIn-Progress Lots: ${inProgress}`;
 
   if (statusCounts.length > 0) {
-    context += `\n\nStatus Breakdown (non-terminal only):`;
+    context += `\n\nStatus Breakdown (active only):`;
     for (const sc of statusCounts) {
-      if (sc.isTerminal) continue;
+      if (sc.category === "done" || sc.category === "canceled") continue;
       let label = sc.statusName;
-      if (sc.isInitial) label += " (initial)";
+      if (sc.category === "unstarted") label += " (unstarted)";
       context += `\n- ${label}: ${sc.total}`;
     }
     if (terminal > 0) {
-      context += `\n\n(${terminal} lots in terminal/completed statuses — excluded from counts above)`;
+      context += `\n\n(${terminal} lots in done/canceled statuses — excluded from counts above)`;
     }
   }
 

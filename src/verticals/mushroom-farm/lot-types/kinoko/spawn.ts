@@ -1,9 +1,9 @@
-import type { SeedLotType } from "../../types";
+import type { SeedLotType } from "../../../types";
 
-export function buildSpawnLotType(varieties: string[]): SeedLotType {
+export function buildKinokoSpawn(varieties: string[]): SeedLotType {
   return {
     name: "Spawn",
-    description: "Grain or liquid spawn used to inoculate substrate",
+    description: "Grain or liquid spawn used to inoculate blocks",
     category: "input",
     quantityName: "Weight",
     quantityDefaultUnit: "lb",
@@ -24,21 +24,13 @@ export function buildSpawnLotType(varieties: string[]): SeedLotType {
       optionSelections: { Variety: v },
     })),
     statuses: [
-      { name: "In Stock", color: "#22C55E", category: "unstarted", ordinal: 0 },
+      { name: "Available", color: "#22C55E", category: "unstarted", ordinal: 0 },
       { name: "In Use", color: "#3B82F6", category: "in_progress", ordinal: 1 },
       { name: "Depleted", color: "#6B7280", category: "done", ordinal: 2 },
-      {
-        name: "Contaminated",
-        color: "#EF4444",
-        category: "canceled",
-        ordinal: 3,
-      },
     ],
     transitions: [
-      { from: "In Stock", to: "In Use" },
+      { from: "Available", to: "In Use" },
       { from: "In Use", to: "Depleted" },
-      { from: "In Stock", to: "Contaminated" },
-      { from: "In Use", to: "Contaminated" },
     ],
   };
 }

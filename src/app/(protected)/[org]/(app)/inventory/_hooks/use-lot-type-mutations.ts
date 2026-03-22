@@ -73,8 +73,7 @@ export function useLotTypeMutations() {
       id: s.id,
       name: s.name.trim(),
       color: s.color.trim() || null,
-      isInitial: s.isInitial,
-      isTerminal: s.isTerminal,
+      category: s.category,
       ordinal: i,
     }));
     if (!skipEmpty || statuses.length > 0) {

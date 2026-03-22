@@ -11,11 +11,11 @@ export function buildEquipmentLotType(): SeedLotType {
     color: "#10B981",
     codePrefix: "EQ",
     statuses: [
-      { name: "Available", isInitial: true, isTerminal: false, ordinal: 0 },
-      { name: "In Use", isInitial: false, isTerminal: false, ordinal: 1 },
-      { name: "Cleaning", isInitial: false, isTerminal: false, ordinal: 2 },
-      { name: "Maintenance", isInitial: false, isTerminal: false, ordinal: 3 },
-      { name: "Retired", isInitial: false, isTerminal: true, ordinal: 4 },
+      { name: "Available", category: "unstarted", ordinal: 0 },
+      { name: "In Use", category: "in_progress", ordinal: 1 },
+      { name: "Cleaning", category: "in_progress", ordinal: 2 },
+      { name: "Maintenance", category: "in_progress", ordinal: 3 },
+      { name: "Retired", category: "done", ordinal: 4 },
     ],
     transitions: [
       { from: "Available", to: "In Use" },

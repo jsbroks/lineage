@@ -71,50 +71,62 @@ export function ReviewApply({
       </div>
 
       {/* Lot Types */}
-      <section className="flex flex-col gap-2">
-        <h3 className="flex items-center gap-2 text-sm font-medium">
-          <Box className="text-muted-foreground size-4" />
-          Lot Types
-          <Badge variant="secondary">{seedData.lotTypes.length}</Badge>
-        </h3>
-        <div className="bg-muted/50 divide-y rounded-lg border">
-          {seedData.lotTypes.map((it) => (
-            <LotTypeRow key={it.name} lotType={it} />
-          ))}
-        </div>
-      </section>
-
-      {/* Operations */}
-      <section className="flex flex-col gap-2">
-        <h3 className="flex items-center gap-2 text-sm font-medium">
-          <Zap className="text-muted-foreground size-4" />
-          Operations
-          <Badge variant="secondary">{seedData.operations.length}</Badge>
-        </h3>
-        <div className="bg-muted/50 divide-y rounded-lg border">
-          {seedData.operations.map((op) => (
-            <OperationRow key={op.name} operation={op} />
-          ))}
-        </div>
-      </section>
-
-      {/* Locations */}
-      <section className="flex flex-col gap-2">
-        <h3 className="flex items-center gap-2 text-sm font-medium">
-          <MapPin className="text-muted-foreground size-4" />
-          Locations
-          <Badge variant="secondary">
-            {countLocations(seedData.locations)}
-          </Badge>
-        </h3>
-        <div className="bg-muted/50 rounded-lg border p-3">
-          <div className="flex flex-col gap-1">
-            {seedData.locations.map((loc) => (
-              <LocationTree key={loc.name} location={loc} depth={0} />
+      {seedData.lotTypes.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h3 className="flex items-center gap-2 text-sm font-medium">
+            <Box className="text-muted-foreground size-4" />
+            Lot Types
+            <Badge variant="secondary">{seedData.lotTypes.length}</Badge>
+          </h3>
+          <div className="bg-muted/50 divide-y rounded-lg border">
+            {seedData.lotTypes.map((it) => (
+              <LotTypeRow key={it.name} lotType={it} />
             ))}
           </div>
+        </section>
+      )}
+
+      {/* Operations */}
+      {seedData.operations.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h3 className="flex items-center gap-2 text-sm font-medium">
+            <Zap className="text-muted-foreground size-4" />
+            Operations
+            <Badge variant="secondary">{seedData.operations.length}</Badge>
+          </h3>
+          <div className="bg-muted/50 divide-y rounded-lg border">
+            {seedData.operations.map((op) => (
+              <OperationRow key={op.name} operation={op} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Locations */}
+      {seedData.locations.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <h3 className="flex items-center gap-2 text-sm font-medium">
+            <MapPin className="text-muted-foreground size-4" />
+            Locations
+            <Badge variant="secondary">
+              {countLocations(seedData.locations)}
+            </Badge>
+          </h3>
+          <div className="bg-muted/50 rounded-lg border p-3">
+            <div className="flex flex-col gap-1">
+              {seedData.locations.map((loc) => (
+                <LocationTree key={loc.name} location={loc} depth={0} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {totalEntities === 0 && (
+        <div className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
+          No pre-configured entities — you&apos;ll start with a clean slate.
         </div>
-      </section>
+      )}
 
       {/* Error */}
       {applyMutation.isError && (
@@ -182,7 +194,11 @@ function LotTypeRow({ lotType: it }: { lotType: SeedLotType }) {
           <span key={s.name} className="flex items-center gap-1">
             <Badge
               variant={
-                s.isInitial ? "default" : s.isTerminal ? "secondary" : "outline"
+                s.category === "unstarted"
+                  ? "default"
+                  : s.category === "done" || s.category === "canceled"
+                    ? "secondary"
+                    : "outline"
               }
               className="text-[10px]"
             >

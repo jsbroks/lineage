@@ -387,8 +387,9 @@ export const lotTypeRouter = createTRPCRouter({
             id: z.uuid().optional(),
             name: z.string().min(1),
             color: z.string().nullable().optional(),
-            isInitial: z.boolean().default(false),
-            isTerminal: z.boolean().default(false),
+            category: z
+              .enum(["unstarted", "in_progress", "done", "canceled"])
+              .default("unstarted"),
             ordinal: z.number().int().default(0),
           }),
         ),
@@ -432,8 +433,7 @@ export const lotTypeRouter = createTRPCRouter({
               .set({
                 name: s.name,
                 color: s.color,
-                isInitial: s.isInitial,
-                isTerminal: s.isTerminal,
+                category: s.category,
                 ordinal: s.ordinal,
               })
               .where(eq(lotTypeStatusDefinition.id, s.id));
@@ -442,8 +442,7 @@ export const lotTypeRouter = createTRPCRouter({
               lotTypeId: input.lotTypeId,
               name: s.name,
               color: s.color,
-              isInitial: s.isInitial,
-              isTerminal: s.isTerminal,
+              category: s.category,
               ordinal: s.ordinal,
             });
           }
@@ -582,20 +581,10 @@ export const lotTypeRouter = createTRPCRouter({
 
     const statuses = await ctx.db.select().from(lotTypeStatusDefinition);
 
-    const initialIds = new Map<string, Set<string>>();
-    const terminalIds = new Map<string, Set<string>>();
+    const statusCategoryById = new Map<string, { lotTypeId: string; category: string }>();
     for (const s of statuses) {
       if (!s.lotTypeId) continue;
-      if (s.isInitial) {
-        if (!initialIds.has(s.lotTypeId))
-          initialIds.set(s.lotTypeId, new Set());
-        initialIds.get(s.lotTypeId)!.add(s.id);
-      }
-      if (s.isTerminal) {
-        if (!terminalIds.has(s.lotTypeId))
-          terminalIds.set(s.lotTypeId, new Set());
-        terminalIds.get(s.lotTypeId)!.add(s.id);
-      }
+      statusCategoryById.set(s.id, { lotTypeId: s.lotTypeId, category: s.category });
     }
 
     const lotAgg = await ctx.db
@@ -637,10 +626,8 @@ export const lotTypeRouter = createTRPCRouter({
         typeBucketMap.set(row.lotTypeId, emptyBucket());
       const tb = typeBucketMap.get(row.lotTypeId)!;
 
-      const isInitial =
-        initialIds.get(row.lotTypeId)?.has(row.statusId) ?? false;
-      const isTerminal =
-        terminalIds.get(row.lotTypeId)?.has(row.statusId) ?? false;
+      const statusInfo = statusCategoryById.get(row.statusId);
+      const cat = statusInfo?.category ?? "unstarted";
 
       const cnt = row.total;
       const val = Number(row.totalValue) || 0;
@@ -651,10 +638,10 @@ export const lotTypeRouter = createTRPCRouter({
       tb.totalValue += val;
       tb.totalQuantity += qty;
 
-      if (isInitial) {
+      if (cat === "unstarted") {
         b.prepared += cnt;
         tb.prepared += cnt;
-      } else if (isTerminal) {
+      } else if (cat === "done" || cat === "canceled") {
         b.completed += cnt;
         tb.completed += cnt;
       } else {

@@ -119,16 +119,14 @@ export default function LotTypeDetailPage() {
       {
         name: string;
         color: string | null;
-        isInitial: boolean;
-        isTerminal: boolean;
+        category: string;
       }
     >();
     for (const s of statuses) {
       m.set(s.id, {
         name: s.name,
         color: s.color,
-        isInitial: s.isInitial,
-        isTerminal: s.isTerminal,
+        category: s.category,
       });
     }
     return m;
@@ -146,8 +144,9 @@ export default function LotTypeDetailPage() {
     let terminal = 0;
     for (const row of statusData.counts) {
       const def = statusMap.get(row.status);
-      if (def?.isInitial) initial += row.total;
-      else if (def?.isTerminal) terminal += row.total;
+      const cat = def?.category;
+      if (cat === "unstarted") initial += row.total;
+      else if (cat === "done" || cat === "canceled") terminal += row.total;
       else active += row.total;
     }
     return { initial, active, terminal };

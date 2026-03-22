@@ -39,8 +39,7 @@ export function createStatusCountsTool(ctx: SchemaContext) {
           const status = statusMap.get(r.statusId);
           return {
             status: status?.name ?? r.statusId,
-            isInitial: status?.isInitial ?? false,
-            isTerminal: status?.isTerminal ?? false,
+            category: status?.category ?? "unstarted",
             count: r.total,
           };
         }),

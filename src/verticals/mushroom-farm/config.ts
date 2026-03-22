@@ -32,3 +32,8 @@ export const DEFAULT_WORKFLOW_FLAGS: WorkflowFlags = {
   trayTracking: false,
   roomMetrics: false,
 };
+
+export type MushroomWizardAnswers = {
+  varieties?: string[];
+  workflowFlags?: Partial<WorkflowFlags>;
+};

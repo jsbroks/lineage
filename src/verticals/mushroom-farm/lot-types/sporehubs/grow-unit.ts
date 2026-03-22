@@ -1,15 +1,16 @@
-import type { SeedLotType } from "../../types";
+import type { SeedLotType } from "../../../types";
 
-export function buildBlockLotType(varieties: string[]): SeedLotType {
+export function buildSporehubsGrowUnit(varieties: string[]): SeedLotType {
   return {
     name: "Grow Unit",
-    description: "An individual fruiting unit — block, bag, or bed",
+    description:
+      "A fruiting block, bag, or bed tracked from inoculation through harvest",
     category: "wip",
     quantityName: "Count",
     quantityDefaultUnit: "each",
     icon: "box",
     color: "#10B981",
-    codePrefix: "BK",
+    codePrefix: "GU",
     options: [
       {
         name: "Variety",
@@ -43,18 +44,8 @@ export function buildBlockLotType(varieties: string[]): SeedLotType {
       { from: "Fruiting", to: "Contaminated" },
     ],
     attributes: [
-      {
-        attrKey: "Inoculation Date",
-        dataType: "date",
-        isRequired: true,
-        sortOrder: 0,
-      },
-      {
-        attrKey: "Flush Number",
-        dataType: "number",
-        isRequired: false,
-        sortOrder: 1,
-      },
+      { attrKey: "inoculation_date", dataType: "date", isRequired: true, sortOrder: 0 },
+      { attrKey: "flush_number", dataType: "number", isRequired: false, sortOrder: 1 },
     ],
   };
 }
