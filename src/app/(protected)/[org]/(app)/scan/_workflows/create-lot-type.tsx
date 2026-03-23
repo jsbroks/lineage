@@ -1,4 +1,4 @@
-import { InfoIcon, PackagePlus, Tag } from "lucide-react";
+import { Hash, InfoIcon, PackagePlus, Tag } from "lucide-react";
 import type { ScanContext, ScanWorkflow, WorkflowPanel } from "./types";
 import {
   Select,
@@ -18,10 +18,20 @@ const CreateLotTypePanel: WorkflowPanel = ({ ctx, onComplete }) => {
   const utils = api.useUtils();
 
   const [selectedTypeId, setSelectedTypeId] = useState<string>("");
+  const [selectedVariantId, setSelectedVariantId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+
+  const typeDetailQuery = api.lotType.getById.useQuery(
+    { id: selectedTypeId },
+    { enabled: !!selectedTypeId },
+  );
+
+  const variants =
+    typeDetailQuery.data?.variants.filter((v) => v.isActive) ?? [];
 
   const handleTypeChange = (typeId: string) => {
     setSelectedTypeId(typeId);
+    setSelectedVariantId("");
   };
 
   const handleLink = async () => {
@@ -37,6 +47,7 @@ const CreateLotTypePanel: WorkflowPanel = ({ ctx, onComplete }) => {
     try {
       await addTypeIdentifierMutation.mutateAsync({
         lotTypeId: selectedTypeId,
+        variantId: selectedVariantId || null,
         identifierType,
         identifierValue,
       });
@@ -45,8 +56,14 @@ const CreateLotTypePanel: WorkflowPanel = ({ ctx, onComplete }) => {
       const typeName = lotTypesQuery.data?.find(
         (t) => t.id === selectedTypeId,
       )?.name;
+      const variantName = variants.find(
+        (v) => v.id === selectedVariantId,
+      )?.name;
+      const label = variantName
+        ? `"${typeName} > ${variantName}"`
+        : `"${typeName}"`;
       onComplete({
-        message: `Linked "${identifierValue}" to item type "${typeName}".`,
+        message: `Linked "${identifierValue}" to ${label}.`,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to link code");
@@ -86,8 +103,33 @@ const CreateLotTypePanel: WorkflowPanel = ({ ctx, onComplete }) => {
             ))}
           </SelectContent>
         </Select>
-        {error && <p className="text-destructive text-xs">{error}</p>}
       </div>
+
+      {selectedTypeId && variants.length > 0 && (
+        <div className="space-y-1.5">
+          <label className="flex items-center gap-1.5 text-sm font-medium">
+            <Hash className="text-muted-foreground size-3.5" />
+            Variant
+          </label>
+          <Select
+            value={selectedVariantId}
+            onValueChange={setSelectedVariantId}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select variant..." />
+            </SelectTrigger>
+            <SelectContent>
+              {variants.map((v) => (
+                <SelectItem key={v.id} value={v.id}>
+                  {v.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {error && <p className="text-destructive text-xs">{error}</p>}
 
       <Button disabled={!selectedTypeId} onClick={() => void handleLink()}>
         Link

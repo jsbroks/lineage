@@ -59,7 +59,6 @@ export const scanRouter = createTRPCRouter({
       const lotTypes = await ctx.db
         .select({
           lotType: schema.lotType,
-          variant: schema.lotTypeVariant,
           code: schema.lotTypeIdentifier.identifierValue,
           codeType: schema.lotTypeIdentifier.identifierType,
         })
@@ -67,10 +66,6 @@ export const scanRouter = createTRPCRouter({
         .innerJoin(
           schema.lotTypeIdentifier,
           eq(schema.lotType.id, schema.lotTypeIdentifier.lotTypeId),
-        )
-        .leftJoin(
-          schema.lotTypeVariant,
-          eq(schema.lotType.id, schema.lotTypeVariant.lotTypeId),
         )
         .where(
           inArray(
