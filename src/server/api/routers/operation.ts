@@ -7,7 +7,6 @@ import { registry } from "~/server/engine/actions";
 import type { OperationInputs } from "~/server/engine/operation-create";
 import { createAndExecute } from "~/server/engine/operation-execute";
 
-import { suggestOperations } from "~/server/engine/suggest-operations";
 import * as schema from "~/server/db/schema";
 import { TRPCError } from "@trpc/server";
 
@@ -21,12 +20,6 @@ const executeInput = z.object({
 
 export const operationRouter = createTRPCRouter({
   actions: protectedProcedure.query(() => registry.actions),
-
-  suggest: protectedProcedure
-    .input(z.object({ lotIds: z.array(z.uuid()).min(1) }))
-    .query(async ({ ctx, input }) => {
-      return suggestOperations(ctx.db, input.lotIds);
-    }),
 
   execute: protectedProcedure
     .input(executeInput)

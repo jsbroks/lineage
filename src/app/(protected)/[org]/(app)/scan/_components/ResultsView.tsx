@@ -10,18 +10,61 @@ import {
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import type { ExecuteResult } from "../_workflows/types";
+
+interface StepResult {
+  stepName: string;
+  success: boolean;
+  skipped: boolean;
+  detail?: string;
+}
 
 interface ResultsViewProps {
-  result: ExecuteResult;
+  result: {
+    message: string;
+    steps?: StepResult[];
+    lotsCreated?: { id: string }[];
+    lotsUpdated?: { id: string }[];
+    lineageCreated?: number;
+  };
   onReset: () => void;
 }
 
 export function ResultsView({ result, onReset }: ResultsViewProps) {
-  const failedSteps = result.steps.filter((s) => !s.skipped && !s.success);
+  const steps = result.steps ?? [];
+  const failedSteps = steps.filter((s) => !s.skipped && !s.success);
   const hasErrors = failedSteps.length > 0;
-  const executedCount = result.steps.filter((s) => !s.skipped).length;
-  const skippedCount = result.steps.filter((s) => s.skipped).length;
+
+  if (steps.length === 0) {
+    return (
+      <div className="space-y-6">
+        <Card className="border-green-200 bg-green-50/50 dark:border-green-900 dark:bg-green-950/20">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/40">
+                <CheckCircle2 className="size-5 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-semibold">Done!</h2>
+                <p className="text-muted-foreground mt-0.5 text-sm">
+                  {result.message}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex gap-3">
+          <Button onClick={onReset} variant="outline" className="gap-2">
+            <ScanBarcode className="size-4" />
+            Scan More
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const executedCount = steps.filter((s) => !s.skipped).length;
+  const skippedCount = steps.filter((s) => s.skipped).length;
   const succeededCount = executedCount - failedSteps.length;
 
   return (
@@ -63,19 +106,19 @@ export function ResultsView({ result, onReset }: ResultsViewProps) {
               </p>
 
               <div className="mt-3 flex flex-wrap gap-4 text-sm">
-                {result.lotsCreated.length > 0 && (
+                {(result.lotsCreated?.length ?? 0) > 0 && (
                   <div className="flex items-center gap-1.5">
                     <Zap className="size-3.5 text-blue-500" />
-                    <span>{result.lotsCreated.length} created</span>
+                    <span>{result.lotsCreated!.length} created</span>
                   </div>
                 )}
-                {result.lotsUpdated.length > 0 && (
+                {(result.lotsUpdated?.length ?? 0) > 0 && (
                   <div className="flex items-center gap-1.5">
                     <Check className="size-3.5 text-green-500" />
-                    <span>{result.lotsUpdated.length} updated</span>
+                    <span>{result.lotsUpdated!.length} updated</span>
                   </div>
                 )}
-                {result.lineageCreated > 0 && (
+                {(result.lineageCreated ?? 0) > 0 && (
                   <div className="flex items-center gap-1.5">
                     <ChevronRight className="size-3.5 text-purple-500" />
                     <span>{result.lineageCreated} connection(s)</span>

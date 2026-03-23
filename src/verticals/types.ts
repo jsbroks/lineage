@@ -86,7 +86,7 @@ export interface SeedValueInputConfig {
 /** Maps each input type discriminant to its config shape (intersected into the base). */
 export interface SeedInputConfigMap {
   lots: { config: SeedLotsInputConfig };
-  location: {};
+  locations: {};
   string: { config?: SeedValueInputConfig };
   number: { config?: SeedValueInputConfig };
   date: { config?: SeedValueInputConfig };

@@ -13,6 +13,7 @@ import {
   type EvaluatedWorkflow,
 } from "./_workflows/WorkflowSelector";
 import type { CodeInput } from "~/server/api/routers/scan";
+import { useOperationWorkflowsFinder } from "./_workflows/operations";
 
 type ExecuteResult = {
   message: string;
@@ -55,15 +56,24 @@ export default function ScanPage() {
     [lookupQuery.data],
   );
 
+  const operationWorkflows = useOperationWorkflowsFinder(lookupItems);
+
   const evaluated = useMemo(() => {
     const matches: EvaluatedWorkflow[] = [];
+
     for (const workflow of scanWorkflows) {
       const match = workflow.match(lookupItems);
       if (match) matches.push({ workflow, match });
     }
+
+    for (const workflow of operationWorkflows) {
+      const match = workflow.match(lookupItems);
+      if (match) matches.push({ workflow, match });
+    }
+
     matches.sort((a, b) => b.match.priority - a.match.priority);
     return matches;
-  }, [lookupItems]);
+  }, [lookupItems, operationWorkflows]);
 
   const bestWorkflowId = evaluated[0]?.workflow.id ?? null;
   const effectiveSelectedId =

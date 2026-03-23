@@ -20,13 +20,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import type { InputFieldRow } from "./OperationTypeForm";
+import type { InputRow } from "./OperationTypeForm";
 
 type InputFieldsCardProps = {
-  inputFields: InputFieldRow[];
+  inputFields: InputRow[];
   onAdd: () => void;
   onRemove: (idx: number) => void;
-  onUpdate: (idx: number, patch: Partial<InputFieldRow>) => void;
+  onUpdate: (idx: number, patch: Partial<InputRow>) => void;
 };
 
 export function InputFieldsCard({
@@ -90,7 +90,8 @@ export function InputFieldsCard({
                       <SelectItem value="number">Number</SelectItem>
                       <SelectItem value="date">Date</SelectItem>
                       <SelectItem value="boolean">Boolean</SelectItem>
-                      <SelectItem value="location">Location</SelectItem>
+                      <SelectItem value="locations">Location</SelectItem>
+                      <SelectItem value="lots">Inventoryt</SelectItem>
                       <SelectItem value="select">Select</SelectItem>
                     </SelectContent>
                   </Select>

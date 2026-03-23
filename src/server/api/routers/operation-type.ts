@@ -63,6 +63,38 @@ export const operationTypeRouter = createTRPCRouter({
     return ctx.db.select().from(operationType).orderBy(asc(operationType.name));
   }),
 
+  listWithInputs: protectedProcedure.query(async ({ ctx }) => {
+    const [types, allInputs, allLotConfigs] = await Promise.all([
+      ctx.db.select().from(operationType).orderBy(asc(operationType.name)),
+      ctx.db
+        .select()
+        .from(operationTypeInput)
+        .orderBy(asc(operationTypeInput.sortOrder)),
+      ctx.db.select().from(operationTypeInputLotConfig),
+    ]);
+
+    const configByInputId = new Map(allLotConfigs.map((c) => [c.inputId, c]));
+
+    const inputsByOpType = new Map<
+      string,
+      Array<
+        (typeof allInputs)[number] & {
+          lotConfig: (typeof allLotConfigs)[number] | null;
+        }
+      >
+    >();
+    for (const inp of allInputs) {
+      const list = inputsByOpType.get(inp.operationTypeId) ?? [];
+      list.push({ ...inp, lotConfig: configByInputId.get(inp.id) ?? null });
+      inputsByOpType.set(inp.operationTypeId, list);
+    }
+
+    return types.map((t) => ({
+      ...t,
+      inputs: inputsByOpType.get(t.id) ?? [],
+    }));
+  }),
+
   statusesForLotType: protectedProcedure
     .input(z.object({ lotTypeId: z.uuid() }))
     .query(async ({ ctx, input }) => {

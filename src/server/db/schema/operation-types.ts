@@ -42,7 +42,7 @@ export const operationTypeInput = pgTable(
     referenceKey: text("reference_key").notNull(),
     label: text("label"),
     description: text("description"),
-    type: text("type").notNull(), // 'lots' | 'location' | 'string' | 'number' | 'date' | ...
+    type: text("type").notNull(), // 'lots' | 'locations' | 'string' | 'number' | 'date' | ...
     required: boolean("required").notNull().default(false),
     sortOrder: integer("sort_order").notNull(),
     options: jsonb().$type<Record<string, unknown>>(),

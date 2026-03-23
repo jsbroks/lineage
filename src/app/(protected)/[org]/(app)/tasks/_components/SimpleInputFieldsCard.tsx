@@ -84,7 +84,7 @@ export function SimpleInputFieldsCard({
                       <SelectItem value="number">Number</SelectItem>
                       <SelectItem value="date">Date</SelectItem>
                       <SelectItem value="boolean">Yes / No</SelectItem>
-                      <SelectItem value="location">Location</SelectItem>
+                      <SelectItem value="locations">Location</SelectItem>
                       <SelectItem value="select">Select</SelectItem>
                     </SelectContent>
                   </Select>

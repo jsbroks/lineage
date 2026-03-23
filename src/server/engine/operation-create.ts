@@ -41,7 +41,7 @@ export const createOperation = async (
         }
         break;
       }
-      case "location": {
+      case "locations": {
         await tx.insert(schema.operationInputLocation).values({
           operationId: operation.id,
           key: def.referenceKey,
