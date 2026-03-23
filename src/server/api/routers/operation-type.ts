@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -10,6 +10,7 @@ import {
   operationTypeStep,
   lotTypeStatusDefinition,
 } from "~/server/db/schema";
+import { getActiveOrgId } from "~/server/api/org";
 
 const createOperationTypeSchema = z.object({
   name: z.string().min(1),
@@ -60,12 +61,22 @@ const inputSchema = z.object({
 
 export const operationTypeRouter = createTRPCRouter({
   list: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.select().from(operationType).orderBy(asc(operationType.name));
+    const orgId = getActiveOrgId(ctx.session);
+    return ctx.db
+      .select()
+      .from(operationType)
+      .where(eq(operationType.orgId, orgId))
+      .orderBy(asc(operationType.name));
   }),
 
   listWithInputs: protectedProcedure.query(async ({ ctx }) => {
+    const orgId = getActiveOrgId(ctx.session);
     const [types, allInputs, allLotConfigs] = await Promise.all([
-      ctx.db.select().from(operationType).orderBy(asc(operationType.name)),
+      ctx.db
+        .select()
+        .from(operationType)
+        .where(eq(operationType.orgId, orgId))
+        .orderBy(asc(operationType.name)),
       ctx.db
         .select()
         .from(operationTypeInput)
@@ -108,10 +119,13 @@ export const operationTypeRouter = createTRPCRouter({
   getById: protectedProcedure
     .input(z.object({ id: z.uuid() }))
     .query(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
       const [op] = await ctx.db
         .select()
         .from(operationType)
-        .where(eq(operationType.id, input.id));
+        .where(
+          and(eq(operationType.id, input.id), eq(operationType.orgId, orgId)),
+        );
 
       if (!op) {
         throw new TRPCError({
@@ -168,9 +182,11 @@ export const operationTypeRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createOperationTypeSchema)
     .mutation(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
       const [createdOperationType] = await ctx.db
         .insert(operationType)
         .values({
+          orgId,
           name: input.name,
           description: input.description,
           icon: input.icon,
@@ -183,11 +199,12 @@ export const operationTypeRouter = createTRPCRouter({
   update: protectedProcedure
     .input(updateOperationTypeSchema)
     .mutation(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
       const { id, ...data } = input;
       const [updated] = await ctx.db
         .update(operationType)
         .set(data)
-        .where(eq(operationType.id, id))
+        .where(and(eq(operationType.id, id), eq(operationType.orgId, orgId)))
         .returning();
 
       if (!updated) {
@@ -493,9 +510,12 @@ export const operationTypeRouter = createTRPCRouter({
   delete: protectedProcedure
     .input(z.object({ id: z.uuid() }))
     .mutation(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
       const [deletedOperationType] = await ctx.db
         .delete(operationType)
-        .where(eq(operationType.id, input.id))
+        .where(
+          and(eq(operationType.id, input.id), eq(operationType.orgId, orgId)),
+        )
         .returning({ id: operationType.id });
 
       if (!deletedOperationType) {

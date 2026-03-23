@@ -14,6 +14,8 @@ import {
   location,
   lotTypeStatusDefinition,
 } from "~/server/db/schema";
+import { getActiveOrgId } from "~/server/api/org";
+import { resolveStatusId } from "~/server/api/helpers/resolve-status";
 
 const createLotInput = z
   .object({
@@ -84,72 +86,20 @@ const batchCreateLotsInput = z
     }
   });
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function resolveStatusId(
-  tx: any,
-  lotTypeId: string,
-  statusInput: string,
-): Promise<string> {
-  if (UUID_RE.test(statusInput)) {
-    const [match] = await tx
-      .select({ id: lotTypeStatusDefinition.id })
-      .from(lotTypeStatusDefinition)
-      .where(
-        and(
-          eq(lotTypeStatusDefinition.id, statusInput),
-          eq(lotTypeStatusDefinition.lotTypeId, lotTypeId),
-        ),
-      )
-      .limit(1);
-    if (match) return match.id as string;
-    throw new TRPCError({
-      code: "BAD_REQUEST",
-      message: `Status ID "${statusInput}" does not belong to this lot type.`,
-    });
-  }
-
-  const [byName] = await tx
-    .select({ id: lotTypeStatusDefinition.id })
-    .from(lotTypeStatusDefinition)
-    .where(
-      and(
-        eq(lotTypeStatusDefinition.lotTypeId, lotTypeId),
-        eq(lotTypeStatusDefinition.name, statusInput),
-      ),
-    )
-    .limit(1);
-  if (byName) return byName.id as string;
-
-  const [fallback] = await tx
-    .select({ id: lotTypeStatusDefinition.id })
-    .from(lotTypeStatusDefinition)
-    .where(
-      and(
-        eq(lotTypeStatusDefinition.lotTypeId, lotTypeId),
-        eq(lotTypeStatusDefinition.category, "unstarted"),
-      ),
-    )
-    .orderBy(asc(lotTypeStatusDefinition.ordinal))
-    .limit(1);
-  if (fallback) return fallback.id as string;
-
-  throw new TRPCError({
-    code: "BAD_REQUEST",
-    message: `Could not resolve status "${statusInput}" for this lot type. No statuses are configured.`,
-  });
-}
-
 export const lotRouter = createTRPCRouter({
   list: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db.select().from(lot).orderBy(desc(lot.createdAt));
+    const orgId = getActiveOrgId(ctx.session);
+    return ctx.db
+      .select()
+      .from(lot)
+      .where(eq(lot.orgId, orgId))
+      .orderBy(desc(lot.createdAt));
   }),
 
   recentActivity: protectedProcedure
     .input(z.object({ limit: z.number().int().min(1).max(50).default(20) }))
     .query(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
       const events = await ctx.db
         .select({
           id: lotEvent.id,
@@ -166,6 +116,7 @@ export const lotRouter = createTRPCRouter({
         .from(lotEvent)
         .innerJoin(lot, eq(lotEvent.lotId, lot.id))
         .innerJoin(lotType, eq(lot.lotTypeId, lotType.id))
+        .where(eq(lot.orgId, orgId))
         .orderBy(desc(lotEvent.recordedAt))
         .limit(input.limit);
 
@@ -175,10 +126,11 @@ export const lotRouter = createTRPCRouter({
   getByCode: protectedProcedure
     .input(z.object({ code: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
       const [currentLot] = await ctx.db
         .select()
         .from(lot)
-        .where(eq(lot.code, input.code))
+        .where(and(eq(lot.code, input.code), eq(lot.orgId, orgId)))
         .limit(1);
 
       if (!currentLot) {
@@ -222,6 +174,7 @@ export const lotRouter = createTRPCRouter({
   create: protectedProcedure
     .input(createLotInput)
     .mutation(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
       const createdLot = await ctx.db.transaction(async (tx) => {
         const [it] = await tx
           .select()
@@ -257,6 +210,7 @@ export const lotRouter = createTRPCRouter({
         const [newLot] = await tx
           .insert(lot)
           .values({
+            orgId,
             lotTypeId: input.lotTypeId,
             variantId: input.variantId ?? null,
             code: codeValue,
@@ -275,21 +229,12 @@ export const lotRouter = createTRPCRouter({
           });
         }
 
-        const [linkedIdentifier] = await tx
-          .select()
-          .from(lotIdentifier)
-          .where(eq(lotIdentifier.lotId, newLot.id))
-          .limit(1);
-
-        if (!linkedIdentifier) {
-          await tx.insert(lotIdentifier).values({
-            lotId: newLot.id,
-            identifierType: "QR Code",
-            identifierValue: `${input.hostname}/l/${newLot.id}`,
-            linkedAt: new Date(),
-            isActive: true,
-          });
-        }
+        await tx.insert(lotIdentifier).values({
+          orgId,
+          lotId: newLot.id,
+          identifierType: "Code",
+          identifierValue: codeValue,
+        });
 
         return newLot;
       });
@@ -331,10 +276,11 @@ export const lotRouter = createTRPCRouter({
   getById: protectedProcedure
     .input(z.object({ lotId: z.uuid() }))
     .query(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
       const [currentLot] = await ctx.db
         .select()
         .from(lot)
-        .where(eq(lot.id, input.lotId))
+        .where(and(eq(lot.id, input.lotId), eq(lot.orgId, orgId)))
         .limit(1);
 
       if (!currentLot) {
@@ -439,6 +385,7 @@ export const lotRouter = createTRPCRouter({
   batchCreate: protectedProcedure
     .input(batchCreateLotsInput)
     .mutation(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
       return ctx.db.transaction(async (tx) => {
         const resolvedStatusId = await resolveStatusId(
           tx,
@@ -522,6 +469,7 @@ export const lotRouter = createTRPCRouter({
           .insert(lot)
           .values(
             uniqueCodes.map((code) => ({
+              orgId,
               lotTypeId: input.lotTypeId,
               variantId: input.variantId ?? null,
               code,
@@ -574,7 +522,11 @@ export const lotRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const conditions = [eq(lot.lotTypeId, input.lotTypeId)];
+      const orgId = getActiveOrgId(ctx.session);
+      const conditions = [
+        eq(lot.orgId, orgId),
+        eq(lot.lotTypeId, input.lotTypeId),
+      ];
       if (input.status) conditions.push(eq(lot.statusId, input.status));
       if (input.variantId) conditions.push(eq(lot.variantId, input.variantId));
       if (input.search) conditions.push(ilike(lot.code, `%${input.search}%`));
@@ -1007,10 +959,17 @@ export const lotRouter = createTRPCRouter({
   resolveIdentifier: protectedProcedure
     .input(z.object({ identifierValue: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
+
       const [ident] = await ctx.db
         .select({ lotId: lotIdentifier.lotId })
         .from(lotIdentifier)
-        .where(eq(lotIdentifier.identifierValue, input.identifierValue))
+        .where(
+          and(
+            eq(lotIdentifier.orgId, orgId),
+            eq(lotIdentifier.identifierValue, input.identifierValue),
+          ),
+        )
         .limit(1);
 
       if (!ident) return null;
@@ -1063,10 +1022,17 @@ export const lotRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
+
       const [existing] = await ctx.db
         .select()
         .from(lotIdentifier)
-        .where(eq(lotIdentifier.identifierValue, input.identifierValue))
+        .where(
+          and(
+            eq(lotIdentifier.orgId, orgId),
+            eq(lotIdentifier.identifierValue, input.identifierValue),
+          ),
+        )
         .limit(1);
 
       if (existing) {
@@ -1079,11 +1045,10 @@ export const lotRouter = createTRPCRouter({
       const [created] = await ctx.db
         .insert(lotIdentifier)
         .values({
+          orgId,
           lotId: input.lotId,
           identifierType: input.identifierType,
           identifierValue: input.identifierValue,
-          linkedAt: new Date(),
-          isActive: true,
         })
         .returning();
 
@@ -1122,6 +1087,7 @@ export const lotRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
       const BUILTIN_FIELDS = new Set([
         "status",
         "variant",
@@ -1275,7 +1241,10 @@ export const lotRouter = createTRPCRouter({
         }
       }
 
-      const conditions = [eq(lot.lotTypeId, input.lotTypeId)];
+      const conditions = [
+        eq(lot.orgId, orgId),
+        eq(lot.lotTypeId, input.lotTypeId),
+      ];
       if (input.filters?.status)
         conditions.push(eq(lot.statusId, input.filters.status));
       if (input.filters?.variantId)

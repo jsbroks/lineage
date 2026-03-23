@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
@@ -9,6 +9,7 @@ import { createAndExecute } from "~/server/engine/operation-execute";
 
 import * as schema from "~/server/db/schema";
 import { TRPCError } from "@trpc/server";
+import { getActiveOrgId } from "~/server/api/org";
 
 const executeInput = z.object({
   operationTypeId: z.uuid(),
@@ -24,10 +25,14 @@ export const operationRouter = createTRPCRouter({
   execute: protectedProcedure
     .input(executeInput)
     .mutation(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
       return ctx.db.transaction(async (tx) => {
         const inputs: OperationInputs = input.inputs;
         const operationType = await tx.query.operationType.findFirst({
-          where: eq(schema.operationType.id, input.operationTypeId),
+          where: and(
+            eq(schema.operationType.id, input.operationTypeId),
+            eq(schema.operationType.orgId, orgId),
+          ),
         });
         if (!operationType) {
           throw new TRPCError({
@@ -48,9 +53,11 @@ export const operationRouter = createTRPCRouter({
     }),
 
   list: protectedProcedure.query(async ({ ctx }) => {
+    const orgId = getActiveOrgId(ctx.session);
     return ctx.db
       .select()
       .from(operation)
+      .where(eq(operation.orgId, orgId))
       .orderBy(desc(operation.completedAt))
       .limit(100);
   }),
@@ -58,6 +65,7 @@ export const operationRouter = createTRPCRouter({
   recentWithTypes: protectedProcedure
     .input(z.object({ limit: z.number().int().min(1).max(50).default(10) }))
     .query(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
       return ctx.db
         .select({
           id: operation.id,
@@ -73,6 +81,7 @@ export const operationRouter = createTRPCRouter({
           operationType,
           eq(operation.operationTypeId, operationType.id),
         )
+        .where(eq(operation.orgId, orgId))
         .orderBy(desc(operation.completedAt))
         .limit(input.limit);
     }),
@@ -80,10 +89,11 @@ export const operationRouter = createTRPCRouter({
   getById: protectedProcedure
     .input(z.object({ id: z.uuid() }))
     .query(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
       const [op] = await ctx.db
         .select()
         .from(operation)
-        .where(eq(operation.id, input.id))
+        .where(and(eq(operation.id, input.id), eq(operation.orgId, orgId)))
         .limit(1);
 
       return op ?? null;

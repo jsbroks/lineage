@@ -1,11 +1,10 @@
 import { type Metadata } from "next";
-
-import OperationsPage from "./operations-page";
+import TeamSettingsPage from "./team-page";
 
 export const metadata: Metadata = {
-  title: "Record Task",
+  title: "Team",
 };
 
 export default function Page() {
-  return <OperationsPage />;
+  return <TeamSettingsPage />;
 }

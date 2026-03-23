@@ -21,6 +21,7 @@ import { Icon } from "~/app/_components/IconPicker";
 
 import { AiDailySummary } from "./_components/AiDailySummary";
 import { InsightCards } from "./_components/InsightCards";
+import { StatusFlowDiagram } from "./_components/StatusFlowDiagram";
 import { QuickReport } from "./_components/QuickReport";
 import { LotsTable } from "./_components/LotsTable";
 import { BulkStatusDialog } from "./_components/BulkStatusDialog";
@@ -110,6 +111,7 @@ export default function LotTypeDetailPage() {
 
   const it = typeData?.lotType;
   const statuses = typeData?.statuses ?? [];
+  const transitions = typeData?.transitions ?? [];
   const variants = typeData?.variants ?? [];
   const attrDefs = typeData?.attributeDefinitions ?? [];
 
@@ -200,9 +202,9 @@ export default function LotTypeDetailPage() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-          {it.category && (
+          {it.categoryId && (
             <Badge variant="secondary" className="text-xs">
-              {it.category}
+              {it.categoryId}
             </Badge>
           )}
         </div>
@@ -232,6 +234,8 @@ export default function LotTypeDetailPage() {
           <AiDailySummary lotTypeId={typeId} />
 
           <InsightCards totalLots={totalLots} statusInsights={statusInsights} />
+
+          <StatusFlowDiagram statuses={statuses} transitions={transitions} />
 
           <QuickReport
             typeId={typeId}

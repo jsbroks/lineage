@@ -7,12 +7,15 @@ export const env = createEnv({
    * isn't built with invalid env vars.
    */
   server: {
+    BETTER_AUTH_URL: z.url().default("http://localhost:3000"),
     BETTER_AUTH_SECRET:
       process.env.NODE_ENV === "production"
         ? z.string()
         : z.string().optional(),
     DATABASE_URL: z.url(),
     OPENAI_API_KEY: z.string().optional(),
+    RESEND_API_KEY: z.string().optional(),
+    EMAIL_FROM: z.string().email().optional().default("noreply@lineage.farm"),
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -38,9 +41,12 @@ export const env = createEnv({
    * middlewares) or client-side so we need to destruct manually.
    */
   runtimeEnv: {
+    BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
     BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    EMAIL_FROM: process.env.EMAIL_FROM,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     NEXT_PUBLIC_CHATWOOT_WEBSITE_TOKEN:

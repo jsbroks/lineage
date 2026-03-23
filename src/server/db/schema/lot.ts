@@ -12,7 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { lotType, lotTypeVariant } from "./lot-types";
 import { location } from "./location";
-import { user } from "./auth";
+import { organization, user } from "./auth";
 import { operation } from "./operation";
 import { lotTypeStatusDefinition } from "./lot-type-status";
 
@@ -20,6 +20,10 @@ export const lot = pgTable(
   "lot",
   {
     id: uuid().primaryKey().defaultRandom(),
+
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organization.id),
 
     lotTypeId: uuid("lot_type_id")
       .notNull()
@@ -52,7 +56,11 @@ export const lot = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [uniqueIndex().on(t.lotTypeId, t.code)],
+  (t) => [
+    uniqueIndex("uq_lot_org_type_code").on(t.orgId, t.lotTypeId, t.code),
+    index("idx_lot_org").on(t.orgId),
+    index("idx_lot_org_created").on(t.orgId, t.createdAt),
+  ],
 );
 
 export type Lot = typeof lot.$inferSelect;
@@ -61,6 +69,9 @@ export const lotIdentifier = pgTable(
   "lot_identifier",
   {
     id: uuid().primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organization.id),
     lotId: uuid("lot_id")
       .references(() => lot.id, { onDelete: "cascade" })
       .notNull(),
@@ -68,15 +79,12 @@ export const lotIdentifier = pgTable(
     identifierValue: text("identifier_value").notNull(),
     label: text(),
 
-    isActive: boolean("is_active").notNull().default(true),
-    printedAt: timestamp("printed_at", { withTimezone: true }),
-    linkedAt: timestamp("linked_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (t) => [
-    uniqueIndex().on(t.identifierType, t.identifierValue),
+    uniqueIndex().on(t.orgId, t.identifierType, t.identifierValue),
     index().on(t.lotId),
     index().on(t.identifierValue),
   ],

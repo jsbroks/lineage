@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -8,7 +9,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { user } from "./auth";
+import { organization, user } from "./auth";
 import { operationType } from "./operation-types";
 import { location } from "./location";
 import { lot } from "./lot";
@@ -18,7 +19,9 @@ export const operation = pgTable(
   "operation",
   {
     id: uuid().primaryKey().defaultRandom(),
-    // orgId:           uuid("org_id").notNull().references(() => organizations.id),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organization.id),
     operationTypeId: uuid("operation_type_id")
       .notNull()
       .references(() => operationType.id, { onDelete: "cascade" }),
@@ -34,14 +37,18 @@ export const operation = pgTable(
       .defaultNow(),
   },
   (t) => [
-    // index("idx_operations_org").on(t.orgId),
-    // index("idx_operations_type").on(t.operationTypeId),
-    // index("idx_operations_completed").on(t.orgId, t.completedAt),
+    index("idx_operation_org").on(t.orgId),
+    index("idx_operation_type").on(t.operationTypeId),
+    index("idx_operation_org_completed").on(t.orgId, t.completedAt),
   ],
 );
 export type Operation = typeof operation.$inferSelect;
 
 export const operationRelation = relations(operation, ({ many, one }) => ({
+  organization: one(organization, {
+    fields: [operation.orgId],
+    references: [organization.id],
+  }),
   type: one(operationType, {
     fields: [operation.operationTypeId],
     references: [operationType.id],
@@ -134,12 +141,6 @@ export const operationInputValueRelation = relations(
     }),
   }),
 );
-
-// Backward-compatible aliases (will be removed once all layers are migrated)
-/** @deprecated Use operationInputValue */
-export const operationInputField = operationInputValue;
-/** @deprecated Use OperationInputValue */
-export type OperationInputField = OperationInputValue;
 
 export const operationStep = pgTable("operation_step", {
   id: uuid().primaryKey().defaultRandom(),

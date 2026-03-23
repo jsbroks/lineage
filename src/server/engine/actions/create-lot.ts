@@ -56,6 +56,7 @@ export const createLot = createAction({
       const now = new Date();
 
       result.lots.create.push({
+        orgId: ctx.operation.orgId,
         lotTypeId,
         variantId: null,
         code,

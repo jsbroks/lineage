@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { Button } from "~/components/ui/button";
 import { Scan } from "lucide-react";
 import { DashboardPage } from "./_components/dashboard-page";
+import { getOrgBySlug } from "./_lib/org-helpers";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -15,6 +16,7 @@ export default async function Home({
   params: Promise<{ org: string }>;
 }) {
   const { org } = await params;
+  const orgData = await getOrgBySlug(org);
   const now = new Date();
   const today = format(now, "EEEE, MMMM d");
   const hour = now.getHours();
@@ -26,7 +28,7 @@ export default async function Home({
       <div className="mb-8 flex items-center justify-between gap-4">
         <header>
           <h1 className="text-foreground mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-            Cedar Grove Mycology
+            {orgData.name}
           </h1>
           <p className="text-muted-foreground mt-2 text-base">
             {today} &mdash; {timeGreeting}

@@ -56,12 +56,11 @@ export function GeneralCard({
             <Label htmlFor="it-category">Category</Label>
             <Input
               id="it-category"
-              value={base.category}
+              value={base.categoryId}
               onChange={(e) =>
-                setBase((p) => ({ ...p, category: e.target.value }))
+                setBase((p) => ({ ...p, categoryId: e.target.value }))
               }
-              required
-              placeholder="biological"
+              placeholder="Select a category"
             />
           </div>
           <div className="space-y-2">

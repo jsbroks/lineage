@@ -9,6 +9,7 @@ import type {
 function makeLot(overrides: Partial<Lot> = {}): Lot {
   return {
     id: "lot-1",
+    orgId: "org-1",
     lotTypeId: "type-1",
     variantId: null,
     code: "BLK-0001",
@@ -30,6 +31,7 @@ function makeLot(overrides: Partial<Lot> = {}): Lot {
 function makeOperation(overrides: Partial<Operation> = {}): Operation {
   return {
     id: "op-1",
+    orgId: "org-1",
     operationTypeId: "op-type-1",
     status: "completed",
     startedAt: null,

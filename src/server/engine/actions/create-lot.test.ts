@@ -34,6 +34,7 @@ function makeLotType(
   const { statusDefinitions = [], ...rest } = overrides;
   return {
     id: "type-1",
+    orgId: "org-1",
     name: "Block",
     description: null,
     category: "product",
@@ -95,6 +96,7 @@ function makeCtx({
 
   const ctx = new OperationContext({
     id: "op-1",
+    orgId: "org-1",
     operationTypeId: "op-type-1",
     status: "completed",
     startedAt: null,

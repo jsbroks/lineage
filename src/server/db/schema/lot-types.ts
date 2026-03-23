@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   integer,
   jsonb,
   numeric,
@@ -11,14 +12,65 @@ import {
 } from "drizzle-orm/pg-core";
 import { lotTypeStatusDefinition } from "./lot-type-status";
 import { relations } from "drizzle-orm/relations";
+import { organization } from "./auth";
+
+// ---------------------------------------------------------------------------
+// Lot type category — org-level lookup for lotType.categoryId
+// ---------------------------------------------------------------------------
+
+export const lotTypeCategory = pgTable(
+  "lot_type_category",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organization.id),
+    name: text().notNull(),
+    description: text(),
+    color: text(),
+    icon: text(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("uq_lot_type_category_org_name").on(t.orgId, t.name),
+    index("idx_lot_type_category_org").on(t.orgId),
+  ],
+);
+
+export type LotTypeCategory = typeof lotTypeCategory.$inferSelect;
+
+export const lotTypeCategoryRelations = relations(
+  lotTypeCategory,
+  ({ one, many }) => ({
+    organization: one(organization, {
+      fields: [lotTypeCategory.orgId],
+      references: [organization.id],
+    }),
+    lotTypes: many(lotType),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Lot type
+// ---------------------------------------------------------------------------
 
 export const lotType = pgTable(
   "lot_type",
   {
     id: uuid().primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organization.id),
     name: text().notNull(),
     description: text(),
-    category: text().notNull(),
+    categoryId: uuid("category_id").references(() => lotTypeCategory.id, {
+      onDelete: "set null",
+    }),
     quantityName: text("quantity_name"),
     quantityDefaultUnit: text("default_unit").notNull().default("each"),
     icon: text(),
@@ -26,10 +78,22 @@ export const lotType = pgTable(
     codePrefix: text("code_prefix"),
     codeNextNumber: integer("code_next_number").notNull().default(1),
   },
-  (t) => [uniqueIndex().on(t.codePrefix)],
+  (t) => [
+    uniqueIndex("uq_lot_type_org_code_prefix").on(t.orgId, t.codePrefix),
+    uniqueIndex("uq_lot_type_org_name").on(t.orgId, t.name),
+    index("idx_lot_type_org").on(t.orgId),
+  ],
 );
 
-export const lotTypeRelations = relations(lotType, ({ many }) => ({
+export const lotTypeRelations = relations(lotType, ({ one, many }) => ({
+  organization: one(organization, {
+    fields: [lotType.orgId],
+    references: [organization.id],
+  }),
+  category: one(lotTypeCategory, {
+    fields: [lotType.categoryId],
+    references: [lotTypeCategory.id],
+  }),
   statusDefinitions: many(lotTypeStatusDefinition),
 }));
 
@@ -109,6 +173,9 @@ export const lotTypeIdentifier = pgTable(
     lotTypeId: uuid("lot_type_id")
       .notNull()
       .references(() => lotType.id, { onDelete: "cascade" }),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organization.id),
     variantId: uuid("variant_id").references(() => lotTypeVariant.id, {
       onDelete: "set null",
     }),
@@ -118,7 +185,13 @@ export const lotTypeIdentifier = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (t) => [uniqueIndex().on(t.identifierType, t.identifierValue)],
+  (t) => [
+    uniqueIndex("uq_lot_type_identifier_org_type_value").on(
+      t.orgId,
+      t.identifierType,
+      t.identifierValue,
+    ),
+  ],
 );
 
 export const lotTypeAttributeDefinition = pgTable(

@@ -34,6 +34,7 @@ function makeCtx({ fields = [] }: CtxInput = {}): OperationContext {
 
   return new OperationContext({
     id: "op-1",
+    orgId: "org-1",
     operationTypeId: "op-type-1",
     status: "completed",
     startedAt: null,

@@ -45,7 +45,7 @@ export default function EditLotTypePage() {
     return {
       base: {
         name: it.name,
-        category: it.category,
+        categoryId: it.categoryId ?? "",
         defaultUom: it.quantityDefaultUnit ?? "each",
         quantityName: it.quantityName ?? "",
         description: it.description ?? "",

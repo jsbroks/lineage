@@ -6,7 +6,7 @@ import { type LotTypeFormData } from "../_components/LotTypeForm";
 function buildBasePayload(base: LotTypeFormData["base"]) {
   return {
     name: base.name.trim(),
-    category: base.category.trim(),
+    categoryId: base.categoryId || null,
     quantityName: base.quantityName.trim() || null,
     quantityDefaultUnit: base.defaultUom.trim() || "each",
     description: base.description.trim() || null,

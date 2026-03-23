@@ -11,20 +11,30 @@ import {
 } from "drizzle-orm/pg-core";
 import { lotType } from "./lot-types";
 import { location } from "./location";
+import { organization } from "./auth";
 
-export const operationType = pgTable("operation_type", {
-  id: uuid().primaryKey().defaultRandom(),
-  // verticalId: uuid("vertical_id")
-  //   .notNull()
-  //   .references(() => verticals.id),
-  name: text().notNull(),
-  description: text(),
-  icon: text(),
-  color: text(),
+export const operationType = pgTable(
+  "operation_type",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organization.id),
+    name: text().notNull(),
+    description: text(),
+    icon: text(),
+    color: text(),
 
-  defaultLocationId: uuid("default_location_id").references(() => location.id),
-  category: text(),
-});
+    defaultLocationId: uuid("default_location_id").references(
+      () => location.id,
+    ),
+    category: text(),
+  },
+  (t) => [
+    uniqueIndex("uq_operation_type_org_name").on(t.orgId, t.name),
+    index("idx_operation_type_org").on(t.orgId),
+  ],
+);
 
 export type OperationType = typeof operationType.$inferSelect;
 
@@ -72,16 +82,6 @@ export const operationTypeInputLotConfig = pgTable(
 export type OperationTypeInputLotConfig =
   typeof operationTypeInputLotConfig.$inferSelect;
 
-// Backward-compatible aliases (will be removed once all layers are migrated)
-/** @deprecated Use operationTypeInput */
-export const operationTypeInputLot = operationTypeInput;
-/** @deprecated Use OperationTypeInput */
-export type OperationTypeInputLot = OperationTypeInput;
-/** @deprecated Use operationTypeInput */
-export const operationTypeInputField = operationTypeInput;
-/** @deprecated Use OperationTypeInput */
-export type OperationTypeInputField = OperationTypeInput;
-
 export const operationTypeStep = pgTable(
   "operation_type_step",
   {
@@ -121,7 +121,7 @@ export const validationRule = pgTable(
   {
     id: uuid().primaryKey().defaultRandom(),
 
-    // orgId: uuid("org_id").references(() => organizations.id), // NULL = system default
+    orgId: uuid("org_id").references(() => organization.id),
     lotTypeId: uuid("lot_type_id").references(() => lotType.id, {
       onDelete: "cascade",
     }),

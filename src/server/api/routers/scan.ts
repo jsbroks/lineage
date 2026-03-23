@@ -1,7 +1,8 @@
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { createTRPCRouter, protectedProcedure } from "../trpc";
 import { z } from "zod";
 import * as schema from "~/server/db/schema";
+import { getActiveOrgId } from "~/server/api/org";
 
 export type LocationItem = {
   type: "location";
@@ -52,6 +53,7 @@ export const scanRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const orgId = getActiveOrgId(ctx.session);
       const uuids = input.codes
         .map((c) => c.code)
         .filter((c) => uuid.safeParse(c).success);
@@ -68,9 +70,12 @@ export const scanRouter = createTRPCRouter({
           eq(schema.lotType.id, schema.lotTypeIdentifier.lotTypeId),
         )
         .where(
-          inArray(
-            schema.lotTypeIdentifier.identifierValue,
-            input.codes.map((c) => c.code),
+          and(
+            eq(schema.lotType.orgId, orgId),
+            inArray(
+              schema.lotTypeIdentifier.identifierValue,
+              input.codes.map((c) => c.code),
+            ),
           ),
         )
         .then((rs) => rs.map((r) => ({ type: "lotType" as const, ...r })));
@@ -94,9 +99,12 @@ export const scanRouter = createTRPCRouter({
           eq(schema.lot.statusId, schema.lotTypeStatusDefinition.id),
         )
         .where(
-          inArray(
-            schema.lot.code,
-            input.codes.map((c) => c.code),
+          and(
+            eq(schema.lot.orgId, orgId),
+            inArray(
+              schema.lot.code,
+              input.codes.map((c) => c.code),
+            ),
           ),
         )
         .then((rs) => rs.map((r) => ({ type: "lot" as const, ...r })));
@@ -109,7 +117,12 @@ export const scanRouter = createTRPCRouter({
                 code: schema.location.id,
               })
               .from(schema.location)
-              .where(inArray(schema.location.id, uuids))
+              .where(
+                and(
+                  eq(schema.location.orgId, orgId),
+                  inArray(schema.location.id, uuids),
+                ),
+              )
               .then((rs) =>
                 rs.map((r) => ({ type: "location" as const, ...r })),
               )

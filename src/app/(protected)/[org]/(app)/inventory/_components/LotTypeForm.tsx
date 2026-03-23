@@ -31,7 +31,7 @@ function cartesian(sets: string[][]): string[][] {
 
 export type LotTypeFormValues = {
   name: string;
-  category: string;
+  categoryId: string;
   defaultUom: string;
   quantityName: string;
   description: string;
@@ -90,7 +90,7 @@ export type LotTypeFormData = {
 
 const EMPTY_BASE: LotTypeFormValues = {
   name: "",
-  category: "",
+  categoryId: "",
   defaultUom: "each",
   quantityName: "",
   description: "",

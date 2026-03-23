@@ -204,6 +204,189 @@ describe("stepRowsToSimpleSteps", () => {
   });
 });
 
+describe("stepRowsToSimpleSteps edge cases", () => {
+  it("handles step with null-ish config (empty JSON object)", () => {
+    const rows: StepRow[] = [
+      {
+        name: "Empty config",
+        action: "set-lot-attr",
+        target: "Block",
+        value: JSON.stringify({}),
+      },
+    ];
+    const result = stepRowsToSimpleSteps(rows);
+    expect(result.isFullyConvertible).toBe(false);
+  });
+
+  it("handles step with unknown action ID", () => {
+    const rows: StepRow[] = [
+      {
+        name: "Custom action",
+        action: "custom-unknown-action",
+        target: "Block",
+        value: JSON.stringify({ foo: "bar" }),
+      },
+    ];
+    const result = stepRowsToSimpleSteps(rows);
+    expect(result.isFullyConvertible).toBe(false);
+    expect(result.steps).toHaveLength(0);
+  });
+
+  it("handles set-lot-attr with null value", () => {
+    const rows: StepRow[] = [
+      {
+        name: "Null value",
+        action: "set-lot-attr",
+        target: "Block",
+        value: JSON.stringify({ attrKey: "Weight", value: null }),
+      },
+    ];
+    const result = stepRowsToSimpleSteps(rows);
+    expect(result.isFullyConvertible).toBe(false);
+  });
+
+  it("handles set-lot-attr with object value that has no 'from' key", () => {
+    const rows: StepRow[] = [
+      {
+        name: "Weird object",
+        action: "set-lot-attr",
+        target: "Block",
+        value: JSON.stringify({ attrKey: "Weight", value: { foo: "bar" } }),
+      },
+    ];
+    const result = stepRowsToSimpleSteps(rows);
+    expect(result.isFullyConvertible).toBe(false);
+  });
+
+  it("handles set-lot-attr with from-ref where first element is not 'inputs'", () => {
+    const rows: StepRow[] = [
+      {
+        name: "Bad ref",
+        action: "set-lot-attr",
+        target: "Block",
+        value: JSON.stringify({
+          attrKey: "Weight",
+          value: { from: ["other", "Weight"] },
+        }),
+      },
+    ];
+    const result = stepRowsToSimpleSteps(rows);
+    expect(result.isFullyConvertible).toBe(false);
+  });
+
+  it("handles numeric literal value by converting to string", () => {
+    const rows: StepRow[] = [
+      {
+        name: "Numeric",
+        action: "set-lot-attr",
+        target: "Block",
+        value: JSON.stringify({ attrKey: "Weight", value: 42 }),
+      },
+    ];
+    const result = stepRowsToSimpleSteps(rows);
+    expect(result.isFullyConvertible).toBe(true);
+    expect(result.steps[0]).toMatchObject({
+      action: "set-lot-attr",
+      attrKey: "Weight",
+      source: "literal",
+      literalValue: "42",
+    });
+  });
+
+  it("handles boolean literal value by converting to string", () => {
+    const rows: StepRow[] = [
+      {
+        name: "Boolean",
+        action: "set-lot-attr",
+        target: "Block",
+        value: JSON.stringify({ attrKey: "Organic", value: true }),
+      },
+    ];
+    const result = stepRowsToSimpleSteps(rows);
+    expect(result.isFullyConvertible).toBe(true);
+    expect(result.steps[0]).toMatchObject({
+      attrKey: "Organic",
+      source: "literal",
+      literalValue: "true",
+    });
+  });
+
+  it("mixed convertible and non-convertible steps", () => {
+    const rows: StepRow[] = [
+      {
+        name: "Good",
+        action: "set-lot-status",
+        target: "Block",
+        value: JSON.stringify({ status: "Active" }),
+      },
+      {
+        name: "Bad",
+        action: "unknown-action",
+        target: "Block",
+        value: "{}",
+      },
+    ];
+    const result = stepRowsToSimpleSteps(rows);
+    expect(result.isFullyConvertible).toBe(false);
+    expect(result.steps).toHaveLength(1);
+    expect(result.steps[0]!.statusName).toBe("Active");
+  });
+
+  it("handles empty rows array", () => {
+    const result = stepRowsToSimpleSteps([]);
+    expect(result.isFullyConvertible).toBe(true);
+    expect(result.steps).toHaveLength(0);
+  });
+});
+
+describe("simpleStepsToStepRows edge cases", () => {
+  it("handles empty steps array", () => {
+    const rows = simpleStepsToStepRows([]);
+    expect(rows).toEqual([]);
+  });
+
+  it("generates name with '?' when statusName is empty", () => {
+    const simple: SimpleStepRow[] = [
+      {
+        ...EMPTY,
+        action: "set-lot-status",
+        targetRef: "Block",
+        statusName: "",
+      },
+    ];
+    const rows = simpleStepsToStepRows(simple);
+    expect(rows[0]!.name).toBe("Set status → ?");
+  });
+
+  it("generates name with 'attribute' when attrKey is empty", () => {
+    const simple: SimpleStepRow[] = [
+      {
+        ...EMPTY,
+        action: "set-lot-attr",
+        targetRef: "Block",
+        attrKey: "",
+        source: "literal",
+        literalValue: "x",
+      },
+    ];
+    const rows = simpleStepsToStepRows(simple);
+    expect(rows[0]!.name).toBe("Set attribute");
+  });
+
+  it("preserves target reference value in output", () => {
+    const simple: SimpleStepRow[] = [
+      {
+        ...EMPTY,
+        action: "set-lot-status",
+        targetRef: "SomeNonExistentRef",
+        statusName: "Active",
+      },
+    ];
+    const rows = simpleStepsToStepRows(simple);
+    expect(rows[0]!.target).toBe("SomeNonExistentRef");
+  });
+});
+
 describe("round-trip conversion", () => {
   it("simple → step → simple preserves set-lot-status", () => {
     const original: SimpleStepRow[] = [

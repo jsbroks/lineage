@@ -206,9 +206,6 @@ export function ScannedItemsList(props: ScannedItemsListProps) {
                   <span className="flex-1 text-xs font-medium">
                     {loc.item.location.name}
                   </span>
-                  <Badge variant="outline" className="text-[10px]">
-                    {loc.item.location.type}
-                  </Badge>
                   <button
                     type="button"
                     onClick={() => onRemove(loc.index)}

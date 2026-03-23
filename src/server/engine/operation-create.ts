@@ -11,7 +11,7 @@ export const createOperation = async (
 ) => {
   const [operation] = await tx
     .insert(schema.operation)
-    .values({ operationTypeId: operationType.id })
+    .values({ orgId: operationType.orgId, operationTypeId: operationType.id })
     .returning();
 
   if (!operation) {

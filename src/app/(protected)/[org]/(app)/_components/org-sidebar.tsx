@@ -11,6 +11,7 @@ import {
   Printer,
   ScanBarcode,
   Settings2,
+  Users,
 } from "lucide-react";
 
 import {
@@ -52,11 +53,6 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
       href: `/${org}/scan`,
       icon: ScanBarcode,
     },
-    {
-      label: "Record Task",
-      href: `/${org}/operations`,
-      icon: ClipboardList,
-    },
   ];
 
   const settingsNav = [
@@ -66,9 +62,14 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
       icon: Settings2,
     },
     {
-      label: "Rooms & Areas",
+      label: "Locations",
       href: `/${org}/settings/locations`,
       icon: MapPin,
+    },
+    {
+      label: "Team",
+      href: `/${org}/settings/team`,
+      icon: Users,
     },
   ];
 

@@ -7,6 +7,7 @@ import type { Lot } from "~/server/db/schema";
 function makeLot(overrides: Partial<Lot> = {}): Lot {
   return {
     id: "lot-1",
+    orgId: "org-1",
     lotTypeId: "type-1",
     variantId: null,
     code: "BLK-001",
@@ -59,6 +60,7 @@ function makeCtx({ lots = {} }: CtxInput = {}): OperationContext {
 
   const ctx = new OperationContext({
     id: "op-1",
+    orgId: "org-1",
     operationTypeId: "op-type-1",
     status: "completed",
     startedAt: null,
