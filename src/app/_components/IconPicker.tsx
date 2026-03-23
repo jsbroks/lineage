@@ -123,14 +123,14 @@ export const IconComponents = {
   "Street Food": StreetFoodIcon,
 } as const;
 
-export type Icon = keyof typeof IconComponents;
+export type IconComponentName = keyof typeof IconComponents;
 
 export const Icon: React.FC<{ icon?: string | null; className?: string }> = ({
   icon,
   className,
 }) => {
   if (!icon) return <HugeiconsIcon icon={Box} className={className} />;
-  const IconComponent = IconComponents[icon as Icon] ?? Question;
+  const IconComponent = IconComponents[icon as IconComponentName] ?? Question;
   return <HugeiconsIcon icon={IconComponent} className={className} />;
 };
 
@@ -148,7 +148,7 @@ export const IconPicker: React.FC<React.PropsWithChildren & SelectProps> = ({
           .sort((a, b) => a[0].localeCompare(b[0]))
           .map(([name]) => (
             <SelectItem key={name} value={name}>
-              <Icon icon={name as Icon} /> {name}
+              <Icon icon={name as IconComponentName} /> {name}
             </SelectItem>
           ))}
       </SelectContent>

@@ -9,8 +9,8 @@ import {
   lotTypeAttributeDefinition,
   lot,
   lotEvent,
+  lotEventLink,
   lotIdentifier,
-  lotLineage,
   location,
   lotTypeStatusDefinition,
 } from "~/server/db/schema";
@@ -19,6 +19,7 @@ const createLotInput = z
   .object({
     hostname: z.string().min(1),
     lotTypeId: z.uuid(),
+    variantId: z.uuid().nullable().optional(),
     code: z.string().min(1).optional(),
     useSequence: z.boolean().default(false),
     status: z.string().min(1).default("created"),
@@ -153,8 +154,9 @@ export const lotRouter = createTRPCRouter({
         .select({
           id: lotEvent.id,
           lotId: lotEvent.lotId,
-          message: lotEvent.message,
+          name: lotEvent.name,
           eventType: lotEvent.eventType,
+          attributes: lotEvent.attributes,
           recordedAt: lotEvent.recordedAt,
           lotCode: lot.code,
           lotTypeName: lotType.name,
@@ -256,6 +258,7 @@ export const lotRouter = createTRPCRouter({
           .insert(lot)
           .values({
             lotTypeId: input.lotTypeId,
+            variantId: input.variantId ?? null,
             code: codeValue,
             statusId: resolvedStatusId,
             quantityUnit: it?.quantityDefaultUnit ?? "each",
@@ -312,12 +315,13 @@ export const lotRouter = createTRPCRouter({
 
       await ctx.db.insert(lotEvent).values({
         lotId: createdLot.id,
-        eventType: "lot_created_manual",
-        newStatus: createdLot.statusId,
-        newLocationId: createdLot.locationId,
-        message: `${it.name} created manually.`,
-        payload: {
+        name: "Created",
+        eventType: "creation",
+        attributes: {
+          source: "manual",
           code: createdLot.code,
+          statusId: createdLot.statusId,
+          locationId: createdLot.locationId,
         },
       });
 
@@ -359,16 +363,29 @@ export const lotRouter = createTRPCRouter({
         .orderBy(desc(lotEvent.recordedAt));
 
       const parentLinks = await ctx.db
-        .select()
-        .from(lotLineage)
-        .where(eq(lotLineage.childLotId, currentLot.id))
-        .orderBy(desc(lotLineage.createdAt));
+        .select({
+          id: lotEventLink.id,
+          lotEventId: lotEventLink.lotEventId,
+          parentLotId: lotEventLink.parentLotId,
+          relationship: lotEventLink.relationship,
+        })
+        .from(lotEventLink)
+        .innerJoin(lotEvent, eq(lotEventLink.lotEventId, lotEvent.id))
+        .where(eq(lotEvent.lotId, currentLot.id))
+        .orderBy(desc(lotEvent.recordedAt));
 
       const childLinks = await ctx.db
-        .select()
-        .from(lotLineage)
-        .where(eq(lotLineage.parentLotId, currentLot.id))
-        .orderBy(desc(lotLineage.createdAt));
+        .select({
+          id: lotEventLink.id,
+          lotEventId: lotEventLink.lotEventId,
+          parentLotId: lotEventLink.parentLotId,
+          childLotId: lotEvent.lotId,
+          relationship: lotEventLink.relationship,
+        })
+        .from(lotEventLink)
+        .innerJoin(lotEvent, eq(lotEventLink.lotEventId, lotEvent.id))
+        .where(eq(lotEventLink.parentLotId, currentLot.id))
+        .orderBy(desc(lotEvent.recordedAt));
 
       const parentLots = parentLinks.length
         ? await ctx.db
@@ -540,13 +557,14 @@ export const lotRouter = createTRPCRouter({
           await tx.insert(lotEvent).values(
             insertedLots.map((created) => ({
               lotId: created.id,
-              eventType: "lot_created_batch",
-              newStatus: created.statusId,
-              newLocationId: created.locationId,
-              message: `${typeName} created via batch.`,
-              payload: {
+              name: "Created",
+              eventType: "creation",
+              attributes: {
+                source: "batch",
                 code: created.code,
                 batchSize: insertedLots.length,
+                statusId: created.statusId,
+                locationId: created.locationId,
               },
             })),
           );
@@ -699,31 +717,12 @@ export const lotRouter = createTRPCRouter({
             ? changedKeys.join(", ")
             : `${changedKeys.slice(0, 3).join(", ")} +${changedKeys.length - 3} more`;
 
-        await ctx.db.insert(lotEvent).values(
-          Object.entries(changes).map(([key, value]) => {
-            const hasFrom =
-              value.from !== null &&
-              value.from !== undefined &&
-              value.from !== "";
-            const hasTo =
-              value.to !== null && value.to !== undefined && value.to !== "";
-            const message =
-              hasFrom && hasTo
-                ? `${key} changed from ${JSON.stringify(value.from)} to ${JSON.stringify(value.to)}.`
-                : hasFrom
-                  ? `${key} changed from ${JSON.stringify(value.from)}.`
-                  : hasTo
-                    ? `${key} changed to ${JSON.stringify(value.to)}.`
-                    : `${key} changed.`;
-
-            return {
-              lotId: input.lotId,
-              eventType: "attributes_updated",
-              message: message,
-              payload: { changes },
-            };
-          }),
-        );
+        await ctx.db.insert(lotEvent).values({
+          lotId: input.lotId,
+          name: `${summary} updated`,
+          eventType: "attribute_change",
+          attributes: { changes },
+        });
       }
 
       return updated;
@@ -753,10 +752,12 @@ export const lotRouter = createTRPCRouter({
         await ctx.db.insert(lotEvent).values(
           updated.map((u) => ({
             lotId: u.id,
-            eventType: "location_changed",
-            newLocationId: input.locationId,
-            message: `Moved to ${loc?.name ?? "location"}.`,
-            payload: {},
+            name: "Move",
+            eventType: "move",
+            attributes: {
+              newLocationId: input.locationId,
+              locationName: loc?.name ?? null,
+            },
           })),
         );
       }
@@ -784,19 +785,6 @@ export const lotRouter = createTRPCRouter({
         .returning({ id: lot.id });
 
       if (updated.length > 0) {
-        const statusIds = [
-          ...new Set([input.status, ...oldLots.map((i) => i.statusId)]),
-        ];
-        const statusDefs = await ctx.db
-          .select({
-            id: lotTypeStatusDefinition.id,
-            name: lotTypeStatusDefinition.name,
-          })
-          .from(lotTypeStatusDefinition)
-          .where(inArray(lotTypeStatusDefinition.id, statusIds));
-        const nameMap = new Map(statusDefs.map((s) => [s.id, s.name]));
-        const newName = nameMap.get(input.status) ?? "unknown";
-
         const oldStatusMap = new Map(oldLots.map((i) => [i.id, i.statusId]));
 
         await ctx.db.insert(lotEvent).values(
@@ -804,18 +792,14 @@ export const lotRouter = createTRPCRouter({
             .filter((u) => oldStatusMap.get(u.id) !== input.status)
             .map((u) => {
               const oldStatusId = oldStatusMap.get(u.id);
-              const oldName = oldStatusId
-                ? (nameMap.get(oldStatusId) ?? "unknown")
-                : null;
               return {
                 lotId: u.id,
-                eventType: "status_changed",
-                oldStatus: oldStatusId ?? null,
-                newStatus: input.status,
-                message: oldName
-                  ? `Status changed from ${oldName} to ${newName}.`
-                  : `Status set to ${newName}.`,
-                payload: {},
+                name: "Status Change",
+                eventType: "status_change",
+                attributes: {
+                  oldStatus: oldStatusId ?? null,
+                  newStatus: input.status,
+                },
               };
             }),
         );
@@ -838,51 +822,20 @@ export const lotRouter = createTRPCRouter({
         .where(inArray(lot.id, input.lotIds));
       const oldVariantMap = new Map(oldLots.map((i) => [i.id, i.variantId]));
 
-      const allVariantIds = [
-        ...new Set(
-          [input.variantId, ...oldLots.map((i) => i.variantId)].filter(
-            (v): v is string => v !== null,
-          ),
-        ),
-      ];
-      const variantDefs =
-        allVariantIds.length > 0
-          ? await ctx.db
-              .select({ id: lotTypeVariant.id, name: lotTypeVariant.name })
-              .from(lotTypeVariant)
-              .where(inArray(lotTypeVariant.id, allVariantIds))
-          : [];
-      const variantNameMap = new Map(variantDefs.map((v) => [v.id, v.name]));
-
       const insertVariantEvents = async (updatedIds: string[]) => {
         const changed = updatedIds.filter(
           (id) => oldVariantMap.get(id) !== input.variantId,
         );
         if (changed.length === 0) return;
 
-        const newName = input.variantId
-          ? (variantNameMap.get(input.variantId) ?? "unknown")
-          : null;
-
         await ctx.db.insert(lotEvent).values(
           changed.map((id) => {
             const oldVarId = oldVariantMap.get(id) ?? null;
-            const oldName = oldVarId
-              ? (variantNameMap.get(oldVarId) ?? "unknown")
-              : null;
-            const message =
-              oldName && newName
-                ? `Variant changed from ${oldName} to ${newName}.`
-                : newName
-                  ? `Variant set to ${newName}.`
-                  : oldName
-                    ? `Variant ${oldName} removed.`
-                    : `Variant cleared.`;
             return {
               lotId: id,
-              eventType: "variant_changed",
-              message,
-              payload: {
+              name: "Variant Change",
+              eventType: "attribute_change",
+              attributes: {
                 oldVariantId: oldVarId,
                 newVariantId: input.variantId,
               },
@@ -994,9 +947,9 @@ export const lotRouter = createTRPCRouter({
       let updatedCount = 0;
       const eventRows: {
         lotId: string;
+        name: string;
         eventType: string;
-        message: string;
-        payload: Record<string, unknown>;
+        attributes: Record<string, unknown>;
       }[] = [];
 
       for (const existing of lots) {
@@ -1026,9 +979,9 @@ export const lotRouter = createTRPCRouter({
 
           eventRows.push({
             lotId: existing.id,
-            eventType: "attributes_updated",
-            message: `${summary} updated.`,
-            payload: { changes },
+            name: `${summary} updated`,
+            eventType: "attribute_change",
+            attributes: { changes },
           });
         }
       }
@@ -1044,17 +997,14 @@ export const lotRouter = createTRPCRouter({
     .input(z.object({ lotIds: z.array(z.uuid()).min(1).max(1000) }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db
+        .delete(lotEventLink)
+        .where(inArray(lotEventLink.parentLotId, input.lotIds));
+      await ctx.db
         .delete(lotEvent)
         .where(inArray(lotEvent.lotId, input.lotIds));
       await ctx.db
         .delete(lotIdentifier)
         .where(inArray(lotIdentifier.lotId, input.lotIds));
-      await ctx.db
-        .delete(lotLineage)
-        .where(inArray(lotLineage.parentLotId, input.lotIds));
-      await ctx.db
-        .delete(lotLineage)
-        .where(inArray(lotLineage.childLotId, input.lotIds));
 
       const deleted = await ctx.db
         .delete(lot)

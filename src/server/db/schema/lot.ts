@@ -82,27 +82,6 @@ export const lotIdentifier = pgTable(
   ],
 );
 
-export const lotLineage = pgTable(
-  "lot_lineage",
-  {
-    id: uuid().primaryKey().defaultRandom(),
-    parentLotId: uuid("parent_lot_id")
-      .notNull()
-      .references(() => lot.id),
-    childLotId: uuid("child_lot_id")
-      .notNull()
-      .references(() => lot.id),
-    relationship: text().notNull(),
-    operationId: uuid("operation_id").references(() => operation.id),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (t) => [],
-);
-
-export type LotLineage = typeof lotLineage.$inferSelect;
-
 export const lotEvent = pgTable(
   "lot_event",
   {
@@ -110,21 +89,33 @@ export const lotEvent = pgTable(
     lotId: uuid("lot_id")
       .notNull()
       .references(() => lot.id),
-    message: text("message"),
-    eventType: text("event_type").notNull(),
     operationId: uuid("operation_id").references(() => operation.id),
-    oldStatus: text("old_status"),
-    newStatus: text("new_status"),
-    oldLocationId: uuid("old_location_id").references(() => location.id),
-    newLocationId: uuid("new_location_id").references(() => location.id),
-    qtyDelta: numeric("qty_delta"),
-    payload: jsonb().notNull().default({}),
+    name: text("name").notNull(),
+    eventType: text("event_type").notNull(),
+    attributes: jsonb().notNull().default({}),
     recordedBy: uuid("recorded_by").references(() => user.id),
     recordedAt: timestamp("recorded_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (t) => [],
+  (t) => [index().on(t.lotId), index().on(t.operationId)],
 );
 
 export type LotEvent = typeof lotEvent.$inferSelect;
+
+export const lotEventLink = pgTable(
+  "lot_event_link",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    lotEventId: uuid("lot_event_id")
+      .notNull()
+      .references(() => lotEvent.id, { onDelete: "cascade" }),
+    parentLotId: uuid("parent_lot_id")
+      .notNull()
+      .references(() => lot.id),
+    relationship: text().notNull(),
+  },
+  (t) => [index().on(t.lotEventId), index().on(t.parentLotId)],
+);
+
+export type LotEventLink = typeof lotEventLink.$inferSelect;

@@ -1,0 +1,113 @@
+import { InfoIcon, PackagePlus, Tag } from "lucide-react";
+import type { ScanContext, ScanWorkflow, WorkflowPanel } from "./types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
+import { api } from "~/trpc/react";
+import { useState } from "react";
+import { Button } from "~/components/ui/button";
+
+const CreateLotTypePanel: WorkflowPanel = ({ ctx, onComplete }) => {
+  const addTypeIdentifierMutation = api.lotType.addIdentifier.useMutation();
+  const lotTypesQuery = api.lotType.list.useQuery();
+  const utils = api.useUtils();
+
+  const [selectedTypeId, setSelectedTypeId] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+
+  const handleTypeChange = (typeId: string) => {
+    setSelectedTypeId(typeId);
+  };
+
+  const handleLink = async () => {
+    if (!selectedTypeId) return;
+    setError(null);
+
+    const unknownCode = ctx.unknowns[0];
+    if (!unknownCode) return;
+
+    const identifierType = unknownCode.codeType ?? "Unknown";
+    const identifierValue = unknownCode.code;
+
+    try {
+      await addTypeIdentifierMutation.mutateAsync({
+        lotTypeId: selectedTypeId,
+        identifierType,
+        identifierValue,
+      });
+
+      await utils.lotType.list.invalidate();
+      const typeName = lotTypesQuery.data?.find(
+        (t) => t.id === selectedTypeId,
+      )?.name;
+      onComplete({
+        message: `Linked "${identifierValue}" to item type "${typeName}".`,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to link code");
+    }
+  };
+
+  return (
+    <div className="flex flex-1 flex-col space-y-2 overflow-y-auto p-4">
+      <label className="text-muted-foreground mb-1.5 block text-xs font-medium tracking-wide uppercase">
+        Link Code
+      </label>
+
+      <Alert>
+        <InfoIcon />
+        <AlertTitle className="text-sm">Link to an item type</AlertTitle>
+        <AlertDescription className="text-xs">
+          Associate codes with an item type. Next time you scan it, the system
+          will recognize it and offer actions like creating a new item, tracking
+          inventory, or running operations.
+        </AlertDescription>
+      </Alert>
+
+      <div className="space-y-1.5">
+        <label className="flex items-center gap-1.5 text-sm font-medium">
+          <Tag className="text-muted-foreground size-3.5" />
+          Associate with <span className="text-destructive">*</span>
+        </label>
+        <Select value={selectedTypeId} onValueChange={handleTypeChange}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select lot type..." />
+          </SelectTrigger>
+          <SelectContent>
+            {lotTypesQuery.data?.map((t) => (
+              <SelectItem key={t.id} value={t.id}>
+                {t.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {error && <p className="text-destructive text-xs">{error}</p>}
+      </div>
+
+      <Button disabled={!selectedTypeId} onClick={() => void handleLink()}>
+        Link
+      </Button>
+    </div>
+  );
+};
+
+export const createLotTypeWorkflow: ScanWorkflow = {
+  id: "create-lot-type",
+  match(ctx: ScanContext) {
+    if (ctx.unknowns.length === 0) return null;
+    const codeWord = ctx.unknowns.length === 1 ? "this code" : "these codes";
+    return {
+      label: `Associate ${codeWord} with item type`,
+      description: `Future scans will prompt for creation of new items of this type.`,
+      icon: PackagePlus,
+      ready: true,
+      priority: 30,
+    };
+  },
+  Panel: CreateLotTypePanel,
+};

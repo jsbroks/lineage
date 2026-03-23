@@ -29,7 +29,7 @@ export const ActivityLogCard: React.FC<{
                 <span className="text-muted-foreground text-xs">
                   {formatTimeAgo(event.recordedAt)}
                 </span>{" "}
-                — {event.message?.trim() || event.eventType}
+                — {event.name || event.eventType}
               </p>
             </div>
           ))}

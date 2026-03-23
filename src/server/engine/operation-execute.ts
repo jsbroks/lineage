@@ -83,14 +83,13 @@ export const createAndExecute = async (
       });
 
     const now = new Date();
-    const events: {
+
+    const eventRows: {
       lotId: string;
-      eventType: string;
       operationId: string;
-      oldStatus?: string | null;
-      newStatus?: string | null;
-      payload?: Record<string, unknown>;
-      message?: string;
+      name: string;
+      eventType: string;
+      attributes: Record<string, unknown>;
     }[] = [];
 
     await Promise.all(
@@ -101,22 +100,24 @@ export const createAndExecute = async (
           values.statusId &&
           values.statusId !== original.statusId
         ) {
-          events.push({
+          eventRows.push({
             lotId: id,
-            eventType: "status_change",
             operationId: operation.id,
-            oldStatus: original.statusId,
-            newStatus: values.statusId,
-            message: "Status changed via operation",
+            name: operationType.name,
+            eventType: "status_change",
+            attributes: {
+              oldStatus: original.statusId,
+              newStatus: values.statusId,
+            },
           });
         }
         if (original && values.attributes) {
-          events.push({
+          eventRows.push({
             lotId: id,
-            eventType: "attribute_change",
             operationId: operation.id,
-            payload: values.attributes as Record<string, unknown>,
-            message: "Attributes updated via operation",
+            name: operationType.name,
+            eventType: "attribute_change",
+            attributes: values.attributes as Record<string, unknown>,
           });
         }
         return tx
@@ -132,23 +133,88 @@ export const createAndExecute = async (
         .values(lotOps.creates)
         .returning({ id: schema.lot.id });
       lotsCreated.push(...created.map((c) => c.id));
-    }
-    if (lotOps.links.length > 0) {
-      await tx.insert(schema.lotLineage).values(lotOps.links);
+
+      for (const c of created) {
+        eventRows.push({
+          lotId: c.id,
+          operationId: operation.id,
+          name: "Created",
+          eventType: "creation",
+          attributes: {
+            source: "operation",
+            operationType: operationType.name,
+          },
+        });
+      }
     }
 
     for (const evt of lotOps.events) {
-      events.push({
+      eventRows.push({
         lotId: evt.lotId,
-        eventType: evt.eventType,
         operationId: operation.id,
-        message: evt.message,
-        payload: evt.payload,
+        name: operationType.name,
+        eventType: evt.eventType,
+        attributes: {
+          ...(evt.payload ?? {}),
+          ...(evt.message ? { message: evt.message } : {}),
+        },
       });
     }
 
-    if (events.length > 0) {
-      await tx.insert(schema.lotEvent).values(events);
+    const insertedEvents =
+      eventRows.length > 0
+        ? await tx
+            .insert(schema.lotEvent)
+            .values(eventRows)
+            .returning({ id: schema.lotEvent.id, lotId: schema.lotEvent.lotId })
+        : [];
+
+    if (lotOps.links.length > 0 && insertedEvents.length > 0) {
+      const eventIdByLotId = new Map<string, string>();
+      for (const ev of insertedEvents) {
+        if (!eventIdByLotId.has(ev.lotId)) {
+          eventIdByLotId.set(ev.lotId, ev.id);
+        }
+      }
+
+      const linkRows: {
+        lotEventId: string;
+        parentLotId: string;
+        relationship: string;
+      }[] = [];
+
+      for (const link of lotOps.links) {
+        const eventId = eventIdByLotId.get(link.childLotId);
+        if (eventId) {
+          linkRows.push({
+            lotEventId: eventId,
+            parentLotId: link.parentLotId,
+            relationship: link.relationship,
+          });
+        } else {
+          const [fallbackEvent] = await tx
+            .insert(schema.lotEvent)
+            .values({
+              lotId: link.childLotId,
+              operationId: operation.id,
+              name: operationType.name,
+              eventType: "transformation",
+              attributes: { relationship: link.relationship },
+            })
+            .returning({ id: schema.lotEvent.id });
+          if (fallbackEvent) {
+            linkRows.push({
+              lotEventId: fallbackEvent.id,
+              parentLotId: link.parentLotId,
+              relationship: link.relationship,
+            });
+          }
+        }
+      }
+
+      if (linkRows.length > 0) {
+        await tx.insert(schema.lotEventLink).values(linkRows);
+      }
     }
 
     if (Object.keys(lotOps.operationUpdate).length > 0) {

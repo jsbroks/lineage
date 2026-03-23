@@ -400,7 +400,7 @@ export function DashboardPage({ org }: { org: string }) {
                         </span>
                       </p>
                       <p className="text-muted-foreground text-xs">
-                        {evt.message}
+                        {evt.name}
                       </p>
                     </div>
                     <span className="text-muted-foreground mt-0.5 shrink-0 text-xs">

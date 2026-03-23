@@ -5,13 +5,21 @@ import Link from "next/link";
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 
-import { type LotData } from "./types";
+type LineageEntry = {
+  link: {
+    id: string;
+    parentLotId: string;
+    relationship: string;
+    childLotId?: string;
+  };
+  lot: { id: string; code: string } | null;
+};
 
 export const LineageCard: React.FC<{
   title: string;
   emptyMessage: string;
   org: string;
-  entries: LotData["parentLineage"];
+  entries: LineageEntry[];
   direction: "parent" | "child";
 }> = ({ title, emptyMessage, org, entries, direction }) => (
   <Card>
@@ -25,7 +33,9 @@ export const LineageCard: React.FC<{
         <div className="space-y-2">
           {entries.map(({ link, lot: lineageLot }) => {
             const linkedId =
-              direction === "parent" ? link.parentLotId : link.childLotId;
+              direction === "parent"
+                ? link.parentLotId
+                : (link.childLotId ?? link.parentLotId);
             const code = lineageLot?.code ?? linkedId;
             return (
               <Link

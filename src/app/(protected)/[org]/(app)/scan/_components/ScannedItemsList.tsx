@@ -1,81 +1,141 @@
-import { useState } from "react";
+import React, { useState } from "react";
 
 import {
   ChevronDown,
   ChevronRight,
   CircleHelp,
-  MapPin,
-  Package2,
   ScanBarcode,
   X,
 } from "lucide-react";
 
 import { Badge } from "~/components/ui/badge";
-import { ScannedLotRow } from "./ScannedLotRow";
-import type { ScannedItem, LotWithType } from "../_workflows/types";
+
+import type { ScanContext } from "../_workflows/types";
+import type {
+  CodeInput,
+  LotItem,
+  LotTypeItem,
+  UnknownItem,
+} from "~/server/api/routers/scan";
+import _ from "lodash";
+import { Icon } from "~/app/_components/IconPicker";
 
 interface ScannedItemsListProps {
-  items: ScannedItem[];
-  onRemove: (index: number) => void;
+  items: CodeInput[];
+  ctx: ScanContext;
+  onRemove: (code: string) => void;
 }
 
-export function ScannedItemsList({ items, onRemove }: ScannedItemsListProps) {
+const LotTypeRow: React.FC<LotTypeItem & { onRemove: () => void }> = ({
+  lotType,
+  onRemove,
+}) => {
+  return (
+    <div className="border-border flex items-center gap-2 overflow-hidden rounded-lg border px-3 py-2">
+      <Icon
+        icon={lotType.icon}
+        className="text-muted-foreground size-4 shrink-0"
+      />
+      <span className="flex-1 text-sm font-medium">{lotType.name}</span>
+      <Badge variant="secondary" className="text-[10px]">
+        Type
+      </Badge>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="text-muted-foreground hover:text-foreground shrink-0 rounded p-0.5 transition-colors"
+      >
+        <X className="size-3.5" />
+      </button>
+    </div>
+  );
+};
+
+const LotRow: React.FC<LotItem & { onRemove?: () => void }> = ({
+  lot,
+  lotStatus,
+  lotVariant,
+  onRemove,
+}) => {
+  const attrs = (lot.attributes ?? {}) as Record<string, unknown>;
+  const attrEntries = Object.entries(attrs).filter(
+    ([, v]) => v !== null && v !== undefined && v !== "",
+  );
+  return (
+    <div className="hover:bg-muted/30 px-3 py-2 transition-colors">
+      <div className="flex items-center gap-2">
+        <span className="flex-1 truncate font-mono text-xs font-medium">
+          {lot.code}
+        </span>
+        {lotVariant && (
+          <Badge variant="secondary" className="text-[10px]">
+            {lotVariant.name}
+          </Badge>
+        )}
+        {lotStatus && (
+          <Badge variant="outline" className="text-[10px]">
+            {lotStatus.name}
+          </Badge>
+        )}
+        <button
+          type="button"
+          onClick={onRemove}
+          className="text-muted-foreground hover:text-foreground shrink-0 rounded p-0.5 transition-colors"
+        >
+          <X className="size-3.5" />
+        </button>
+      </div>
+
+      {attrEntries.length > 0 && (
+        <div className="text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px]">
+          {attrEntries.map(([key, value]) => (
+            <span key={key}>
+              <span className="opacity-60">{key}:</span> {String(value)}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const UnknownRow: React.FC<UnknownItem & { onRemove: () => void }> = ({
+  code,
+  onRemove,
+}) => {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 text-sm">
+      <span className="flex-1 truncate font-mono text-xs">{code}</span>
+      <button
+        type="button"
+        onClick={onRemove}
+        className="text-muted-foreground hover:text-foreground shrink-0 rounded p-0.5 transition-colors"
+      >
+        <X className="size-3.5" />
+      </button>
+    </div>
+  );
+};
+
+export function ScannedItemsList(props: ScannedItemsListProps) {
+  const { items, ctx, onRemove } = props;
+
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     new Set(),
   );
-
-  const toggleGroup = (key: string) => {
+  const toggleGroup = (typeId: string) => {
     setCollapsedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
+      const newSet = new Set(prev);
+      newSet.has(typeId) ? newSet.delete(typeId) : newSet.add(typeId);
+      return newSet;
     });
   };
 
-  const lots: Array<{ item: LotWithType; rawCode: string; index: number }> = [];
-  const locations: Array<{
-    item: ScannedItem & { kind: "location" };
-    index: number;
-  }> = [];
-  const unknowns: Array<{ rawCode: string; index: number }> = [];
-
-  items.forEach((item, idx) => {
-    switch (item.kind) {
-      case "lot":
-        lots.push({ item: item.lot, rawCode: item.rawCode, index: idx });
-        break;
-      case "location":
-        locations.push({ item, index: idx });
-        break;
-      case "unknown":
-        unknowns.push({ rawCode: item.rawCode, index: idx });
-        break;
-    }
-  });
-
-  const groupedLots = lots.reduce<
-    Map<
-      string,
-      {
-        typeName: string;
-        entries: Array<{ item: LotWithType; index: number }>;
-      }
-    >
-  >((map, entry) => {
-    const typeId = entry.item.lot.lotTypeId;
-    const existing = map.get(typeId);
-    if (existing) {
-      existing.entries.push({ item: entry.item, index: entry.index });
-    } else {
-      map.set(typeId, {
-        typeName: entry.item.lotType?.name ?? "Unknown Type",
-        entries: [{ item: entry.item, index: entry.index }],
-      });
-    }
-    return map;
-  }, new Map());
-
+  const { lotTypes, unknowns } = ctx;
+  const groupLots = _.chain(ctx.lots)
+    .groupBy((l) => l.lot.lotTypeId)
+    .entries()
+    .value();
   const hasAnything = items.length > 0;
 
   return (
@@ -91,8 +151,16 @@ export function ScannedItemsList({ items, onRemove }: ScannedItemsListProps) {
       )}
 
       <div className="space-y-3">
+        {lotTypes.map((lotType) => (
+          <LotTypeRow
+            key={lotType.lotType.id}
+            {...lotType}
+            onRemove={() => onRemove(lotType.code)}
+          />
+        ))}
+
         {/* Unrecognized codes */}
-        {unknowns.length > 0 && (
+        {ctx.unknowns.length > 0 && (
           <div className="overflow-hidden rounded-lg border border-amber-300 dark:border-amber-700">
             <div className="flex items-center gap-2 bg-amber-50 px-3 py-2 dark:bg-amber-950/30">
               <CircleHelp className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
@@ -108,28 +176,18 @@ export function ScannedItemsList({ items, onRemove }: ScannedItemsListProps) {
             </div>
             <div className="divide-y divide-amber-200 border-t border-amber-200 dark:divide-amber-800 dark:border-amber-800">
               {unknowns.map((u) => (
-                <div
-                  key={u.index}
-                  className="flex items-center gap-2 px-3 py-1.5 text-sm"
-                >
-                  <span className="flex-1 truncate font-mono text-xs">
-                    {u.rawCode}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onRemove(u.index)}
-                    className="text-muted-foreground hover:text-foreground shrink-0 rounded p-0.5 transition-colors"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                </div>
+                <UnknownRow
+                  key={u.code}
+                  {...u}
+                  onRemove={() => onRemove(u.code)}
+                />
               ))}
             </div>
           </div>
         )}
 
         {/* Locations */}
-        {locations.length > 0 && (
+        {/* {locations.length > 0 && (
           <div className="border-border overflow-hidden rounded-lg border">
             <div className="flex items-center gap-2 px-3 py-2">
               <MapPin className="text-primary size-4 shrink-0" />
@@ -162,10 +220,57 @@ export function ScannedItemsList({ items, onRemove }: ScannedItemsListProps) {
               ))}
             </div>
           </div>
-        )}
+        )} */}
+
+        {groupLots.map(([typeId, lots]) => {
+          const lotType = lots[0]?.lotType;
+          if (!lotType) return null;
+          const isCollapsed = collapsedGroups.has(typeId);
+          return (
+            <div
+              key={typeId}
+              className="border-border overflow-hidden rounded-lg border"
+            >
+              <button
+                className="hover:bg-muted/50 flex w-full items-center gap-2 px-3 py-2 text-left transition-colors"
+                onClick={() => toggleGroup(typeId)}
+              >
+                {isCollapsed ? (
+                  <ChevronRight className="text-muted-foreground size-4 shrink-0" />
+                ) : (
+                  <ChevronDown className="text-muted-foreground size-4 shrink-0" />
+                )}
+                <Icon
+                  icon={lotType.icon}
+                  className="text-muted-foreground size-4 shrink-0"
+                />
+
+                <span className="flex-1 text-sm font-medium">
+                  {lotType.name}
+                </span>
+
+                <Badge variant="secondary" className="text-xs">
+                  {lots.length}
+                </Badge>
+              </button>
+
+              {!isCollapsed && (
+                <div className="border-border divide-border divide-y border-t">
+                  {lots.map((lot) => (
+                    <LotRow
+                      key={lot.code}
+                      {...lot}
+                      onRemove={() => onRemove(lot.code)}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {/* Lot groups */}
-        {[...groupedLots.entries()].map(([typeId, { typeName, entries }]) => {
+        {/* {[...groupLots.entries()].map(([typeId, { typeName, entries }]) => {
           const isCollapsed = collapsedGroups.has(typeId);
           return (
             <div
@@ -202,7 +307,7 @@ export function ScannedItemsList({ items, onRemove }: ScannedItemsListProps) {
               )}
             </div>
           );
-        })}
+        })} */}
       </div>
     </div>
   );

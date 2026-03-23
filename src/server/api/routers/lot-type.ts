@@ -32,6 +32,22 @@ const lotTypeEditInput = lotTypeCreateInput.extend({
 });
 
 export const lotTypeRouter = createTRPCRouter({
+  getByIdentifierValue: protectedProcedure
+    .input(z.object({ identifierValue: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const [it] = await ctx.db
+        .select()
+        .from(lotType)
+        .innerJoin(
+          lotTypeIdentifier,
+          eq(lotType.id, lotTypeIdentifier.lotTypeId),
+        )
+        .where(eq(lotTypeIdentifier.identifierValue, input.identifierValue))
+        .limit(1);
+      if (!it) return null;
+      return it;
+    }),
+
   list: protectedProcedure.query(async ({ ctx }) => {
     return ctx.db.select().from(lotType).orderBy(asc(lotType.name));
   }),

@@ -6,6 +6,7 @@ import { operationTypeRouter } from "~/server/api/routers/operation-type";
 import { anomalyRouter } from "~/server/api/routers/anomaly";
 import { onboardingRouter } from "~/server/api/routers/onboarding";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
+import { scanRouter } from "./routers/scan";
 
 /**
  * This is the primary router for your server.
@@ -20,6 +21,7 @@ export const appRouter = createTRPCRouter({
   operationType: operationTypeRouter,
   anomaly: anomalyRouter,
   onboarding: onboardingRouter,
+  scan: scanRouter,
 });
 
 // export type definition of API

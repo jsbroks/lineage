@@ -3,13 +3,7 @@ import { eq, inArray } from "drizzle-orm";
 
 import { auth } from "~/server/better-auth";
 import { db } from "~/server/db";
-import {
-  lot,
-  lotEvent,
-  lotTypeStatusDefinition,
-  location,
-  operationType,
-} from "~/server/db/schema";
+import { lot, lotEvent, location, operationType } from "~/server/db/schema";
 import { createAndExecute } from "~/server/engine/operation-execute";
 
 export async function POST(req: Request) {
@@ -58,36 +52,21 @@ export async function POST(req: Request) {
           .returning({ id: lot.id });
 
         if (updated.length > 0) {
-          const allStatusIds = [
-            ...new Set([statusId, ...oldLots.map((i) => i.statusId)]),
-          ];
-          const statusDefs = await db
-            .select({
-              id: lotTypeStatusDefinition.id,
-              name: lotTypeStatusDefinition.name,
-            })
-            .from(lotTypeStatusDefinition)
-            .where(inArray(lotTypeStatusDefinition.id, allStatusIds));
-          const nameMap = new Map(statusDefs.map((s) => [s.id, s.name]));
-          const newName = nameMap.get(statusId) ?? "unknown";
           const oldStatusMap = new Map(oldLots.map((i) => [i.id, i.statusId]));
 
           const events = updated
             .filter((u) => oldStatusMap.get(u.id) !== statusId)
             .map((u) => {
               const oldStatusId = oldStatusMap.get(u.id);
-              const oldName = oldStatusId
-                ? (nameMap.get(oldStatusId) ?? "unknown")
-                : null;
               return {
                 lotId: u.id,
-                eventType: "status_changed" as const,
-                oldStatus: oldStatusId ?? null,
-                newStatus: statusId,
-                message: oldName
-                  ? `Status changed from ${oldName} to ${newName} via AI chat.`
-                  : `Status set to ${newName} via AI chat.`,
-                payload: {},
+                name: "Status Change",
+                eventType: "status_change" as const,
+                attributes: {
+                  oldStatus: oldStatusId ?? null,
+                  newStatus: statusId,
+                  source: "ai_chat",
+                },
               };
             });
 
@@ -126,10 +105,13 @@ export async function POST(req: Request) {
           await db.insert(lotEvent).values(
             updated.map((u) => ({
               lotId: u.id,
-              eventType: "location_changed" as const,
-              newLocationId: locationId,
-              message: `Moved to ${loc?.name ?? "location"} via AI chat.`,
-              payload: {},
+              name: "Move",
+              eventType: "move" as const,
+              attributes: {
+                newLocationId: locationId,
+                locationName: loc?.name ?? null,
+                source: "ai_chat",
+              },
             })),
           );
         }
@@ -183,9 +165,9 @@ export async function POST(req: Request) {
         let updatedCount = 0;
         const eventRows: {
           lotId: string;
+          name: string;
           eventType: string;
-          message: string;
-          payload: Record<string, unknown>;
+          attributes: Record<string, unknown>;
         }[] = [];
 
         const existingLots = await db
@@ -221,9 +203,9 @@ export async function POST(req: Request) {
 
             eventRows.push({
               lotId: existing.id,
-              eventType: "attributes_updated",
-              message: `${summary} updated via AI chat.`,
-              payload: { changes },
+              name: `${summary} updated`,
+              eventType: "attribute_change",
+              attributes: { changes, source: "ai_chat" },
             });
           }
         }

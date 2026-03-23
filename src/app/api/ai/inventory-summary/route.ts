@@ -60,8 +60,9 @@ export async function POST(req: Request) {
       todayStart.setHours(0, 0, 0, 0);
       return db
         .select({
-          message: lotEvent.message,
+          name: lotEvent.name,
           eventType: lotEvent.eventType,
+          attributes: lotEvent.attributes,
           recordedAt: lotEvent.recordedAt,
           lotCode: lot.code,
         })
@@ -120,7 +121,7 @@ export async function POST(req: Request) {
     }
     context += `\nEvent type breakdown: ${[...byType.entries()].map(([t, c]) => `${t}: ${c}`).join(", ")}`;
     for (const ev of todaysEvents.slice(0, 30)) {
-      context += `\n- [${ev.eventType}] ${ev.lotCode}: ${ev.message ?? "no details"}`;
+      context += `\n- [${ev.eventType}] ${ev.lotCode}: ${ev.name}`;
     }
     if (todaysEvents.length > 30) {
       context += `\n... and ${todaysEvents.length - 30} more events`;

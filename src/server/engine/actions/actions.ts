@@ -1,6 +1,6 @@
 import type { ZodType } from "zod";
 import type { OperationContext } from "../operation-context";
-import type { Lot, LotLineage, OperationTypeStep } from "~/server/db/schema";
+import type { Lot, OperationTypeStep } from "~/server/db/schema";
 import _ from "lodash";
 
 type CreateActionOptions<T extends Record<string, unknown>> = {
@@ -49,25 +49,16 @@ export type ActionHandler<T = any> = (
   step: ActionStep<T>,
 ) => ActionResult;
 
-// export type ActionResult = {
-//   lots: {
-//     create: Lot[];
-//     update: Record<string, Partial<Omit<Lot, "id">>>;
-//     link: Omit<LotLineage, "id">[];
-//   };
-
-//   success: boolean;
-//   skipped: boolean;
-
-//   message: string;
-
-//   details: object;
-// };
+export type ActionResultLink = {
+  parentLotId: string;
+  childLotId: string;
+  relationship: string;
+};
 
 type ActionResultLots = {
   create: Omit<Lot, "id">[];
   update: Record<string, Partial<Omit<Lot, "id">>>;
-  link: Omit<LotLineage, "id">[];
+  link: ActionResultLink[];
 };
 
 export type ActionResultEvent = {

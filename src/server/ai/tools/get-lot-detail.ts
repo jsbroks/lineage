@@ -56,8 +56,9 @@ export function createGetLotDetailTool(ctx: SchemaContext) {
 
       const events = await db
         .select({
+          name: lotEvent.name,
           eventType: lotEvent.eventType,
-          message: lotEvent.message,
+          attributes: lotEvent.attributes,
           recordedAt: lotEvent.recordedAt,
         })
         .from(lotEvent)

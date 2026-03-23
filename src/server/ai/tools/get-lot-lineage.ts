@@ -3,7 +3,7 @@ import { z } from "zod/v4";
 import { eq, inArray } from "drizzle-orm";
 
 import { db } from "~/server/db";
-import { lot, lotLineage } from "~/server/db/schema";
+import { lot, lotEvent, lotEventLink } from "~/server/db/schema";
 import type { SchemaContext } from "../build-schema-context";
 
 export function createGetLotLineageTool(ctx: SchemaContext) {
@@ -23,14 +23,22 @@ export function createGetLotLineageTool(ctx: SchemaContext) {
       if (!found) return { error: `Lot not found: "${lotCode}"` };
 
       const parentLinks = await db
-        .select()
-        .from(lotLineage)
-        .where(eq(lotLineage.childLotId, found.id));
+        .select({
+          parentLotId: lotEventLink.parentLotId,
+          relationship: lotEventLink.relationship,
+        })
+        .from(lotEventLink)
+        .innerJoin(lotEvent, eq(lotEventLink.lotEventId, lotEvent.id))
+        .where(eq(lotEvent.lotId, found.id));
 
       const childLinks = await db
-        .select()
-        .from(lotLineage)
-        .where(eq(lotLineage.parentLotId, found.id));
+        .select({
+          childLotId: lotEvent.lotId,
+          relationship: lotEventLink.relationship,
+        })
+        .from(lotEventLink)
+        .innerJoin(lotEvent, eq(lotEventLink.lotEventId, lotEvent.id))
+        .where(eq(lotEventLink.parentLotId, found.id));
 
       const relatedIds = [
         ...parentLinks.map((l) => l.parentLotId),
