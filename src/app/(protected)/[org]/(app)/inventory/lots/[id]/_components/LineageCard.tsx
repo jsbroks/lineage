@@ -9,8 +9,8 @@ type LineageEntry = {
   link: {
     id: string;
     parentLotId: string;
+    childLotId: string;
     relationship: string;
-    childLotId?: string;
   };
   lot: { id: string; code: string } | null;
 };
@@ -33,9 +33,7 @@ export const LineageCard: React.FC<{
         <div className="space-y-2">
           {entries.map(({ link, lot: lineageLot }) => {
             const linkedId =
-              direction === "parent"
-                ? link.parentLotId
-                : (link.childLotId ?? link.parentLotId);
+              direction === "parent" ? link.parentLotId : link.childLotId;
             const code = lineageLot?.code ?? linkedId;
             return (
               <Link

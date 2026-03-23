@@ -9,7 +9,7 @@ import {
   lotTypeAttributeDefinition,
   lot,
   lotEvent,
-  lotEventLink,
+  lotLineage,
   lotIdentifier,
   location,
   lotTypeStatusDefinition,
@@ -363,29 +363,16 @@ export const lotRouter = createTRPCRouter({
         .orderBy(desc(lotEvent.recordedAt));
 
       const parentLinks = await ctx.db
-        .select({
-          id: lotEventLink.id,
-          lotEventId: lotEventLink.lotEventId,
-          parentLotId: lotEventLink.parentLotId,
-          relationship: lotEventLink.relationship,
-        })
-        .from(lotEventLink)
-        .innerJoin(lotEvent, eq(lotEventLink.lotEventId, lotEvent.id))
-        .where(eq(lotEvent.lotId, currentLot.id))
-        .orderBy(desc(lotEvent.recordedAt));
+        .select()
+        .from(lotLineage)
+        .where(eq(lotLineage.childLotId, currentLot.id))
+        .orderBy(desc(lotLineage.createdAt));
 
       const childLinks = await ctx.db
-        .select({
-          id: lotEventLink.id,
-          lotEventId: lotEventLink.lotEventId,
-          parentLotId: lotEventLink.parentLotId,
-          childLotId: lotEvent.lotId,
-          relationship: lotEventLink.relationship,
-        })
-        .from(lotEventLink)
-        .innerJoin(lotEvent, eq(lotEventLink.lotEventId, lotEvent.id))
-        .where(eq(lotEventLink.parentLotId, currentLot.id))
-        .orderBy(desc(lotEvent.recordedAt));
+        .select()
+        .from(lotLineage)
+        .where(eq(lotLineage.parentLotId, currentLot.id))
+        .orderBy(desc(lotLineage.createdAt));
 
       const parentLots = parentLinks.length
         ? await ctx.db
@@ -997,8 +984,11 @@ export const lotRouter = createTRPCRouter({
     .input(z.object({ lotIds: z.array(z.uuid()).min(1).max(1000) }))
     .mutation(async ({ ctx, input }) => {
       await ctx.db
-        .delete(lotEventLink)
-        .where(inArray(lotEventLink.parentLotId, input.lotIds));
+        .delete(lotLineage)
+        .where(inArray(lotLineage.parentLotId, input.lotIds));
+      await ctx.db
+        .delete(lotLineage)
+        .where(inArray(lotLineage.childLotId, input.lotIds));
       await ctx.db
         .delete(lotEvent)
         .where(inArray(lotEvent.lotId, input.lotIds));

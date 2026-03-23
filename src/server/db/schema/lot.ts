@@ -82,6 +82,27 @@ export const lotIdentifier = pgTable(
   ],
 );
 
+export const lotLineage = pgTable(
+  "lot_lineage",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    parentLotId: uuid("parent_lot_id")
+      .notNull()
+      .references(() => lot.id),
+    childLotId: uuid("child_lot_id")
+      .notNull()
+      .references(() => lot.id),
+    relationship: text().notNull(),
+    operationId: uuid("operation_id").references(() => operation.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [index().on(t.parentLotId), index().on(t.childLotId)],
+);
+
+export type LotLineage = typeof lotLineage.$inferSelect;
+
 export const lotEvent = pgTable(
   "lot_event",
   {
@@ -102,20 +123,3 @@ export const lotEvent = pgTable(
 );
 
 export type LotEvent = typeof lotEvent.$inferSelect;
-
-export const lotEventLink = pgTable(
-  "lot_event_link",
-  {
-    id: uuid().primaryKey().defaultRandom(),
-    lotEventId: uuid("lot_event_id")
-      .notNull()
-      .references(() => lotEvent.id, { onDelete: "cascade" }),
-    parentLotId: uuid("parent_lot_id")
-      .notNull()
-      .references(() => lot.id),
-    relationship: text().notNull(),
-  },
-  (t) => [index().on(t.lotEventId), index().on(t.parentLotId)],
-);
-
-export type LotEventLink = typeof lotEventLink.$inferSelect;

@@ -3,7 +3,7 @@ import { z } from "zod/v4";
 import { eq, inArray } from "drizzle-orm";
 
 import { db } from "~/server/db";
-import { lot, lotEvent, lotEventLink } from "~/server/db/schema";
+import { lot, lotLineage } from "~/server/db/schema";
 import type { SchemaContext } from "../build-schema-context";
 
 export function createGetLotLineageTool(ctx: SchemaContext) {
@@ -24,21 +24,19 @@ export function createGetLotLineageTool(ctx: SchemaContext) {
 
       const parentLinks = await db
         .select({
-          parentLotId: lotEventLink.parentLotId,
-          relationship: lotEventLink.relationship,
+          parentLotId: lotLineage.parentLotId,
+          relationship: lotLineage.relationship,
         })
-        .from(lotEventLink)
-        .innerJoin(lotEvent, eq(lotEventLink.lotEventId, lotEvent.id))
-        .where(eq(lotEvent.lotId, found.id));
+        .from(lotLineage)
+        .where(eq(lotLineage.childLotId, found.id));
 
       const childLinks = await db
         .select({
-          childLotId: lotEvent.lotId,
-          relationship: lotEventLink.relationship,
+          childLotId: lotLineage.childLotId,
+          relationship: lotLineage.relationship,
         })
-        .from(lotEventLink)
-        .innerJoin(lotEvent, eq(lotEventLink.lotEventId, lotEvent.id))
-        .where(eq(lotEventLink.parentLotId, found.id));
+        .from(lotLineage)
+        .where(eq(lotLineage.parentLotId, found.id));
 
       const relatedIds = [
         ...parentLinks.map((l) => l.parentLotId),

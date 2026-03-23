@@ -22,7 +22,7 @@ export const operationType = pgTable("operation_type", {
   icon: text(),
   color: text(),
 
-  defaultLocation: uuid("default_location_id").references(() => location.id),
+  defaultLocationId: uuid("default_location_id").references(() => location.id),
   category: text(),
 });
 

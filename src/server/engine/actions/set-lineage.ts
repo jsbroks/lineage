@@ -31,12 +31,15 @@ export const setLineage = createAction({
       return result;
     }
 
+    const now = new Date();
     for (const parentLot of parentLots) {
       for (const childLot of childLots) {
         result.lots.link.push({
           parentLotId: parentLot.id,
           childLotId: childLot.id,
           relationship,
+          operationId: ctx.operation.id,
+          createdAt: now,
         });
       }
     }
