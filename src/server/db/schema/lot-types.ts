@@ -73,7 +73,7 @@ export const lotType = pgTable(
     }),
 
     qtyName: text("quantity_name"),
-    qtyUom: text("quantity_uom").notNull().default("each"),
+    qtyUom: text("quantity_uom").notNull().default("pcs"),
 
     icon: text(),
     color: text(),
