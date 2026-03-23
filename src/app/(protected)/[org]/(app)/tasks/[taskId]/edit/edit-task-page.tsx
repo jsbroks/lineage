@@ -97,7 +97,7 @@ export default function EditTaskTypePage() {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link href={`/${params.org}/tasks`}>Task Types</Link>
+                <Link href={`/${params.org}/tasks`}>Activities</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -119,7 +119,7 @@ export default function EditTaskTypePage() {
         {isLoading ? (
           <p className="text-muted-foreground text-sm">Loading...</p>
         ) : !data ? (
-          <p className="text-muted-foreground text-sm">Task type not found.</p>
+          <p className="text-muted-foreground text-sm">Activity not found.</p>
         ) : (
           <OperationTypeForm
             initialData={initialData}

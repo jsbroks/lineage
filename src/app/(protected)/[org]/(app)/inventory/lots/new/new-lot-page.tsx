@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "~/components/ui/button";
@@ -60,6 +61,8 @@ const EMPTY_SEQUENCE_FORM: SequenceFormState = {
 };
 
 export default function NewLotPage() {
+  const params = useParams<{ org: string }>();
+  const org = params.org;
   const utils = api.useUtils();
   const [form, setForm] = useState<LotFormState>(EMPTY_FORM);
   const [sequenceForm, setSequenceForm] =
@@ -208,7 +211,7 @@ export default function NewLotPage() {
       name: selectedLotType.name,
       category: selectedLotType.category,
       description: selectedLotType.description,
-      quantityDefaultUnit: selectedLotType.quantityDefaultUnit,
+      quantityDefaultUnit: selectedLotType.qtyUom,
       icon: selectedLotType.icon,
       color: selectedLotType.color,
       codePrefix: sequenceForm.prefix.trim(),
@@ -241,7 +244,7 @@ export default function NewLotPage() {
                 {lots.slice(0, 20).map((lot) => (
                   <Link
                     key={lot.id}
-                    href={`${lot.id}`}
+                    href={`/${org}/inventory/lots/${lot.id}`}
                     className="border-border hover:bg-muted block rounded-md border px-3 py-2"
                   >
                     <p className="font-medium">{lot.code}</p>

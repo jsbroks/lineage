@@ -46,15 +46,15 @@ export const BulkVariantDialog: React.FC<BulkVariantDialogProps> = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Set variant</DialogTitle>
+          <DialogTitle>Set variety</DialogTitle>
           <DialogDescription>
-            Assign a variant to {selectedCount} selected lot
+            Assign a variety to {selectedCount} selected lot
             {selectedCount > 1 ? "s" : ""}.
           </DialogDescription>
         </DialogHeader>
         <Select value={newVariant} onValueChange={setNewVariant}>
           <SelectTrigger>
-            <SelectValue placeholder="Select variant" />
+            <SelectValue placeholder="Select variety" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="none">Unassigned</SelectItem>
@@ -73,7 +73,7 @@ export const BulkVariantDialog: React.FC<BulkVariantDialogProps> = ({
             onClick={() => onConfirm(newVariant === "none" ? null : newVariant)}
             disabled={!newVariant || isPending}
           >
-            {isPending ? "Updating..." : "Set variant"}
+            {isPending ? "Updating..." : "Set variety"}
           </Button>
         </DialogFooter>
       </DialogContent>

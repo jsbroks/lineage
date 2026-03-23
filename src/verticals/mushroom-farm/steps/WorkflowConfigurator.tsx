@@ -23,14 +23,14 @@ const WORKFLOW_OPTIONS: WorkflowOption[] = [
     key: "batchTracking",
     title: "Batch pasteurization tracking",
     description:
-      "Track substrate batches through mixing, pasteurization, and cooling. Creates the Substrate Batch lot type with pasteurization operations.",
+      "Track substrate batches through mixing, pasteurization, and cooling. Creates the Substrate Batch lot type with pasteurization activities.",
     icon: <Boxes className="size-5" />,
   },
   {
     key: "blockTracking",
     title: "Individual block tracking",
     description:
-      "Track each grow unit (block, bag, or bed) from inoculation through fruiting and harvest. Creates the Grow Unit lot type with full lifecycle operations.",
+      "Track each grow unit (block, bag, or bed) from inoculation through fruiting and harvest. Creates the Grow Unit lot type with full lifecycle activities.",
     icon: <Bug className="size-5" />,
   },
   {

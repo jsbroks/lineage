@@ -25,7 +25,7 @@ export function GeneralCard({ base, setBase }: GeneralCardProps) {
       <CardHeader>
         <CardTitle>General</CardTitle>
         <CardDescription>
-          Basic information about this task type.
+          Basic information about this activity.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -62,7 +62,7 @@ export function GeneralCard({ base, setBase }: GeneralCardProps) {
               setBase((p) => ({ ...p, description: e.target.value }))
             }
             className="border-input bg-background min-h-20 w-full rounded-md border px-3 py-2 text-sm"
-            placeholder="Describe what this task does..."
+            placeholder="Describe what this activity does..."
           />
         </div>
 

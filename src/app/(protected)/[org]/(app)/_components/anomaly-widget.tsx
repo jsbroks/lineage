@@ -106,7 +106,7 @@ export function AnomalyWidget({ org }: { org: string }) {
                         <div className="min-w-0">
                           <p className="text-sm">
                             <Link
-                              href={`/${org}/lots/${stuck.lotId}`}
+                              href={`/${org}/inventory/lots/${stuck.lotId}`}
                               className="font-medium hover:underline"
                             >
                               {stuck.code}
@@ -185,7 +185,7 @@ export function AnomalyWidget({ org }: { org: string }) {
                         <div className="min-w-0">
                           <p className="text-sm">
                             <Link
-                              href={`/${org}/lots/${outlier.lotId}`}
+                              href={`/${org}/inventory/lots/${outlier.lotId}`}
                               className="font-medium hover:underline"
                             >
                               {outlier.code}

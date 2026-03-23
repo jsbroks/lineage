@@ -71,8 +71,10 @@ export const lotType = pgTable(
     categoryId: uuid("category_id").references(() => lotTypeCategory.id, {
       onDelete: "set null",
     }),
-    quantityName: text("quantity_name"),
-    quantityDefaultUnit: text("default_unit").notNull().default("each"),
+
+    qtyName: text("quantity_name"),
+    qtyUom: text("quantity_uom").notNull().default("each"),
+
     icon: text(),
     color: text(),
     codePrefix: text("code_prefix"),

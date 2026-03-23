@@ -135,10 +135,10 @@ export const CreateLotsDialog: React.FC<CreateLotsDialogProps> = ({
 
           {variants.length > 0 && (
             <div className="space-y-2">
-              <Label>Variant</Label>
+              <Label>Variety</Label>
               <Select value={variant} onValueChange={setVariant}>
                 <SelectTrigger>
-                  <SelectValue placeholder="No variant" />
+                  <SelectValue placeholder="No variety" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">Unassigned</SelectItem>

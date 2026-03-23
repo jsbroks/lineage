@@ -130,13 +130,13 @@ const STEPS = [
     number: "01",
     title: "Define your lots",
     description:
-      "Create custom lot types with their own statuses, variants, and attributes. Model your exact process.",
+      "Create custom lot types with their own statuses, varieties, and attributes. Model your exact process.",
   },
   {
     number: "02",
     title: "Scan and track",
     description:
-      "Print QR labels and scan from your phone to update status, log operations, or look up any lot.",
+      "Print QR labels and scan from your phone to update status, log activities, or look up any lot.",
   },
   {
     number: "03",

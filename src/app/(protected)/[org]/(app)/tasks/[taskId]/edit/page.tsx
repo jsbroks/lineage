@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     where: eq(operationType.id, taskId),
   });
   return {
-    title: record ? `Edit ${record.name}` : "Edit Task Type",
+    title: record ? `Edit ${record.name}` : "Edit Activity",
   };
 }
 

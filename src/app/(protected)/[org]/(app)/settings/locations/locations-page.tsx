@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import { useParams } from "next/navigation";
-import Link from "next/link";
 import {
+  AlertCircle,
   Check,
   ChevronRight,
   FolderTree,
@@ -396,9 +395,11 @@ function LocationDialog({
   const isEditing = !!editing;
 
   useEffect(() => {
-    if (open && editing) {
+    if (!open) {
+      setForm(EMPTY_FORM);
+    } else if (editing) {
       setForm(formFromLocation(editing));
-    } else if (!open) {
+    } else {
       setForm(EMPTY_FORM);
     }
   }, [open, editing]);
@@ -479,7 +480,7 @@ function LocationDialog({
               <Select
                 value={form.typeId}
                 onValueChange={(val) =>
-                  setForm((p) => ({ ...p, typeId: val }))
+                  setForm((p) => ({ ...p, typeId: val === "__none__" ? "" : val }))
                 }
               >
                 <SelectTrigger id="loc-type">
@@ -487,6 +488,9 @@ function LocationDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
+                    <SelectItem value="__none__" className="text-muted-foreground">
+                      None
+                    </SelectItem>
                     {locationTypes.map((t) => (
                       <SelectItem key={t.id} value={t.id}>
                         {t.name}
@@ -502,7 +506,7 @@ function LocationDialog({
               <Select
                 value={form.parentId}
                 onValueChange={(val) =>
-                  setForm((p) => ({ ...p, parentId: val }))
+                  setForm((p) => ({ ...p, parentId: val === "__none__" ? "" : val }))
                 }
               >
                 <SelectTrigger id="loc-parent">
@@ -510,6 +514,9 @@ function LocationDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
+                    <SelectItem value="__none__" className="text-muted-foreground">
+                      None (root)
+                    </SelectItem>
                     {locations
                       .filter((l) => l.id !== editing?.id)
                       .map((l) => (
@@ -579,13 +586,11 @@ type LocationTypeInfo = {
 function TreeItem({
   node,
   depth,
-  org,
   locationTypes,
   onEdit,
 }: {
   node: TreeNode;
   depth: number;
-  org: string;
   locationTypes: Map<string, LocationTypeInfo>;
   onEdit: (loc: LocationRow) => void;
 }) {
@@ -633,12 +638,13 @@ function TreeItem({
           )}
         </div>
 
-        <Link
-          href={`/${org}/settings/locations/${node.id}`}
-          className="hover:text-primary flex-1 truncate text-sm font-medium underline-offset-4 hover:underline"
+        <button
+          type="button"
+          className="hover:text-primary flex-1 truncate text-left text-sm font-medium underline-offset-4 hover:underline"
+          onClick={() => onEdit(node)}
         >
           {node.name}
-        </Link>
+        </button>
 
         {typeInfo && (
           <Badge variant="secondary" className="text-[10px]">
@@ -669,7 +675,6 @@ function TreeItem({
               key={child.id}
               node={child}
               depth={depth + 1}
-              org={org}
               locationTypes={locationTypes}
               onEdit={onEdit}
             />
@@ -685,8 +690,12 @@ function TreeItem({
 // ---------------------------------------------------------------------------
 
 export default function LocationsSettingsPage() {
-  const params = useParams<{ org: string }>();
-  const { data: locations = [], isLoading } = api.location.list.useQuery();
+  const {
+    data: locations = [],
+    isLoading,
+    isError,
+    error,
+  } = api.location.list.useQuery();
   const { data: locationTypesRaw = [] } = api.location.listTypes.useQuery();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -747,6 +756,16 @@ export default function LocationsSettingsPage() {
               <Skeleton key={i} className="h-8 w-full rounded-md" />
             ))}
           </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center gap-3 py-20 text-center">
+            <AlertCircle className="text-destructive size-10" />
+            <div>
+              <p className="text-sm font-medium">Failed to load locations</p>
+              <p className="text-muted-foreground mt-1 max-w-sm text-sm">
+                {error?.message ?? "An unexpected error occurred."}
+              </p>
+            </div>
+          </div>
         ) : tree.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-20 text-center">
             <FolderTree className="text-muted-foreground size-10" />
@@ -777,7 +796,6 @@ export default function LocationsSettingsPage() {
                 key={node.id}
                 node={node}
                 depth={0}
-                org={params.org}
                 locationTypes={locationTypeMap}
                 onEdit={openEdit}
               />

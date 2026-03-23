@@ -91,7 +91,7 @@ export function ReviewApply({
         <section className="flex flex-col gap-2">
           <h3 className="flex items-center gap-2 text-sm font-medium">
             <Zap className="text-muted-foreground size-4" />
-            Operations
+            Activities
             <Badge variant="secondary">{seedData.operations.length}</Badge>
           </h3>
           <div className="bg-muted/50 divide-y rounded-lg border">

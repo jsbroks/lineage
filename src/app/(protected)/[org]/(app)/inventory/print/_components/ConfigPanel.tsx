@@ -312,7 +312,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
 
             {variants.length > 0 && (
               <div className="space-y-1.5">
-                <Label className="text-xs">Variant</Label>
+                <Label className="text-xs">Variety</Label>
                 <Select value={batchVariant} onValueChange={setBatchVariant}>
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Unassigned" />
@@ -488,7 +488,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
                     checked={content.showVariantName}
                     onCheckedChange={() => toggleContent("showVariantName")}
                   />
-                  <span className="text-xs">Variant Name</span>
+                  <span className="text-xs">Variety Name</span>
                 </label>
 
                 <div className="space-y-1">

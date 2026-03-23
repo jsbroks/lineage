@@ -44,7 +44,7 @@ export function InputLotsCard({
           <div>
             <CardTitle>Input Lots</CardTitle>
             <CardDescription>
-              Which lot types are scanned/selected when running this task.
+              Which lot types are scanned/selected when running this activity.
             </CardDescription>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={onAdd}>

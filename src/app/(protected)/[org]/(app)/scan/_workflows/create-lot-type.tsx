@@ -82,7 +82,7 @@ const CreateLotTypePanel: WorkflowPanel = ({ ctx, onComplete }) => {
         <AlertDescription className="text-xs">
           Associate codes with an item type. Next time you scan it, the system
           will recognize it and offer actions like creating a new item, tracking
-          inventory, or running operations.
+          inventory, or running activities.
         </AlertDescription>
       </Alert>
 
@@ -109,14 +109,14 @@ const CreateLotTypePanel: WorkflowPanel = ({ ctx, onComplete }) => {
         <div className="space-y-1.5">
           <label className="flex items-center gap-1.5 text-sm font-medium">
             <Hash className="text-muted-foreground size-3.5" />
-            Variant
+            Variety
           </label>
           <Select
             value={selectedVariantId}
             onValueChange={setSelectedVariantId}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select variant..." />
+              <SelectValue placeholder="Select variety..." />
             </SelectTrigger>
             <SelectContent>
               {variants.map((v) => (

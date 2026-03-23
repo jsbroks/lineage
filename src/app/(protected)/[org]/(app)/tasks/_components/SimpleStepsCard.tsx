@@ -74,7 +74,7 @@ export function SimpleStepsCard({
           <div>
             <CardTitle>Then do this...</CardTitle>
             <CardDescription>
-              Actions to perform when this task runs.
+              Actions to perform when this activity runs.
             </CardDescription>
           </div>
           <div className="flex gap-1.5">

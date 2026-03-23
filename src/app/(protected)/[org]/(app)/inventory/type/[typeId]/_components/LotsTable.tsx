@@ -114,10 +114,10 @@ export const LotsTable: React.FC<LotsTableProps> = ({
                 onValueChange={onVariantFilterChange}
               >
                 <SelectTrigger className="h-8 w-36 text-xs">
-                  <SelectValue placeholder="All variants" />
+                  <SelectValue placeholder="All varieties" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All variants</SelectItem>
+                  <SelectItem value="all">All varieties</SelectItem>
                   {variants.map((v) => (
                     <SelectItem key={v.id} value={v.id}>
                       {v.name}
@@ -163,7 +163,7 @@ export const LotsTable: React.FC<LotsTableProps> = ({
                 className="h-7 text-xs"
                 onClick={onBulkVariantOpen}
               >
-                Set variant
+                Set variety
               </Button>
             )}
             {attrDefs.length > 0 && (
@@ -222,7 +222,7 @@ export const LotsTable: React.FC<LotsTableProps> = ({
                   </TableHead>
                   <TableHead>Code</TableHead>
                   <TableHead>Status</TableHead>
-                  {variants.length > 0 && <TableHead>Variant</TableHead>}
+                  {variants.length > 0 && <TableHead>Variety</TableHead>}
                   <TableHead>Location</TableHead>
                   <TableHead className="text-right">
                     {quantityName || "Qty"}

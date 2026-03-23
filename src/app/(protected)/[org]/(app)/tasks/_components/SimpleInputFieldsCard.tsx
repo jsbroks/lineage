@@ -46,7 +46,7 @@ export function SimpleInputFieldsCard({
           <div>
             <CardTitle>Ask the operator...</CardTitle>
             <CardDescription>
-              Data fields to collect when running this task.
+              Data fields to collect when running this activity.
             </CardDescription>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={onAdd}>

@@ -43,7 +43,7 @@ export function StepsCard({
           <div>
             <CardTitle>Steps</CardTitle>
             <CardDescription>
-              Actions executed when this task runs.
+              Actions executed when this activity runs.
             </CardDescription>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={onAdd}>

@@ -27,11 +27,11 @@ export default function TasksPage() {
       <header className="flex items-center justify-between border-b px-4 py-2">
         <div className="flex items-center gap-2">
           <SidebarTrigger />
-          <h1 className="text-lg font-semibold">Task Types</h1>
+          <h1 className="text-lg font-semibold">Activities</h1>
         </div>
         <Button size="sm" asChild>
           <Link href={`/${params.org}/tasks/new`}>
-            <Plus className="mr-1 size-3.5" /> New task type
+            <Plus className="mr-1 size-3.5" /> New activity
           </Link>
         </Button>
       </header>
@@ -39,11 +39,11 @@ export default function TasksPage() {
       <div className="flex-1 overflow-auto">
         {isLoading ? (
           <div className="text-muted-foreground px-6 py-12 text-center text-sm">
-            Loading task types...
+            Loading activities...
           </div>
         ) : operationTypes.length === 0 ? (
           <div className="text-muted-foreground px-6 py-12 text-center text-sm">
-            No task types configured yet. Create one to get started.
+            No activities configured yet. Create one to get started.
           </div>
         ) : (
           <Table>

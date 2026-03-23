@@ -159,7 +159,7 @@ export default function ScanPage() {
           <div>
             <h1 className="text-lg font-semibold tracking-tight">Smart Scan</h1>
             <p className="text-muted-foreground text-sm">
-              Scan lots to auto-detect and execute operations.
+              Scan lots to auto-detect and run activities.
             </p>
           </div>
         </div>

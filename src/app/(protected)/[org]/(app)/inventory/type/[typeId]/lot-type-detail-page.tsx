@@ -271,7 +271,7 @@ export default function LotTypeDetailPage() {
             onBulkAttributeOpen={() => setBulkAttributeOpen(true)}
             org={params.org}
             quantityName={it.quantityName}
-            quantityUnit={it.quantityDefaultUnit}
+            quantityUnit={it.qtyUom}
           />
         </div>
       </div>

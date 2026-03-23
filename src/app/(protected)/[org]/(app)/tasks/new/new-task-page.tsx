@@ -47,14 +47,14 @@ export default function NewTaskTypePage() {
             <ArrowLeft className="size-4" />
           </Link>
         </Button>
-        <h1 className="text-lg font-semibold">New Task Type</h1>
+        <h1 className="text-lg font-semibold">New Activity</h1>
       </header>
 
       <div className="mx-auto w-full max-w-3xl flex-1 px-6 py-6">
         <OperationTypeForm
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
-          submitLabel="Create task type"
+          submitLabel="Create activity"
         />
       </div>
     </div>

@@ -215,7 +215,7 @@ export const lotRouter = createTRPCRouter({
             variantId: input.variantId ?? null,
             code: codeValue,
             statusId: resolvedStatusId,
-            quantityUnit: it?.quantityDefaultUnit ?? "each",
+            quantityUnit: it?.qtyUom ?? "each",
             locationId: input.locationId,
             notes: input.notes,
             attributes: input.attributes ?? {},

@@ -40,9 +40,9 @@ export function VariantsCard({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Variants</CardTitle>
+            <CardTitle>Varieties</CardTitle>
             <CardDescription>
-              Add options like size or color. Variants are generated from their
+              Add options like size or color. Varieties are generated from their
               combinations.
             </CardDescription>
           </div>
@@ -52,7 +52,7 @@ export function VariantsCard({
             size="sm"
             onClick={onAddOption}
           >
-            <Plus className="mr-1 size-3.5" /> Add variant
+            <Plus className="mr-1 size-3.5" /> Add variety
           </Button>
         </div>
       </CardHeader>

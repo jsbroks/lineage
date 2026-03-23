@@ -67,7 +67,7 @@ export function SimpleInputLotsCard({
           <div>
             <CardTitle>When scanning...</CardTitle>
             <CardDescription>
-              Which lot types does this task operate on?
+              Which lot types does this activity operate on?
             </CardDescription>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={handleAdd}>

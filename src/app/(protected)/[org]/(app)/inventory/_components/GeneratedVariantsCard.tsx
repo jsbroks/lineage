@@ -31,10 +31,10 @@ export function GeneratedVariantsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Generated Variants</CardTitle>
+        <CardTitle>Generated Varieties</CardTitle>
         <CardDescription>
-          {variants.length} variant{variants.length !== 1 && "s"} generated from
-          option combinations. Expand to set defaults.
+          {variants.length} variet{variants.length !== 1 ? "ies" : "y"} generated
+          from option combinations. Expand to set defaults.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">

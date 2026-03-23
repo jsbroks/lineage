@@ -4,13 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ClipboardList,
+  CreditCard,
   Home,
   MapPin,
   MessageCircle,
   Package2,
-  Printer,
   ScanBarcode,
-  Settings2,
   Users,
 } from "lucide-react";
 
@@ -44,32 +43,35 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
       icon: Package2,
     },
     {
-      label: "Print Labels",
-      href: `/${org}/inventory/print`,
-      icon: Printer,
-    },
-    {
       label: "Scan",
       href: `/${org}/scan`,
       icon: ScanBarcode,
     },
   ];
 
-  const settingsNav = [
+  const setupNav = [
     {
-      label: "Task Types",
+      label: "Activities",
       href: `/${org}/tasks`,
-      icon: Settings2,
+      icon: ClipboardList,
     },
     {
       label: "Locations",
       href: `/${org}/settings/locations`,
       icon: MapPin,
     },
+  ];
+
+  const accountNav = [
     {
       label: "Team",
       href: `/${org}/settings/team`,
       icon: Users,
+    },
+    {
+      label: "Billing",
+      href: `/${org}/settings/billing`,
+      icon: CreditCard,
     },
   ];
 
@@ -97,12 +99,8 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
                 <SidebarMenuButton
                   asChild
                   isActive={
-                    item.href === `/${org}/inventory`
-                      ? pathname === item.href ||
-                        (pathname.startsWith(item.href) &&
-                          !pathname.startsWith(`/${org}/inventory/print`))
-                      : pathname === item.href ||
-                        pathname.startsWith(item.href + "/")
+                    pathname === item.href ||
+                    pathname.startsWith(item.href + "/")
                   }
                   tooltip={item.label}
                 >
@@ -117,9 +115,29 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Settings</SidebarGroupLabel>
+          <SidebarGroupLabel>Setup</SidebarGroupLabel>
           <SidebarMenu>
-            {settingsNav.map((item) => (
+            {setupNav.map((item) => (
+              <SidebarMenuItem key={item.href}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith(item.href)}
+                  tooltip={item.label}
+                >
+                  <Link href={item.href}>
+                    <item.icon />
+                    <span>{item.label}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Account</SidebarGroupLabel>
+          <SidebarMenu>
+            {accountNav.map((item) => (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton
                   asChild

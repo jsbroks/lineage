@@ -254,7 +254,7 @@ export const QuickReport: React.FC<QuickReportProps> = ({
   const groupByOptions = useMemo(() => {
     const opts: { value: string; label: string }[] = [
       { value: "status", label: "Status" },
-      { value: "variant", label: "Variant" },
+      { value: "variant", label: "Variety" },
       { value: "location", label: "Location" },
     ];
     for (const d of attrDefs) {
@@ -335,7 +335,7 @@ export const QuickReport: React.FC<QuickReportProps> = ({
                   What do you want to see?
                 </Label>
                 <Textarea
-                  placeholder="e.g. Count of lots by status, or average spawn rate grouped by variant..."
+                  placeholder="e.g. Count of lots by status, or average spawn rate grouped by variety..."
                   className="min-h-[60px] text-xs"
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
@@ -560,7 +560,7 @@ export const QuickReport: React.FC<QuickReportProps> = ({
                   {variants.length > 0 && (
                     <div className="space-y-1">
                       <span className="text-muted-foreground text-[10px]">
-                        Variant
+                        Variety
                       </span>
                       <Select
                         value={variantFilter}

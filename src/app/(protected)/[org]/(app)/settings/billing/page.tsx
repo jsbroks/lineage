@@ -1,10 +1,10 @@
 import { type Metadata } from "next";
-import TasksPage from "./tasks-page";
+import BillingSettingsPage from "./billing-page";
 
 export const metadata: Metadata = {
-  title: "Activities",
+  title: "Billing",
 };
 
 export default function Page() {
-  return <TasksPage />;
+  return <BillingSettingsPage />;
 }
