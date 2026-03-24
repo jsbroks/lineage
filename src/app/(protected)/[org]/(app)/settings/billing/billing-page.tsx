@@ -40,17 +40,13 @@ const PLANS = {
     name: "Pro",
     price: "$39",
     period: "/mo",
-    description:
-      "For growing operations that need more power and flexibility.",
+    description: "For growing operations that need more power and flexibility.",
     limits: { lots: Infinity, members: Infinity },
     features: [
       "Unlimited users",
       "Unlimited lots",
       "AI-powered insights",
-      "Shopify integration",
-      "QuickBooks & Xero sync",
       "Label printer support (DYMO, Rollo, Brother)",
-      "Webhook & Zapier automation",
       "Priority support",
     ],
   },
@@ -58,14 +54,12 @@ const PLANS = {
     name: "Business",
     price: "$79",
     period: "/mo",
-    description:
-      "For commercial farms with compliance and integration needs.",
+    description: "For commercial farms with compliance and integration needs.",
     limits: { lots: Infinity, members: Infinity },
     features: [
       "Everything in Pro",
       "Compliance-ready export reports (FDA, FSMA)",
       "Audit log exports",
-      "Custom integrations",
       "Dedicated support",
     ],
   },
@@ -90,7 +84,9 @@ function UsageBar({ used, limit }: { used: number; limit: number }) {
         {limit !== Infinity && (
           <span
             className={
-              isNearLimit ? "text-destructive font-medium" : "text-muted-foreground"
+              isNearLimit
+                ? "text-destructive font-medium"
+                : "text-muted-foreground"
             }
           >
             {Math.round(pct)}%
@@ -155,10 +151,7 @@ export default function BillingSettingsPage() {
             <Separator className="mb-4" />
             <div className="grid gap-2 sm:grid-cols-2">
               {plan.features.map((feature) => (
-                <div
-                  key={feature}
-                  className="flex items-start gap-2 text-sm"
-                >
+                <div key={feature} className="flex items-start gap-2 text-sm">
                   <Check className="text-muted-foreground mt-0.5 size-3.5 shrink-0" />
                   <span>{feature}</span>
                 </div>

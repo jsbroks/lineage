@@ -80,7 +80,7 @@ export function AnomalyWidget({ org }: { org: string }) {
               icon={<TrendingDown className="size-4 text-red-500" />}
               label="Throughput Drops"
               count={data?.throughputChanges.length ?? 0}
-              description="lot types with 30%+ fewer transitions"
+              description="products with 30%+ fewer status changes"
             />
             <AnomalyStatCard
               icon={<Scale className="size-4 text-violet-500" />}
@@ -155,7 +155,7 @@ export function AnomalyWidget({ org }: { org: string }) {
                             {change.lotTypeName}
                           </p>
                           <p className="text-muted-foreground text-xs">
-                            {change.recentCount} transitions this week vs{" "}
+                            {change.recentCount} status changes this week vs{" "}
                             {change.priorCount} last week
                           </p>
                         </div>

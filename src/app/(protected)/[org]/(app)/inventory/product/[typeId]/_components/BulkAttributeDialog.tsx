@@ -92,7 +92,7 @@ export const BulkAttributeDialog: React.FC<BulkAttributeDialogProps> = ({
         </DialogHeader>
         {attrDefs.length === 0 ? (
           <p className="text-muted-foreground py-4 text-center text-sm">
-            No attributes defined for this lot type.
+            No attributes defined for this product.
           </p>
         ) : (
           <div className="space-y-3">

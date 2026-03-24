@@ -35,7 +35,7 @@ export default function NewLotTypePage() {
 
     await saveRelatedData(created.id, formData, { skipEmpty: true });
     await invalidateCommon();
-    router.push(`/${params.org}/inventory/type/${created.id}`);
+    router.push(`/${params.org}/inventory/product/${created.id}`);
   };
 
   return (
@@ -47,14 +47,14 @@ export default function NewLotTypePage() {
             <ArrowLeft className="size-4" />
           </Link>
         </Button>
-        <h1 className="text-lg font-semibold">New Lot Type</h1>
+        <h1 className="text-lg font-semibold">New Product</h1>
       </header>
 
       <div className="mx-auto w-full max-w-3xl flex-1 px-6 py-6">
         <LotTypeForm
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
-          submitLabel="Create lot type"
+          submitLabel="Create product"
         />
       </div>
     </div>

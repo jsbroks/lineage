@@ -1,6 +1,6 @@
 export { LotPageHeader } from "./LotPageHeader";
 export { LotHeaderInfo } from "./LotHeaderInfo";
-export { QuantityCard, ValueCard, LocationCard } from "./SummaryCards";
+export { QuantityCard, CostCard, LocationCard } from "./SummaryCards";
 export { DetailsCard } from "./DetailsCard";
 export { PropertiesCard } from "./PropertiesCard";
 export { LabelsCard } from "./LabelsCard";

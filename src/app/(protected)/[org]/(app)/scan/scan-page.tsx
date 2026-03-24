@@ -165,8 +165,8 @@ export default function ScanPage() {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1">
-        <div className="flex w-1/2 flex-col border-r">
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        <div className="flex flex-col border-b md:w-1/2 md:border-r md:border-b-0">
           <ScanInput
             inputRef={inputRef}
             scanInput={scanInput}
@@ -189,7 +189,7 @@ export default function ScanPage() {
           />
         </div>
 
-        <div className="flex w-1/2 flex-col">
+        <div className="flex flex-1 flex-col md:w-1/2">
           {scanCodes.length === 0 && <NoItemsScanned />}
 
           {scanCodes.length > 0 && (

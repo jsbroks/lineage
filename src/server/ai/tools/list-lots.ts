@@ -84,7 +84,7 @@ export function createListLotsTool(ctx: SchemaContext) {
           locationName: location.name,
           quantity: lot.quantity,
           quantityUnit: lot.quantityUnit,
-          value: lot.value,
+          unitCost: lot.unitCost,
           attributes: lot.attributes,
           createdAt: lot.createdAt,
         })

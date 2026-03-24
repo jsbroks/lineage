@@ -41,7 +41,7 @@ export function TransitionsCard({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Transitions</CardTitle>
+            <CardTitle>Status Flow</CardTitle>
             <CardDescription>Which status changes are allowed.</CardDescription>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={onAdd}>

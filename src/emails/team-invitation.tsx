@@ -1,11 +1,6 @@
 import { Section, Link } from "@react-email/components";
 import * as React from "react";
-import {
-  EmailLayout,
-  Heading,
-  Paragraph,
-  PrimaryButton,
-} from "./_components";
+import { EmailLayout, Heading, Paragraph, PrimaryButton } from "./_components";
 
 interface TeamInvitationEmailProps {
   inviterName: string;
@@ -37,10 +32,7 @@ export default function TeamInvitationEmail({
       <Paragraph muted>
         If the button above doesn&apos;t work, copy and paste this link into
         your browser:{" "}
-        <Link
-          href={invitationLink}
-          className="text-muted break-all underline"
-        >
+        <Link href={invitationLink} className="text-muted break-all underline">
           {invitationLink}
         </Link>
       </Paragraph>

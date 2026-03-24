@@ -1,11 +1,6 @@
 import { Section, Link } from "@react-email/components";
 import * as React from "react";
-import {
-  EmailLayout,
-  Heading,
-  Paragraph,
-  PrimaryButton,
-} from "./_components";
+import { EmailLayout, Heading, Paragraph, PrimaryButton } from "./_components";
 
 interface WelcomeEmailProps {
   name: string;
@@ -30,8 +25,8 @@ export default function WelcomeEmail({
         <strong>1. Create your organization</strong> — set up your workspace and
         choose your industry vertical.
         <br />
-        <strong>2. Define your lot types</strong> — model the materials and
-        products you track.
+        <strong>2. Define your products</strong> — set up the things you produce
+        and track.
         <br />
         <strong>3. Invite your team</strong> — collaborate with the people who
         handle your inventory.

@@ -261,9 +261,7 @@ async function insertLocations(
         orgId,
         name: loc.name,
         description: loc.description ?? null,
-        typeId: loc.type
-          ? (locationTypeNameToId.get(loc.type) ?? null)
-          : null,
+        typeId: loc.type ? (locationTypeNameToId.get(loc.type) ?? null) : null,
         parentId,
       })
       .returning();
@@ -371,9 +369,7 @@ export const onboardingRouter = createTRPCRouter({
         const categoryNameToId = new Map<string, string>();
         const uniqueCategories = [
           ...new Set(
-            seedData.lotTypes
-              .map((lt) => lt.category)
-              .filter(Boolean),
+            seedData.lotTypes.map((lt) => lt.category).filter(Boolean),
           ),
         ];
         for (const name of uniqueCategories) {

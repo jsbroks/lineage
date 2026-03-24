@@ -61,8 +61,9 @@ export function useLotTypeMutations() {
           isDefault: v.isDefault,
           isActive: v.isActive,
           sortOrder: i,
-          defaultValue: v.defaultValue ? parseInt(v.defaultValue, 10) : null,
-          defaultValueCurrency: v.defaultValueCurrency.trim() || null,
+          defaultUnitCost: v.defaultUnitCost
+            ? parseInt(v.defaultUnitCost, 10)
+            : null,
           defaultQuantity: v.defaultQuantity.trim() || null,
           defaultQuantityUnit: v.defaultQuantityUnit.trim() || null,
         })),

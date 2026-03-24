@@ -207,7 +207,7 @@ export const LotsTable: React.FC<LotsTableProps> = ({
             No lots found
             {statusFilter !== "all" || variantFilter !== "all" || search
               ? " matching your filters."
-              : " for this lot type yet."}
+              : " for this product yet."}
           </div>
         ) : (
           <div className="overflow-auto">

@@ -83,31 +83,31 @@ const WHO_ITS_FOR: NavItem[] = [
     icon: OrganicFoodIcon,
     title: "Craft Food Producers",
     description: "Lot traceability for small-batch food and beverage.",
-    href: "/mushroom-cultivation",
+    href: "/#use-cases",
   },
   {
     icon: EcoLabIcon,
     title: "Labs & R&D Teams",
     description: "Sample lineage, experiments, and test batches.",
-    href: "/mushroom-cultivation",
+    href: "/#use-cases",
   },
   {
     icon: CannabisIcon,
     title: "Cannabis & Hemp Growers",
     description: "Seed-to-sale tracking and compliance.",
-    href: "/mushroom-cultivation",
+    href: "/#use-cases",
   },
   {
     icon: BarrelIcon,
     title: "Craft Beverage Makers",
     description: "Batch tracking for breweries, distilleries, and wineries.",
-    href: "/mushroom-cultivation",
+    href: "/#use-cases",
   },
   {
     icon: Factory02Icon,
     title: "Small-batch Manufacturers",
     description: "From raw materials to finished goods for makers.",
-    href: "/mushroom-cultivation",
+    href: "/#use-cases",
   },
 ];
 

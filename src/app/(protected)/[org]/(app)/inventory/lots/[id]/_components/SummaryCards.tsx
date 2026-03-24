@@ -27,26 +27,32 @@ export const QuantityCard: React.FC<{
   </Card>
 );
 
-export const ValueCard: React.FC<{
-  value?: number | null;
+export const CostCard: React.FC<{
+  unitCost: number;
+  quantity: string | number;
   currency?: string | null;
-}> = ({ value, currency }) => (
-  <Card>
-    <CardHeader className="pb-2">
-      <CardTitle className="text-muted-foreground text-sm font-medium">
-        Value
-      </CardTitle>
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold tabular-nums">
-        {value
-          ? `$${(value / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
-          : "—"}
-      </div>
-      {currency && <p className="text-muted-foreground text-xs">{currency}</p>}
-    </CardContent>
-  </Card>
-);
+}> = ({ unitCost, quantity, currency }) => {
+  const totalCents = unitCost * Number(quantity);
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-muted-foreground text-sm font-medium">
+          Cost
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold tabular-nums">
+          {totalCents
+            ? `$${(totalCents / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+            : "—"}
+        </div>
+        {currency && (
+          <p className="text-muted-foreground text-xs">{currency}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
 
 export const LocationCard: React.FC<{ name: string }> = ({ name }) => (
   <Card>

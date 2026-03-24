@@ -64,18 +64,21 @@ export function ReviewApply({
         <h2 className="text-lg font-semibold">Review your setup</h2>
         <p className="text-muted-foreground text-sm">
           We&apos;ll create{" "}
-          <span className="font-medium">{totalEntities} entities</span> for your{" "}
-          <span className="font-medium">{vertical.name}</span> workspace. You
-          can customize everything in settings after setup.
+          <span className="font-medium">
+            {seedData.lotTypes.length} products, {seedData.operations.length}{" "}
+            activities, and {countLocations(seedData.locations)} locations
+          </span>{" "}
+          for your <span className="font-medium">{vertical.name}</span>{" "}
+          workspace. You can customize everything in settings after setup.
         </p>
       </div>
 
-      {/* Lot Types */}
+      {/* Products */}
       {seedData.lotTypes.length > 0 && (
         <section className="flex flex-col gap-2">
           <h3 className="flex items-center gap-2 text-sm font-medium">
             <Box className="text-muted-foreground size-4" />
-            Lot Types
+            Products
             <Badge variant="secondary">{seedData.lotTypes.length}</Badge>
           </h3>
           <div className="bg-muted/50 divide-y rounded-lg border">
@@ -124,7 +127,7 @@ export function ReviewApply({
 
       {totalEntities === 0 && (
         <div className="text-muted-foreground rounded-lg border border-dashed p-6 text-center text-sm">
-          No pre-configured entities — you&apos;ll start with a clean slate.
+          No pre-configured items — you&apos;ll start with a clean slate.
         </div>
       )}
 

@@ -42,8 +42,8 @@ export const lot = pgTable(
     quantity: numeric("quantity").notNull().default("0"),
     quantityUnit: text("quantity_unit"),
 
-    value: integer("value").notNull().default(0),
-    valueCurrency: text("value_currency"),
+    unitCost: integer("unit_cost").notNull().default(0),
+    currency: text("currency"),
 
     locationId: uuid("location_id").references(() => location.id),
     attributes: jsonb().notNull().default({}),

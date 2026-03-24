@@ -1,17 +1,11 @@
 "use client";
 
-import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { Check, Minus, Package, Plus } from "lucide-react";
 
 import { Button } from "~/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import { Card, CardContent } from "~/components/ui/card";
 import {
   Field,
   FieldContent,
@@ -19,6 +13,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from "~/components/ui/field";
+import { Input } from "~/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -26,399 +21,472 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { Checkbox } from "~/components/ui/checkbox";
+import { SidebarTrigger } from "~/components/ui/sidebar";
 import { api } from "~/trpc/react";
+import { Icon } from "~/app/_components/IconPicker";
+import { cn } from "~/lib/utils";
+import { getColorClasses } from "~/app/_components/ColorSelector";
 
-type LotFormState = {
-  lotTypeId: string;
-  code: string;
-  useSequence: boolean;
-  status: string;
-  uom: string;
-  locationId: string;
-  notes: string;
-  attributesText: string;
-};
+type AttrValues = Record<string, string>;
 
-type SequenceFormState = {
-  prefix: string;
-  nextNumber: string;
-};
-
-const EMPTY_FORM: LotFormState = {
-  lotTypeId: "",
-  code: "",
-  useSequence: true,
-  status: "created",
-  uom: "each",
-  locationId: "",
-  notes: "",
-  attributesText: "{}",
-};
-
-const EMPTY_SEQUENCE_FORM: SequenceFormState = {
-  prefix: "",
-  nextNumber: "1",
-};
-
-export default function NewLotPage() {
+function NewLotPageInner() {
   const params = useParams<{ org: string }>();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const org = params.org;
   const utils = api.useUtils();
-  const [form, setForm] = useState<LotFormState>(EMPTY_FORM);
-  const [sequenceForm, setSequenceForm] =
-    useState<SequenceFormState>(EMPTY_SEQUENCE_FORM);
-  const [attributesError, setAttributesError] = useState<string | null>(null);
-  const [sequenceError, setSequenceError] = useState<string | null>(null);
+
+  const preselectedTypeId = searchParams.get("typeId") ?? "";
+
+  const [lotTypeId, setLotTypeId] = useState(preselectedTypeId);
+  const [variantId, setVariantId] = useState<string>("");
+  const [locationId, setLocationId] = useState("");
+  const [notes, setNotes] = useState("");
+  const [count, setCount] = useState(1);
+  const [attrValues, setAttrValues] = useState<AttrValues>({});
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<{
+    count: number;
+    typeName: string;
+  } | null>(null);
 
   const { data: lotTypesWithStatuses = [] } =
     api.lotType.listWithStatuses.useQuery();
-  const lotTypes = lotTypesWithStatuses;
   const { data: locations = [] } = api.location.list.useQuery();
-  const { data: lots = [], isLoading: lotsLoading } = api.lot.list.useQuery();
 
-  const selectedLotType = useMemo(
-    () => lotTypesWithStatuses.find((it) => it.id === form.lotTypeId) ?? null,
-    [lotTypesWithStatuses, form.lotTypeId],
+  const { data: typeDetail } = api.lotType.getById.useQuery(
+    { id: lotTypeId },
+    { enabled: !!lotTypeId },
   );
 
-  const statuses = selectedLotType?.statuses ?? [];
+  const selectedType = useMemo(
+    () => lotTypesWithStatuses.find((t) => t.id === lotTypeId) ?? null,
+    [lotTypesWithStatuses, lotTypeId],
+  );
 
-  const statusNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const lt of lotTypesWithStatuses) {
-      for (const s of lt.statuses) {
-        map.set(s.id, s.name);
-      }
-    }
-    return map;
-  }, [lotTypesWithStatuses]);
+  const variants = typeDetail?.variants?.filter((v) => v.isActive) ?? [];
+  const attributeDefs = typeDetail?.attributeDefinitions ?? [];
 
   useEffect(() => {
-    if (!selectedLotType) return;
-    const firstUnstarted = selectedLotType.statuses.find(
-      (s) => s.category === "unstarted",
-    );
-    const defaultStatus = firstUnstarted ?? selectedLotType.statuses[0];
-    if (defaultStatus) {
-      setForm((prev) => ({ ...prev, status: defaultStatus.id }));
-    }
-  }, [selectedLotType]);
+    setVariantId("");
+    setAttrValues({});
+  }, [lotTypeId]);
 
-  const createLot = api.lot.create.useMutation({
-    onSuccess: async () => {
+  useEffect(() => {
+    if (variants.length > 0 && !variantId) {
+      const defaultVariant = variants.find((v) => v.isDefault);
+      if (defaultVariant) setVariantId(defaultVariant.id);
+    }
+  }, [variants, variantId]);
+
+  useEffect(() => {
+    if (attributeDefs.length === 0) return;
+    setAttrValues((prev) => {
+      const next = { ...prev };
+      for (const def of attributeDefs) {
+        if (!(def.attrKey in next)) {
+          next[def.attrKey] = def.defaultValue ?? "";
+        }
+      }
+      return next;
+    });
+  }, [attributeDefs]);
+
+  const batchCreate = api.lot.batchCreate.useMutation({
+    onSuccess: async (data) => {
       await utils.lot.list.invalidate();
-      await utils.lotType.list.invalidate();
-      setForm((prev) => ({
-        ...EMPTY_FORM,
-        lotTypeId: prev.lotTypeId,
-        useSequence: prev.useSequence,
-        locationId: prev.locationId,
-      }));
-      setAttributesError(null);
+      await utils.lotType.inventoryOverview.invalidate();
+      setSuccess({
+        count: data.created,
+        typeName: selectedType?.name ?? "lots",
+      });
+    },
+    onError: (err) => {
+      setError(err.message);
     },
   });
 
-  useEffect(() => {
-    if (!form.lotTypeId || !selectedLotType) {
-      setSequenceForm(EMPTY_SEQUENCE_FORM);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!lotTypeId) {
+      setError("Select a product type.");
       return;
     }
 
-    if (selectedLotType.codePrefix) {
-      setSequenceForm({
-        prefix: selectedLotType.codePrefix,
-        nextNumber: String(selectedLotType.codeNextNumber),
-      });
-    } else {
-      setSequenceForm(EMPTY_SEQUENCE_FORM);
-    }
-  }, [form.lotTypeId, selectedLotType]);
-
-  const previewCode = useMemo(() => {
-    const nextNumber = Number(sequenceForm.nextNumber);
-    if (
-      !sequenceForm.prefix ||
-      !Number.isInteger(nextNumber) ||
-      nextNumber <= 0
-    )
-      return "";
-    const paddedNumber = String(nextNumber).padStart(5, "0");
-    return `${sequenceForm.prefix}-${paddedNumber}`;
-  }, [sequenceForm.nextNumber, sequenceForm.prefix]);
-
-  const url = window.location.origin;
-
-  const handleCreateLot = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    let attributes: Record<string, unknown> = {};
-    try {
-      const parsed = JSON.parse(form.attributesText) as unknown;
-      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        attributes = parsed as Record<string, unknown>;
-      } else {
-        setAttributesError("Attributes must be a JSON object.");
+    const attributes: Record<string, unknown> = {};
+    for (const def of attributeDefs) {
+      const val = attrValues[def.attrKey];
+      if (def.isRequired && (!val || val.trim() === "")) {
+        setError(`"${def.attrKey}" is required.`);
         return;
       }
-    } catch {
-      setAttributesError("Attributes must be valid JSON.");
-      return;
+      if (val && val.trim() !== "") {
+        if (def.dataType === "number") {
+          const num = Number(val);
+          if (isNaN(num)) {
+            setError(`"${def.attrKey}" must be a number.`);
+            return;
+          }
+          attributes[def.attrKey] = num;
+        } else if (def.dataType === "boolean") {
+          attributes[def.attrKey] = val === "true";
+        } else {
+          attributes[def.attrKey] = val;
+        }
+      }
     }
 
-    setAttributesError(null);
-
-    await createLot.mutateAsync({
-      hostname: url,
-      lotTypeId: form.lotTypeId,
-      code: form.useSequence ? undefined : form.code.trim(),
-      useSequence: form.useSequence,
-      status: form.status.trim() || "created",
-      uom: form.uom.trim() || "each",
-      locationId: form.locationId || null,
-      notes: form.notes.trim() || null,
-      attributes,
+    batchCreate.mutate({
+      lotTypeId,
+      variantId: variantId || null,
+      useSequence: true,
+      count,
+      status: "created",
+      locationId: locationId || null,
+      attributes: Object.keys(attributes).length > 0 ? attributes : undefined,
     });
   };
 
-  const editLotType = api.lotType.edit.useMutation({
-    onSuccess: async () => {
-      await utils.lotType.list.invalidate();
-      setSequenceError(null);
-    },
-  });
-
-  const handleSaveSequence = async (
-    event: React.FormEvent<HTMLFormElement>,
-  ) => {
-    event.preventDefault();
-    if (!form.lotTypeId || !selectedLotType) {
-      setSequenceError("Select a lot type before saving sequence settings.");
-      return;
-    }
-
-    const nextNumber = Number(sequenceForm.nextNumber);
-    if (!Number.isInteger(nextNumber) || nextNumber <= 0) {
-      setSequenceError("Next number must be a positive integer.");
-      return;
-    }
-    if (!sequenceForm.prefix.trim()) {
-      setSequenceError("Prefix is required.");
-      return;
-    }
-
-    await editLotType.mutateAsync({
-      id: form.lotTypeId,
-      name: selectedLotType.name,
-      category: selectedLotType.category,
-      description: selectedLotType.description,
-      quantityDefaultUnit: selectedLotType.qtyUom,
-      icon: selectedLotType.icon,
-      color: selectedLotType.color,
-      codePrefix: sequenceForm.prefix.trim(),
-      codeNextNumber: nextNumber,
-    });
+  const handleCreateMore = () => {
+    setSuccess(null);
+    setCount(1);
+    setNotes("");
+    setAttrValues({});
   };
+
+  if (success) {
+    return (
+      <div className="flex min-h-full flex-col">
+        <header className="flex items-center gap-2 border-b px-4 py-2">
+          <SidebarTrigger />
+          <h1 className="text-lg font-semibold">New Lots</h1>
+        </header>
+        <div className="flex flex-1 flex-col items-center justify-center p-8">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <div className="bg-primary/10 flex size-14 items-center justify-center rounded-full">
+              <Check className="text-primary size-7" />
+            </div>
+            <div>
+              <p className="text-lg font-semibold">
+                Created {success.count} {success.count === 1 ? "lot" : "lots"}
+              </p>
+              <p className="text-muted-foreground mt-1 text-sm">
+                {success.typeName} added to inventory.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={handleCreateMore}>
+                Create more
+              </Button>
+              <Button onClick={() => router.push(`/${org}/inventory`)}>
+                View inventory
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto max-w-6xl px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Inventory</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Add new lots and review recent inventory.
-        </p>
-      </div>
+    <div className="flex min-h-full flex-col">
+      <header className="flex items-center gap-2 border-b px-4 py-2">
+        <SidebarTrigger />
+        <h1 className="text-lg font-semibold">New Lots</h1>
+      </header>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Lots</CardTitle>
-            <CardDescription>Open a lot to view its history.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {lotsLoading ? (
-              <p className="text-muted-foreground text-sm">Loading lots...</p>
-            ) : lots.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No lots yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {lots.slice(0, 20).map((lot) => (
-                  <Link
-                    key={lot.id}
-                    href={`/${org}/inventory/lots/${lot.id}`}
-                    className="border-border hover:bg-muted block rounded-md border px-3 py-2"
+      <div className="mx-auto w-full max-w-lg px-6 py-8">
+        <form onSubmit={handleSubmit}>
+          <FieldGroup>
+            {/* Product Type */}
+            <Field>
+              <FieldLabel>Product</FieldLabel>
+              <FieldContent>
+                <Select value={lotTypeId} onValueChange={setLotTypeId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a product type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {lotTypesWithStatuses.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className={cn(
+                              "flex size-5 shrink-0 items-center justify-center rounded",
+                              getColorClasses(t.color).bg,
+                              getColorClasses(t.color).text,
+                            )}
+                            style={
+                              t.color
+                                ? { backgroundColor: t.color + "20" }
+                                : undefined
+                            }
+                          >
+                            <Icon icon={t.icon} className="size-3" />
+                          </div>
+                          {t.name}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FieldContent>
+            </Field>
+
+            {/* Variant */}
+            {variants.length > 0 && (
+              <Field>
+                <FieldLabel>Variant</FieldLabel>
+                <FieldContent>
+                  <Select value={variantId} onValueChange={setVariantId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select variant" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {variants.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldContent>
+              </Field>
+            )}
+
+            {/* Quantity */}
+            <Field>
+              <FieldLabel>How many?</FieldLabel>
+              <FieldContent>
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-9 shrink-0"
+                    onClick={() => setCount((c) => Math.max(1, c - 1))}
+                    disabled={count <= 1}
                   >
-                    <p className="font-medium">{lot.code}</p>
-                    <p className="text-muted-foreground text-xs">
-                      Status: {statusNameMap.get(lot.statusId) ?? lot.statusId}
-                    </p>
-                  </Link>
+                    <Minus className="size-4" />
+                  </Button>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={500}
+                    value={count}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!isNaN(v) && v >= 1) setCount(Math.min(v, 500));
+                    }}
+                    className="text-center tabular-nums"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-9 shrink-0"
+                    onClick={() => setCount((c) => Math.min(500, c + 1))}
+                    disabled={count >= 500}
+                  >
+                    <Plus className="size-4" />
+                  </Button>
+                </div>
+                <FieldDescription>
+                  Tracking codes are assigned automatically.
+                </FieldDescription>
+              </FieldContent>
+            </Field>
+
+            {/* Location */}
+            {locations.length > 0 && (
+              <Field>
+                <FieldLabel>Location</FieldLabel>
+                <FieldContent>
+                  <Select
+                    value={locationId || "none"}
+                    onValueChange={(v) => setLocationId(v === "none" ? "" : v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Optional" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {locations.map((loc) => (
+                        <SelectItem key={loc.id} value={loc.id}>
+                          {loc.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </FieldContent>
+              </Field>
+            )}
+
+            {/* Custom Attributes */}
+            {attributeDefs.length > 0 && (
+              <div className="space-y-4">
+                <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+                  Properties
+                </p>
+                {attributeDefs.map((def) => (
+                  <AttributeField
+                    key={def.id}
+                    def={def}
+                    value={attrValues[def.attrKey] ?? ""}
+                    onChange={(val) =>
+                      setAttrValues((prev) => ({ ...prev, [def.attrKey]: val }))
+                    }
+                  />
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Add New Lot</CardTitle>
-            <CardDescription>
-              Create a lot without scanning an identifier.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleCreateLot}>
-              <FieldGroup>
-                <Field>
-                  <FieldLabel>Category</FieldLabel>
-                  <FieldContent>
-                    <Select
-                      value={form.lotTypeId}
-                      onValueChange={(value) =>
-                        setForm((prev) => ({ ...prev, lotTypeId: value }))
-                      }
-                      disabled={lotTypes.length === 0}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {lotTypes.map((lotType) => (
-                          <SelectItem key={lotType.id} value={lotType.id}>
-                            {lotType.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FieldContent>
-                </Field>
+            {error && (
+              <p className="text-destructive text-sm" role="alert">
+                {error}
+              </p>
+            )}
 
-                <Field>
-                  <FieldLabel htmlFor="lot-code">Tracking #</FieldLabel>
-                  <FieldContent>
-                    <input
-                      id="lot-code"
-                      required={!form.useSequence}
-                      value={form.useSequence ? previewCode : form.code}
-                      onChange={(e) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          code: e.target.value,
-                        }))
-                      }
-                      className="border-input bg-background w-full rounded-md border px-3 py-2"
-                      placeholder={
-                        form.useSequence ? "Auto-generated" : "LOT-0001"
-                      }
-                      disabled={form.useSequence}
-                    />
-                    {form.useSequence && (
-                      <FieldDescription>
-                        Tracking number is auto-generated.
-                      </FieldDescription>
-                    )}
-                  </FieldContent>
-                </Field>
-
-                <Field>
-                  <FieldLabel>Status</FieldLabel>
-                  <FieldContent>
-                    <Select
-                      value={form.status}
-                      onValueChange={(value) =>
-                        setForm((prev) => ({ ...prev, status: value }))
-                      }
-                      disabled={statuses.length === 0}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {statuses.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FieldContent>
-                </Field>
-
-                <Field>
-                  <FieldLabel htmlFor="lot-uom">Unit</FieldLabel>
-                  <FieldContent>
-                    <input
-                      id="lot-uom"
-                      value={form.uom}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, uom: e.target.value }))
-                      }
-                      className="border-input bg-background w-full rounded-md border px-3 py-2"
-                    />
-                  </FieldContent>
-                </Field>
-
-                <Field>
-                  <FieldLabel>Location</FieldLabel>
-                  <FieldContent>
-                    <Select
-                      value={form.locationId}
-                      onValueChange={(value) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          locationId: value === "none" ? "" : value,
-                        }))
-                      }
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Optional location" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">None</SelectItem>
-                        {locations.map((location) => (
-                          <SelectItem key={location.id} value={location.id}>
-                            {location.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FieldContent>
-                </Field>
-
-                <Field>
-                  <FieldLabel htmlFor="lot-notes">Notes</FieldLabel>
-                  <FieldContent>
-                    <textarea
-                      id="lot-notes"
-                      value={form.notes}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, notes: e.target.value }))
-                      }
-                      className="border-input bg-background min-h-20 w-full rounded-md border px-3 py-2"
-                    />
-                  </FieldContent>
-                </Field>
-
-                {attributesError && (
-                  <p className="text-destructive text-sm" role="alert">
-                    {attributesError}
-                  </p>
-                )}
-
-                <Button
-                  type="submit"
-                  disabled={
-                    createLot.isPending ||
-                    !form.lotTypeId ||
-                    (form.useSequence && !previewCode)
-                  }
-                >
-                  {createLot.isPending ? "Creating..." : "Create lot"}
-                </Button>
-              </FieldGroup>
-            </form>
-          </CardContent>
-        </Card>
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              disabled={batchCreate.isPending || !lotTypeId}
+            >
+              {batchCreate.isPending ? (
+                "Creating..."
+              ) : (
+                <>
+                  <Package className="mr-2 size-4" />
+                  Create {count} {count === 1 ? "lot" : "lots"}
+                </>
+              )}
+            </Button>
+          </FieldGroup>
+        </form>
       </div>
     </div>
+  );
+}
+
+type AttributeDef = {
+  id: string;
+  attrKey: string;
+  dataType: string;
+  isRequired: boolean;
+  unit: string | null;
+  options: unknown;
+  defaultValue: string | null;
+};
+
+function AttributeField({
+  def,
+  value,
+  onChange,
+}: {
+  def: AttributeDef;
+  value: string;
+  onChange: (val: string) => void;
+}) {
+  const label = formatAttrLabel(def.attrKey);
+  const suffix = def.unit ? ` (${def.unit})` : "";
+
+  if (def.dataType === "boolean") {
+    return (
+      <Field orientation="horizontal">
+        <FieldLabel className="flex-1">
+          {label}
+          {def.isRequired && <span className="text-destructive">*</span>}
+        </FieldLabel>
+        <Checkbox
+          checked={value === "true"}
+          onCheckedChange={(checked: boolean) =>
+            onChange(checked ? "true" : "false")
+          }
+        />
+      </Field>
+    );
+  }
+
+  if (def.dataType === "select" && Array.isArray(def.options)) {
+    return (
+      <Field>
+        <FieldLabel>
+          {label}
+          {suffix}
+          {def.isRequired && <span className="text-destructive ml-0.5">*</span>}
+        </FieldLabel>
+        <FieldContent>
+          <Select value={value} onValueChange={onChange}>
+            <SelectTrigger>
+              <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+            </SelectTrigger>
+            <SelectContent>
+              {(def.options as string[]).map((opt) => (
+                <SelectItem key={opt} value={opt}>
+                  {opt}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FieldContent>
+      </Field>
+    );
+  }
+
+  return (
+    <Field>
+      <FieldLabel>
+        {label}
+        {suffix}
+        {def.isRequired && <span className="text-destructive ml-0.5">*</span>}
+      </FieldLabel>
+      <FieldContent>
+        <Input
+          type={
+            def.dataType === "number"
+              ? "number"
+              : def.dataType === "date"
+                ? "date"
+                : "text"
+          }
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={def.defaultValue ?? undefined}
+          required={def.isRequired}
+          step={def.dataType === "number" ? "any" : undefined}
+        />
+      </FieldContent>
+    </Field>
+  );
+}
+
+function formatAttrLabel(key: string): string {
+  return key
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/^./, (s) => s.toUpperCase());
+}
+
+export default function NewLotPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-full flex-col">
+          <header className="flex items-center gap-2 border-b px-4 py-2">
+            <SidebarTrigger />
+            <h1 className="text-lg font-semibold">New Lots</h1>
+          </header>
+          <div className="text-muted-foreground flex flex-1 items-center justify-center text-sm">
+            Loading...
+          </div>
+        </div>
+      }
+    >
+      <NewLotPageInner />
+    </Suspense>
   );
 }

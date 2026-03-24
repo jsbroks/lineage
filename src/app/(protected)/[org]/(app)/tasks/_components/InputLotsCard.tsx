@@ -42,9 +42,9 @@ export function InputLotsCard({
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Input Lots</CardTitle>
+            <CardTitle>Input Products</CardTitle>
             <CardDescription>
-              Which lot types are scanned/selected when running this activity.
+              Which products are scanned/selected when running this activity.
             </CardDescription>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={onAdd}>
@@ -59,7 +59,7 @@ export function InputLotsCard({
               <div className="flex items-start gap-3">
                 <div className="flex flex-1 flex-wrap items-center gap-3">
                   <div className="min-w-[140px] flex-1 space-y-1">
-                    <Label className="text-xs">Reference Key</Label>
+                    <Label className="text-xs">Key</Label>
                     <Input
                       value={row.referenceKey}
                       onChange={(e) =>
@@ -69,13 +69,13 @@ export function InputLotsCard({
                     />
                   </div>
                   <div className="min-w-[160px] flex-1 space-y-1">
-                    <Label className="text-xs">Lot Type</Label>
+                    <Label className="text-xs">Product</Label>
                     <Select
                       value={row.lotTypeId || undefined}
                       onValueChange={(val) => onUpdate(idx, { lotTypeId: val })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select lot type..." />
+                        <SelectValue placeholder="Select product..." />
                       </SelectTrigger>
                       <SelectContent>
                         {lotTypes.map((it) => (
@@ -118,7 +118,7 @@ export function InputLotsCard({
                   />
                 </div>
                 <div className="min-w-[160px] flex-1 space-y-1">
-                  <Label className="text-xs">Precondition Statuses</Label>
+                  <Label className="text-xs">Required Status</Label>
                   <Input
                     value={row.preconditionsStatuses.join(", ")}
                     onChange={(e) =>

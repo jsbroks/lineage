@@ -67,11 +67,11 @@ export function SimpleInputLotsCard({
           <div>
             <CardTitle>When scanning...</CardTitle>
             <CardDescription>
-              Which lot types does this activity operate on?
+              Which products does this activity operate on?
             </CardDescription>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={handleAdd}>
-            <Plus className="mr-1 size-3.5" /> Add lot type
+            <Plus className="mr-1 size-3.5" /> Add product
           </Button>
         </div>
       </CardHeader>
@@ -88,13 +88,13 @@ export function SimpleInputLotsCard({
                 <div className="flex items-start gap-3">
                   <div className="flex flex-1 flex-wrap items-center gap-3">
                     <div className="min-w-[180px] flex-1 space-y-1">
-                      <Label className="text-xs">Lot Type</Label>
+                      <Label className="text-xs">Product</Label>
                       <Select
                         value={row.lotTypeId ?? undefined}
                         onValueChange={(val) => handleLotTypeChange(idx, val)}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Select lot type..." />
+                          <SelectValue placeholder="Select product..." />
                         </SelectTrigger>
                         <SelectContent>
                           {lotTypesWithStatuses.map((it) => (

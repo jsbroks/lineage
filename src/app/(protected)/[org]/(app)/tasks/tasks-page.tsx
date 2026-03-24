@@ -42,8 +42,15 @@ export default function TasksPage() {
             Loading activities...
           </div>
         ) : operationTypes.length === 0 ? (
-          <div className="text-muted-foreground px-6 py-12 text-center text-sm">
-            No activities configured yet. Create one to get started.
+          <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+            <p className="text-muted-foreground text-sm">
+              No activities configured yet.
+            </p>
+            <Button size="sm" asChild>
+              <Link href={`/${params.org}/tasks/new`}>
+                <Plus className="mr-1 size-3.5" /> Create your first activity
+              </Link>
+            </Button>
           </div>
         ) : (
           <Table>

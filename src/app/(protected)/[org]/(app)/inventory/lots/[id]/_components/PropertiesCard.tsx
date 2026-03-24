@@ -120,7 +120,7 @@ const PropertiesEmptyState: React.FC<{
   currentAttrs: Record<string, unknown>;
 }> = ({ currentAttrs }) => (
   <div className="text-muted-foreground text-sm">
-    <p>No custom attributes defined for this lot type.</p>
+    <p>No custom properties defined for this product.</p>
     {Object.keys(currentAttrs).length > 0 && (
       <div className="mt-2">
         <span className="font-medium">Raw data:</span>

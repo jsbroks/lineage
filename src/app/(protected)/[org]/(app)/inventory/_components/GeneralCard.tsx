@@ -33,9 +33,7 @@ export function GeneralCard({
     <Card>
       <CardHeader>
         <CardTitle>General</CardTitle>
-        <CardDescription>
-          Basic information about this lot type.
-        </CardDescription>
+        <CardDescription>Basic information about this product.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">

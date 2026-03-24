@@ -23,6 +23,7 @@ const TIERS = [
     period: "/mo",
     description: "For hobby growers getting started with traceability.",
     cta: "Get Started Free",
+    ctaHref: "/signup",
     ctaVariant: "outline" as const,
     highlighted: false,
     features: [
@@ -38,6 +39,7 @@ const TIERS = [
     period: "/mo",
     description: "For growing operations that need more power and flexibility.",
     cta: "Start Free Trial",
+    ctaHref: "/signup",
     ctaVariant: "default" as const,
     highlighted: true,
     badge: "Most popular",
@@ -45,10 +47,7 @@ const TIERS = [
       "Unlimited users",
       "Unlimited lots",
       "AI-powered insights",
-      "Shopify integration",
-      "QuickBooks & Xero sync",
       "Label printer support (DYMO, Rollo, Brother)",
-      "Webhook & Zapier automation",
       "Priority support",
     ],
   },
@@ -58,13 +57,13 @@ const TIERS = [
     period: "/mo",
     description: "For commercial farms with compliance and integration needs.",
     cta: "Contact Us",
+    ctaHref: "mailto:hello@lineage.farm",
     ctaVariant: "outline" as const,
     highlighted: false,
     features: [
       "Everything in Pro",
       "Compliance-ready export reports (FDA, FSMA)",
       "Audit log exports",
-      "Custom integrations",
       "Dedicated support",
     ],
   },
@@ -153,7 +152,7 @@ export default function PricingPage() {
                   size="lg"
                   className="w-full"
                 >
-                  <Link href="/">{tier.cta}</Link>
+                  <Link href={tier.ctaHref}>{tier.cta}</Link>
                 </Button>
               </div>
             </div>
@@ -202,7 +201,7 @@ export default function PricingPage() {
               variant="outline"
               className="border-background/20 bg-background text-foreground hover:bg-background/90"
             >
-              <Link href="/">Get Started Free</Link>
+              <Link href="/signup">Get Started Free</Link>
             </Button>
           </div>
         </div>

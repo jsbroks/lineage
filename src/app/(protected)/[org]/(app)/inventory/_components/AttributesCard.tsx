@@ -41,7 +41,7 @@ export function AttributesCard({
           <div>
             <CardTitle>Custom Attributes</CardTitle>
             <CardDescription>
-              Define extra data fields stored on each lot.
+              Define extra data fields tracked on each lot.
             </CardDescription>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={onAdd}>

@@ -130,7 +130,7 @@ const STEPS = [
     number: "01",
     title: "Define your lots",
     description:
-      "Create custom lot types with their own statuses, varieties, and attributes. Model your exact process.",
+      "Create custom products with their own statuses, varieties, and attributes. Model your exact process.",
   },
   {
     number: "02",
@@ -268,7 +268,7 @@ const FEATURES = [
     ),
     title: "Configurable workflows",
     description:
-      "Custom lot types, statuses, and operation steps. Your process, your rules — no code required.",
+      "Custom products, statuses, and activities. Your process, your rules — no code required.",
   },
 ];
 
@@ -476,8 +476,8 @@ export default async function Home() {
             Ready to track smarter?
           </h2>
           <p className="text-background/60 mx-auto mt-3 max-w-md">
-            Free to start. No credit card required. Set up your first lot type
-            in under 5 minutes.
+            Free to start. No credit card required. Set up your first product in
+            under 5 minutes.
           </p>
           <div className="mt-8">
             <Button

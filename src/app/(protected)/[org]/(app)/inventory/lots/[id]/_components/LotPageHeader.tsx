@@ -34,7 +34,7 @@ export const LotPageHeader: React.FC<{
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Link
-                  href={`/${org}/inventory/type/${lotType.id}`}
+                  href={`/${org}/inventory/product/${lotType.id}`}
                   className="flex items-center gap-2"
                 >
                   <Icon icon={lotType.icon} className="size-3.5" />

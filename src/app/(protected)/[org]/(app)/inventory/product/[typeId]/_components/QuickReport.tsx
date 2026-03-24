@@ -266,7 +266,8 @@ export const QuickReport: React.FC<QuickReportProps> = ({
   const metricFieldOptions = useMemo(() => {
     const opts: { value: string; label: string }[] = [
       { value: "quantity", label: quantityName || "Quantity" },
-      { value: "value", label: "Value" },
+      { value: "cost", label: "Cost" },
+      { value: "value", label: "Value (price list)" },
     ];
     for (const d of attrDefs) {
       opts.push({
@@ -403,7 +404,7 @@ export const QuickReport: React.FC<QuickReportProps> = ({
                             ) {
                               display = formatCentsCurrency(
                                 Number(raw),
-                                aiReportData.valueCurrency ?? null,
+                                aiReportData.costCurrency ?? null,
                               );
                             }
                             return (
@@ -869,7 +870,7 @@ export const QuickReport: React.FC<QuickReportProps> = ({
                             ) {
                               display = formatCentsCurrency(
                                 Number(raw),
-                                reportData.valueCurrency ?? null,
+                                reportData.costCurrency ?? null,
                               );
                             }
                             return (

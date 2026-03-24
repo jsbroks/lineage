@@ -86,8 +86,8 @@ export default function ResetPasswordPage() {
           </div>
           <CardTitle className="text-lg">Password reset</CardTitle>
           <CardDescription>
-            Your password has been updated successfully. You can now sign in with
-            your new password.
+            Your password has been updated successfully. You can now sign in
+            with your new password.
           </CardDescription>
         </CardHeader>
         <CardContent>

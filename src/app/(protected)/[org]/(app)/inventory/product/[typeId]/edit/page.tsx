@@ -2,7 +2,7 @@ import { type Metadata } from "next";
 import { db } from "~/server/db";
 import { eq } from "drizzle-orm";
 import { lotType } from "~/server/db/schema/lot-types";
-import LotTypeDetailPage from "./lot-type-detail-page";
+import EditLotTypePage from "./edit-lot-type-page";
 
 type Props = { params: Promise<{ org: string; typeId: string }> };
 
@@ -12,11 +12,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     where: eq(lotType.id, typeId),
   });
   return {
-    title: record?.name ?? "Lot Type",
-    description: record?.description ?? undefined,
+    title: record ? `Edit ${record.name}` : "Edit Product",
   };
 }
 
 export default function Page() {
-  return <LotTypeDetailPage />;
+  return <EditLotTypePage />;
 }

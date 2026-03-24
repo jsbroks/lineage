@@ -245,8 +245,7 @@ export const lotTypeRouter = createTRPCRouter({
             isDefault: z.boolean().default(false),
             isActive: z.boolean().default(true),
             sortOrder: z.number().int().default(0),
-            defaultValue: z.number().int().nullable().optional(),
-            defaultValueCurrency: z.string().nullable().optional(),
+            defaultUnitCost: z.number().int().nullable().optional(),
             defaultQuantity: z.string().nullable().optional(),
             defaultQuantityUnit: z.string().nullable().optional(),
             defaultAttributes: z
@@ -302,8 +301,7 @@ export const lotTypeRouter = createTRPCRouter({
 
         for (const v of input.variants) {
           const defaults = {
-            defaultValue: v.defaultValue ?? null,
-            defaultValueCurrency: v.defaultValueCurrency ?? null,
+            defaultUnitCost: v.defaultUnitCost ?? null,
             defaultQuantity: v.defaultQuantity ?? null,
             defaultQuantityUnit: v.defaultQuantityUnit ?? null,
             defaultAttributes: v.defaultAttributes ?? null,
@@ -706,7 +704,7 @@ export const lotTypeRouter = createTRPCRouter({
         variantId: lot.variantId,
         statusId: lot.statusId,
         total: count(),
-        totalValue: sum(lot.value),
+        totalCost: sql<string>`sum(${lot.unitCost}::numeric * ${lot.quantity}::numeric)`,
         totalQuantity: sql<string>`sum(${lot.quantity}::numeric)`,
       })
       .from(lot)
@@ -716,14 +714,14 @@ export const lotTypeRouter = createTRPCRouter({
       prepared: number;
       active: number;
       completed: number;
-      totalValue: number;
+      totalCost: number;
       totalQuantity: number;
     };
     const emptyBucket = (): Bucket => ({
       prepared: 0,
       active: 0,
       completed: 0,
-      totalValue: 0,
+      totalCost: 0,
       totalQuantity: 0,
     });
 
@@ -743,12 +741,12 @@ export const lotTypeRouter = createTRPCRouter({
       const cat = statusInfo?.category ?? "unstarted";
 
       const cnt = row.total;
-      const val = Number(row.totalValue) || 0;
+      const val = Number(row.totalCost) || 0;
       const qty = Number(row.totalQuantity) || 0;
 
-      b.totalValue += val;
+      b.totalCost += val;
       b.totalQuantity += qty;
-      tb.totalValue += val;
+      tb.totalCost += val;
       tb.totalQuantity += qty;
 
       if (cat === "unstarted") {
@@ -775,7 +773,7 @@ export const lotTypeRouter = createTRPCRouter({
       prepared: number;
       active: number;
       completed: number;
-      totalValue: number;
+      totalCost: number;
       totalQuantity: number;
     };
 

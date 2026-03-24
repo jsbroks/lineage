@@ -4,12 +4,14 @@ import { type Metadata } from "next";
 import { DM_Serif_Display, Geist, Inter } from "next/font/google";
 
 import { ChatwootWidget } from "~/components/chatwoot";
+import { PostHogProvider } from "~/components/posthog";
 import { TRPCReactProvider } from "~/trpc/react";
 import { cn } from "~/lib/utils";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://lineage.farm"),
   title: {
     default: "Lineage",
     template: "%s | Lineage",
@@ -17,6 +19,14 @@ export const metadata: Metadata = {
   description:
     "Traceability-first inventory tracking for growers. Scan-based workflows, full lineage, and real-time inventory.",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
+  openGraph: {
+    type: "website",
+    siteName: "Lineage",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 const geist = Geist({
@@ -45,7 +55,9 @@ export default function RootLayout({
     >
       <body>
         <TRPCReactProvider>
-          <ChatwootWidget>{children}</ChatwootWidget>
+          <PostHogProvider>
+            <ChatwootWidget>{children}</ChatwootWidget>
+          </PostHogProvider>
         </TRPCReactProvider>
       </body>
     </html>

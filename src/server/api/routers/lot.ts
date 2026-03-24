@@ -13,6 +13,8 @@ import {
   lotIdentifier,
   location,
   lotTypeStatusDefinition,
+  priceList,
+  priceListEntry,
 } from "~/server/db/schema";
 import { getActiveOrgId } from "~/server/api/org";
 import { resolveStatusId } from "~/server/api/helpers/resolve-status";
@@ -28,6 +30,8 @@ const createLotInput = z
     uom: z.string().min(1).default("each"),
     locationId: z.uuid().nullable().optional(),
     notes: z.string().nullable().optional(),
+    unitCost: z.number().int().nonnegative().optional(),
+    currency: z.string().nullable().optional(),
     attributes: z.record(z.string(), z.unknown()).optional(),
   })
   .superRefine((input, ctx) => {
@@ -216,6 +220,8 @@ export const lotRouter = createTRPCRouter({
             code: codeValue,
             statusId: resolvedStatusId,
             quantityUnit: it?.qtyUom ?? "each",
+            unitCost: input.unitCost ?? 0,
+            currency: input.currency ?? null,
             locationId: input.locationId,
             notes: input.notes,
             attributes: input.attributes ?? {},
@@ -807,8 +813,7 @@ export const lotRouter = createTRPCRouter({
       }
 
       const hasDefaults =
-        variant.defaultValue !== null ||
-        variant.defaultValueCurrency !== null ||
+        variant.defaultUnitCost !== null ||
         variant.defaultQuantity !== null ||
         variant.defaultQuantityUnit !== null ||
         variant.defaultAttributes !== null;
@@ -827,9 +832,8 @@ export const lotRouter = createTRPCRouter({
         variantId: input.variantId,
         updatedAt: new Date(),
       };
-      if (variant.defaultValue !== null) defaults.value = variant.defaultValue;
-      if (variant.defaultValueCurrency !== null)
-        defaults.valueCurrency = variant.defaultValueCurrency;
+      if (variant.defaultUnitCost !== null)
+        defaults.unitCost = variant.defaultUnitCost;
       if (variant.defaultQuantity !== null)
         defaults.quantity = variant.defaultQuantity;
       if (variant.defaultQuantityUnit !== null)
@@ -1093,6 +1097,7 @@ export const lotRouter = createTRPCRouter({
         "variant",
         "location",
         "quantity",
+        "cost",
         "value",
       ]);
 
@@ -1182,8 +1187,11 @@ export const lotRouter = createTRPCRouter({
             case "quantity":
               valueExpr = sql`${lot.quantity}::numeric`;
               break;
+            case "cost":
+              valueExpr = sql`(${lot.unitCost}::numeric * ${lot.quantity}::numeric)`;
+              break;
             case "value":
-              valueExpr = sql`${lot.value}::numeric`;
+              valueExpr = sql`(COALESCE((SELECT ple.unit_price FROM price_list_entry ple JOIN price_list pl ON pl.id = ple.price_list_id WHERE pl.org_id = ${lot.orgId} AND pl.is_default = true AND ple.lot_type_id = ${lot.lotTypeId} AND (ple.variant_id = ${lot.variantId} OR ple.variant_id IS NULL) ORDER BY CASE WHEN ple.variant_id IS NOT NULL THEN 0 ELSE 1 END LIMIT 1), 0)::numeric * ${lot.quantity}::numeric)`;
               break;
             default:
               if (m.op === "count") {
@@ -1333,27 +1341,32 @@ export const lotRouter = createTRPCRouter({
 
       const rows = await query;
 
-      const hasValueMetric = input.metrics.some((m) => m.field === "value");
-      let valueCurrency: string | null = null;
-      if (hasValueMetric) {
+      const hasCurrencyMetric = input.metrics.some(
+        (m) => m.field === "cost" || m.field === "value",
+      );
+      let costCurrency: string | null = null;
+      if (hasCurrencyMetric) {
         const [currencyRow] = await ctx.db
-          .select({ cur: sql<string>`${lot.valueCurrency}` })
+          .select({ cur: sql<string>`${lot.currency}` })
           .from(lot)
           .where(
             and(
               eq(lot.lotTypeId, input.lotTypeId),
-              sql`${lot.valueCurrency} IS NOT NULL`,
+              sql`${lot.currency} IS NOT NULL`,
             ),
           )
-          .groupBy(lot.valueCurrency)
+          .groupBy(lot.currency)
           .orderBy(sql`COUNT(*) DESC`)
           .limit(1);
-        valueCurrency = currencyRow?.cur ?? null;
+        costCurrency = currencyRow?.cur ?? null;
       }
 
-      const valueMetricKeys = new Set(
+      const costMetricKeys = new Set(
         input.metrics
-          .filter((m) => m.field === "value" && m.op !== "count")
+          .filter(
+            (m) =>
+              (m.field === "cost" || m.field === "value") && m.op !== "count",
+          )
           .map((m) => `${m.op}_${m.field}`),
       );
 
@@ -1362,13 +1375,13 @@ export const lotRouter = createTRPCRouter({
         ...metricExprs.map((m) => ({
           key: m.field,
           label: m.label,
-          isCurrency: valueMetricKeys.has(m.field),
+          isCurrency: costMetricKeys.has(m.field),
         })),
       ];
 
       return {
         columns,
-        valueCurrency,
+        costCurrency,
         rows: rows.map((row) => {
           const out: Record<string, string | number> = {};
           for (const col of columns) {

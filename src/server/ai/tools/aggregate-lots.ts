@@ -35,7 +35,7 @@ export function createAggregateLotsTool(ctx: SchemaContext) {
             field: z
               .string()
               .describe(
-                "Field to measure: 'quantity', 'value', or 'attr:<key>' for custom attributes (e.g. 'attr:spawn_rate')",
+                "Field to measure: 'quantity', 'cost', or 'attr:<key>' for custom attributes (e.g. 'attr:spawn_rate')",
               ),
             op: z
               .enum(["count", "sum", "avg", "min", "max"])
@@ -99,7 +99,7 @@ export function createAggregateLotsTool(ctx: SchemaContext) {
         "variant",
         "location",
         "quantity",
-        "value",
+        "cost",
       ]);
 
       const resolveField = (field: string) => {
@@ -178,8 +178,8 @@ export function createAggregateLotsTool(ctx: SchemaContext) {
             case "quantity":
               valueExpr = sql`${lot.quantity}::numeric`;
               break;
-            case "value":
-              valueExpr = sql`${lot.value}::numeric`;
+            case "cost":
+              valueExpr = sql`(${lot.unitCost}::numeric * ${lot.quantity}::numeric)`;
               break;
             default:
               if (m.op === "count") {

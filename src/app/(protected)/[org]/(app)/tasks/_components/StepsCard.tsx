@@ -63,7 +63,7 @@ export function StepsCard({
                     <Input
                       value={step.name}
                       onChange={(e) => onUpdate(idx, { name: e.target.value })}
-                      placeholder="Set Lot Status"
+                      placeholder="Change Status"
                     />
                   </div>
                   <div className="w-36 space-y-1">
@@ -80,7 +80,7 @@ export function StepsCard({
                         <SelectItem value="set-operation">
                           Set Operation
                         </SelectItem>
-                        <SelectItem value="set-lineage">Set Lineage</SelectItem>
+                        <SelectItem value="set-lineage">Link Lots</SelectItem>
                         <SelectItem value="create-lot">Create Lot</SelectItem>
                       </SelectContent>
                     </Select>
@@ -114,7 +114,7 @@ export function StepsCard({
                         onChange={(e) =>
                           onUpdate(idx, { target: e.target.value })
                         }
-                        placeholder="target ref"
+                        placeholder="target key"
                       />
                     )}
                   </div>

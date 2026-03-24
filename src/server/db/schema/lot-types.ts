@@ -75,6 +75,7 @@ export const lotType = pgTable(
     qtyName: text("quantity_name"),
     qtyUom: text("quantity_uom").notNull().default("pcs"),
 
+    defaultCurrency: text("default_currency"),
     icon: text(),
     color: text(),
     codePrefix: text("code_prefix"),
@@ -138,8 +139,7 @@ export const lotTypeVariant = pgTable("lot_type_variant", {
   name: text().notNull(),
   isDefault: boolean("is_default").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
-  defaultValue: integer("default_value"),
-  defaultValueCurrency: text("default_value_currency"),
+  defaultUnitCost: integer("default_unit_cost"),
   defaultQuantity: numeric("default_quantity"),
   defaultQuantityUnit: text("default_quantity_unit"),
   defaultAttributes: jsonb("default_attributes"),

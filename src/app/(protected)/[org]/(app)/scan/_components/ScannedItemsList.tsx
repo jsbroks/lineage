@@ -38,7 +38,7 @@ const LotTypeRow: React.FC<LotTypeItem & { onRemove: () => void }> = ({
       />
       <span className="flex-1 text-sm font-medium">{lotType.name}</span>
       <Badge variant="secondary" className="text-[10px]">
-        Type
+        Product
       </Badge>
       <button
         type="button"

@@ -190,7 +190,7 @@ function LocationTypeRow({
   const colorCls = lt.color ? getColorClasses(lt.color) : null;
 
   return (
-    <div className="group/type flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-muted/50">
+    <div className="group/type hover:bg-muted/50 flex items-center gap-3 rounded-md px-3 py-2 transition-colors">
       <div
         className={cn(
           "flex size-7 shrink-0 items-center justify-center rounded",
@@ -466,9 +466,7 @@ function LocationDialog({
             <Input
               id="loc-name"
               value={form.name}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, name: e.target.value }))
-              }
+              onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
               required
               placeholder="e.g. Grow Room A, Shelf B3, Delivery Van"
             />
@@ -480,7 +478,10 @@ function LocationDialog({
               <Select
                 value={form.typeId}
                 onValueChange={(val) =>
-                  setForm((p) => ({ ...p, typeId: val === "__none__" ? "" : val }))
+                  setForm((p) => ({
+                    ...p,
+                    typeId: val === "__none__" ? "" : val,
+                  }))
                 }
               >
                 <SelectTrigger id="loc-type">
@@ -488,7 +489,10 @@ function LocationDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="__none__" className="text-muted-foreground">
+                    <SelectItem
+                      value="__none__"
+                      className="text-muted-foreground"
+                    >
                       None
                     </SelectItem>
                     {locationTypes.map((t) => (
@@ -506,7 +510,10 @@ function LocationDialog({
               <Select
                 value={form.parentId}
                 onValueChange={(val) =>
-                  setForm((p) => ({ ...p, parentId: val === "__none__" ? "" : val }))
+                  setForm((p) => ({
+                    ...p,
+                    parentId: val === "__none__" ? "" : val,
+                  }))
                 }
               >
                 <SelectTrigger id="loc-parent">
@@ -514,7 +521,10 @@ function LocationDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="__none__" className="text-muted-foreground">
+                    <SelectItem
+                      value="__none__"
+                      className="text-muted-foreground"
+                    >
                       None (root)
                     </SelectItem>
                     {locations
@@ -609,9 +619,7 @@ function TreeItem({
           type="button"
           className={cn(
             "flex size-5 shrink-0 items-center justify-center rounded transition-colors",
-            hasChildren
-              ? "hover:bg-muted text-muted-foreground"
-              : "invisible",
+            hasChildren ? "hover:bg-muted text-muted-foreground" : "invisible",
           )}
           onClick={() => setExpanded((e) => !e)}
           tabIndex={hasChildren ? 0 : -1}
@@ -772,8 +780,8 @@ export default function LocationsSettingsPage() {
             <div>
               <p className="text-sm font-medium">No locations yet</p>
               <p className="text-muted-foreground mt-1 max-w-sm text-sm">
-                Locations represent the physical places that hold your
-                inventory — rooms, shelves, vehicles, zones, or anything else.
+                Locations represent the physical places that hold your inventory
+                — rooms, shelves, vehicles, zones, or anything else.
               </p>
             </div>
             <div className="flex gap-2">

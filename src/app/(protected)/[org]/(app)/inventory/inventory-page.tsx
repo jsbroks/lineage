@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Plus, Printer } from "lucide-react";
@@ -7,6 +8,7 @@ import { Plus, Printer } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { SidebarTrigger } from "~/components/ui/sidebar";
+import { LotTypeDialog } from "./product/[typeId]/_components/LotTypeDialog";
 import {
   Table,
   TableBody,
@@ -25,9 +27,15 @@ export default function InventoryPage() {
   const { data: rows = [], isLoading } =
     api.lotType.inventoryOverview.useQuery();
 
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedType, setSelectedType] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
   return (
-    <div className="flex min-h-full flex-col">
-      <header className="flex items-center justify-between border-b px-4 py-2">
+    <>
+      <header className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <SidebarTrigger />
           <h1 className="text-lg font-semibold">Inventory</h1>
@@ -39,21 +47,21 @@ export default function InventoryPage() {
             </Link>
           </Button>
           <Button size="sm" asChild>
-            <Link href={`/${params.org}/inventory/type/new`}>
+            <Link href={`/${params.org}/inventory/product/new`}>
               <Plus className="mr-1 size-3.5" /> New type
             </Link>
           </Button>
         </div>
       </header>
 
-      <div className="flex-1 overflow-auto">
+      <div>
         {isLoading ? (
           <div className="text-muted-foreground px-6 py-12 text-center text-sm">
             Loading inventory...
           </div>
         ) : rows.length === 0 ? (
           <div className="text-muted-foreground px-6 py-12 text-center text-sm">
-            No lot types configured yet. Add categories in Settings to get
+            No item types configured yet. Add categories in Settings to get
             started.
           </div>
         ) : (
@@ -115,12 +123,19 @@ export default function InventoryPage() {
                               {row.variantName}
                             </Badge>
                           ) : (
-                            <Link
-                              href={`/${params.org}/inventory/type/${row.lotTypeId}`}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedType({
+                                  id: row.lotTypeId,
+                                  name: row.lotTypeName,
+                                });
+                                setDialogOpen(true);
+                              }}
                               className="hover:text-primary font-medium underline-offset-4 hover:underline"
                             >
                               {row.lotTypeName}
-                            </Link>
+                            </button>
                           )}
                         </div>
                       </div>
@@ -137,8 +152,8 @@ export default function InventoryPage() {
                         : "–"}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      {row.totalValue
-                        ? `$${(row.totalValue / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                      {row.totalCost
+                        ? `$${(row.totalCost / 100).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
                         : "–"}
                     </TableCell>
                   </TableRow>
@@ -148,6 +163,12 @@ export default function InventoryPage() {
           </Table>
         )}
       </div>
-    </div>
+
+      <LotTypeDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        name={selectedType?.name}
+      />
+    </>
   );
 }

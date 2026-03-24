@@ -34,6 +34,12 @@ export const env = createEnv({
       .url()
       .optional()
       .default("https://chatwoot.lineage.farm"),
+    NEXT_PUBLIC_POSTHOG_KEY: z.string().optional(),
+    NEXT_PUBLIC_POSTHOG_HOST: z
+      .string()
+      .url()
+      .optional()
+      .default("https://us.i.posthog.com"),
   },
 
   /**
@@ -52,6 +58,8 @@ export const env = createEnv({
     NEXT_PUBLIC_CHATWOOT_WEBSITE_TOKEN:
       process.env.NEXT_PUBLIC_CHATWOOT_WEBSITE_TOKEN,
     NEXT_PUBLIC_CHATWOOT_BASE_URL: process.env.NEXT_PUBLIC_CHATWOOT_BASE_URL,
+    NEXT_PUBLIC_POSTHOG_KEY: process.env.NEXT_PUBLIC_POSTHOG_KEY,
+    NEXT_PUBLIC_POSTHOG_HOST: process.env.NEXT_PUBLIC_POSTHOG_HOST,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

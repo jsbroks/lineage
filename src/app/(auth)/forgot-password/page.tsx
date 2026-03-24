@@ -58,7 +58,11 @@ export default function ForgotPasswordPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-3">
-            <Button variant="outline" className="w-full" onClick={() => setSent(false)}>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setSent(false)}
+            >
               Try a different email
             </Button>
             <p className="text-muted-foreground text-center text-sm">

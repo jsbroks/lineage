@@ -6,3 +6,4 @@ export * from "./lot-types";
 export * from "./location";
 export * from "./lot";
 export * from "./lot-type-status";
+export * from "./price-list";

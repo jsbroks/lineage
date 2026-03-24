@@ -168,9 +168,9 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
   return (
     <div className="flex h-full w-80 shrink-0 flex-col overflow-hidden border-r">
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-        {/* Lot Type */}
+        {/* Product */}
         <div className="m-4 space-y-1.5">
-          <Label className="text-xs">Lot Type</Label>
+          <Label className="text-xs">Product</Label>
           <Select
             value={typeId}
             onValueChange={(v) => {
@@ -367,7 +367,7 @@ export const ConfigPanel: React.FC<ConfigPanelProps> = ({
 
             {!codePrefix && (
               <p className="text-destructive text-xs">
-                No code prefix configured. Edit this type to set one before
+                No code prefix configured. Edit this product to set one before
                 creating lots.
               </p>
             )}

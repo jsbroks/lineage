@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   ClipboardList,
   CreditCard,
+  DollarSign,
   Home,
   MapPin,
   MessageCircle,
@@ -59,6 +60,11 @@ export function OrgSidebar({ org }: OrgSidebarProps) {
       label: "Locations",
       href: `/${org}/settings/locations`,
       icon: MapPin,
+    },
+    {
+      label: "Pricing",
+      href: `/${org}/settings/pricing`,
+      icon: DollarSign,
     },
   ];
 

@@ -1,10 +1,11 @@
 import { type Metadata } from "next";
-import NewLotTypePage from "./new-lot-type-page";
+
+import PricingSettingsPage from "./pricing-page";
 
 export const metadata: Metadata = {
-  title: "New Lot Type",
+  title: "Pricing",
 };
 
 export default function Page() {
-  return <NewLotTypePage />;
+  return <PricingSettingsPage />;
 }

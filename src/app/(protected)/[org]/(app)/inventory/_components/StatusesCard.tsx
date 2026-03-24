@@ -47,7 +47,7 @@ export function StatusesCard({
           <div>
             <CardTitle>Statuses</CardTitle>
             <CardDescription>
-              Define the lifecycle states for this lot type.
+              Define the stages for this product.
             </CardDescription>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={onAdd}>

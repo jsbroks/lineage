@@ -217,8 +217,9 @@ export const CreateLotsDialog: React.FC<CreateLotsDialogProps> = ({
 
           {!codePrefix && (
             <p className="text-destructive text-xs">
-              This lot type has no code prefix configured. Set one via
-              &ldquo;Edit type&rdquo; before creating lots with auto-sequencing.
+              This product has no code prefix configured. Set one via
+              &ldquo;Edit product&rdquo; before creating lots with
+              auto-sequencing.
             </p>
           )}
 

@@ -45,7 +45,7 @@ function OnboardingBanner({ org }: { org: string }) {
             Finish setting up your workspace
           </p>
           <p className="text-muted-foreground text-xs">
-            Configure your lot types, activities, and locations with our setup
+            Configure your products, activities, and locations with our setup
             wizard.
           </p>
         </div>
@@ -77,37 +77,76 @@ export function DashboardPage({ org }: { org: string }) {
     api.lotType.inventoryOverview.useQuery();
 
   const typeRows = inventoryRows?.filter((r) => r.variantId === null) ?? [];
+  const totalLots = typeRows.reduce((sum, r) => sum + r.prepared + r.active, 0);
+  const hasLots = typeRows.length > 0 && totalLots > 0;
+  const hasTypes = typeRows.length > 0;
 
   return (
     <div className="space-y-8">
       <OnboardingBanner org={org} />
 
-      {/* Quick Actions */}
-      <section>
-        <div className="grid grid-cols-3 gap-3">
-          <QuickAction
-            href={`/${org}/scan`}
-            icon={<Scan className="size-5" />}
-            label="Scan"
-            description="Scan a QR label"
-          />
-          <QuickAction
-            href={`/${org}/operations`}
-            icon={<ClipboardList className="size-5" />}
-            label="Log Activity"
-            description="Record an activity"
-          />
-          <QuickAction
-            href={`/${org}/inventory/lots/new`}
-            icon={<Plus className="size-5" />}
-            label="New Lot"
-            description="Add to inventory"
-          />
-        </div>
-      </section>
+      {/* Quick Actions — guided for new users, full for returning users */}
+      {!loadingInventory && !hasLots ? (
+        <section>
+          <Card size="sm" className="bg-primary/5 ring-primary/20">
+            <CardContent className="flex flex-col items-center gap-4 py-8 text-center">
+              <div className="bg-primary/10 flex size-12 items-center justify-center rounded-xl">
+                <Plus className="text-primary size-6" />
+              </div>
+              <div>
+                <p className="text-lg font-semibold">
+                  {hasTypes
+                    ? "Create your first lot"
+                    : "Create your first product"}
+                </p>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  {hasTypes
+                    ? "Add a lot to start tracking your inventory."
+                    : "Define a product type to start tracking your operation."}
+                </p>
+              </div>
+              <Button asChild>
+                <Link
+                  href={
+                    hasTypes
+                      ? `/${org}/inventory/lots/new`
+                      : `/${org}/inventory/product/new`
+                  }
+                >
+                  {hasTypes ? "Create lot" : "Create product"}
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </section>
+      ) : (
+        <section>
+          <div className="grid grid-cols-3 gap-3">
+            <QuickAction
+              href={`/${org}/scan`}
+              icon={<Scan className="size-5" />}
+              label="Scan"
+              description="Scan a QR label"
+            />
+            <QuickAction
+              href={`/${org}/scan`}
+              icon={<ClipboardList className="size-5" />}
+              label="Log Activity"
+              description="Record an activity"
+            />
+            <QuickAction
+              href={`/${org}/inventory/lots/new`}
+              icon={<Plus className="size-5" />}
+              label="New Lot"
+              description="Add to inventory"
+            />
+          </div>
+        </section>
+      )}
 
       {/* Attention Needed */}
-      <AnomalyWidget org={org} />
+      {hasLots && <AnomalyWidget org={org} />}
 
       {/* Inventory by Type */}
       <section>
@@ -134,9 +173,9 @@ export function DashboardPage({ org }: { org: string }) {
               </div>
             ) : typeRows.length === 0 ? (
               <div className="text-muted-foreground px-4 py-8 text-center text-sm">
-                No lot types configured yet.{" "}
+                No products configured yet.{" "}
                 <Link
-                  href={`/${org}/inventory/type/new`}
+                  href={`/${org}/inventory/product/new`}
                   className="text-primary underline underline-offset-4"
                 >
                   Create one
@@ -149,7 +188,7 @@ export function DashboardPage({ org }: { org: string }) {
                   return (
                     <Link
                       key={row.lotTypeId}
-                      href={`/${org}/inventory/type/${row.lotTypeId}`}
+                      href={`/${org}/inventory/product/${row.lotTypeId}`}
                       className="hover:bg-muted/50 flex items-center gap-3 px-4 py-3 transition-colors"
                     >
                       <div
@@ -167,9 +206,7 @@ export function DashboardPage({ org }: { org: string }) {
                         <Icon icon={row.lotTypeIcon} className="size-4" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">
-                          {row.lotTypeName}
-                        </p>
+                        <p className="text-sm font-medium">{row.lotTypeName}</p>
                         <p className="text-muted-foreground text-xs">
                           {inProgress} in progress
                           {row.totalQuantity

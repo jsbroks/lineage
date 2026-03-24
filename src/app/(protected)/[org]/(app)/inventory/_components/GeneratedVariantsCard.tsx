@@ -33,15 +33,15 @@ export function GeneratedVariantsCard({
       <CardHeader>
         <CardTitle>Generated Varieties</CardTitle>
         <CardDescription>
-          {variants.length} variet{variants.length !== 1 ? "ies" : "y"} generated
-          from option combinations. Expand to set defaults.
+          {variants.length} variet{variants.length !== 1 ? "ies" : "y"}{" "}
+          generated from option combinations. Expand to set defaults.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
         {variants.map((v, idx) => {
           const isOpen = expandedVariant === v.name;
           const hasDefaults =
-            v.defaultValue !== "" ||
+            v.defaultUnitCost !== "" ||
             v.defaultQuantity !== "" ||
             v.defaultQuantityUnit !== "";
           return (
@@ -62,31 +62,18 @@ export function GeneratedVariantsCard({
                 />
               </button>
               {isOpen && (
-                <div className="grid grid-cols-2 gap-2 border-t px-3 pt-2 pb-3 md:grid-cols-4">
+                <div className="grid grid-cols-3 gap-2 border-t px-3 pt-2 pb-3">
                   <div className="space-y-1">
-                    <Label className="text-[10px]">Value (cents)</Label>
+                    <Label className="text-[10px]">Unit Cost (cents)</Label>
                     <Input
                       type="number"
-                      value={v.defaultValue}
+                      value={v.defaultUnitCost}
                       onChange={(e) =>
                         onUpdateVariant(idx, {
-                          defaultValue: e.target.value,
+                          defaultUnitCost: e.target.value,
                         })
                       }
                       placeholder="0"
-                      className="h-7 text-xs"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px]">Currency</Label>
-                    <Input
-                      value={v.defaultValueCurrency}
-                      onChange={(e) =>
-                        onUpdateVariant(idx, {
-                          defaultValueCurrency: e.target.value,
-                        })
-                      }
-                      placeholder="CAD"
                       className="h-7 text-xs"
                     />
                   </div>

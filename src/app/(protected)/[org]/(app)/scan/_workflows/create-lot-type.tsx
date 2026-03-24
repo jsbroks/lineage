@@ -78,10 +78,10 @@ const CreateLotTypePanel: WorkflowPanel = ({ ctx, onComplete }) => {
 
       <Alert>
         <InfoIcon />
-        <AlertTitle className="text-sm">Link to an item type</AlertTitle>
+        <AlertTitle className="text-sm">Link to a product</AlertTitle>
         <AlertDescription className="text-xs">
-          Associate codes with an item type. Next time you scan it, the system
-          will recognize it and offer actions like creating a new item, tracking
+          Associate codes with a product. Next time you scan it, the system will
+          recognize it and offer actions like creating new lots, tracking
           inventory, or running activities.
         </AlertDescription>
       </Alert>
@@ -93,7 +93,7 @@ const CreateLotTypePanel: WorkflowPanel = ({ ctx, onComplete }) => {
         </label>
         <Select value={selectedTypeId} onValueChange={handleTypeChange}>
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select lot type..." />
+            <SelectValue placeholder="Select product..." />
           </SelectTrigger>
           <SelectContent>
             {lotTypesQuery.data?.map((t) => (
@@ -144,8 +144,8 @@ export const createLotTypeWorkflow: ScanWorkflow = {
     if (ctx.unknowns.length === 0) return null;
     const codeWord = ctx.unknowns.length === 1 ? "this code" : "these codes";
     return {
-      label: `Associate ${codeWord} with item type`,
-      description: `Future scans will prompt for creation of new items of this type.`,
+      label: `Associate ${codeWord} with product`,
+      description: `Future scans will prompt for creation of new lots of this product.`,
       icon: PackagePlus,
       ready: true,
       priority: 30,

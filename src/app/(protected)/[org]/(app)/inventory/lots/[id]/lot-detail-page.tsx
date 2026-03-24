@@ -15,7 +15,7 @@ import {
   LocationCard,
   PropertiesCard,
   QuantityCard,
-  ValueCard,
+  CostCard,
 } from "./_components";
 
 export default function LotDetailPage() {
@@ -84,9 +84,10 @@ export default function LotDetailPage() {
               quantity={currentLot.quantity}
               unit={currentLot.quantityUnit}
             />
-            <ValueCard
-              value={currentLot.value}
-              currency={currentLot.valueCurrency}
+            <CostCard
+              unitCost={currentLot.unitCost}
+              quantity={currentLot.quantity}
+              currency={currentLot.currency}
             />
             {currentLot.locationId && (
               <LocationCard name={data.location?.name ?? "—"} />
@@ -124,7 +125,7 @@ export default function LotDetailPage() {
 
             <LineageCard
               title="Used to Make"
-              emptyMessage="Not yet used in another step."
+              emptyMessage="Not yet used to make anything."
               org={params.org}
               entries={data.childLineage}
               direction="child"

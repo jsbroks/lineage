@@ -108,7 +108,7 @@ export async function POST(req: Request) {
     `- "quantity" — the lot's quantity (displayed as "${it.quantityName ?? "Quantity"}"). Use this when the user mentions "${it.quantityName?.toLowerCase() ?? "quantity"}", "amount", "count of quantity", etc.`,
   );
   lines.push(
-    `- "value" — the lot's monetary value in cents. Use for cost/price/value questions.`,
+    `- "cost" — the lot's total cost (unit_cost × quantity) in cents. Use for cost/price questions.`,
   );
 
   // Statuses
@@ -183,7 +183,7 @@ export async function POST(req: Request) {
 
   const validMetricFields = [
     `"quantity" (= ${it.quantityName ?? "Quantity"})`,
-    '"value" (monetary)',
+    '"cost" (monetary, unit_cost × quantity)',
   ];
   for (const a of attrDefs) {
     if (a.dataType === "number") validMetricFields.push(`"attr:${a.attrKey}"`);
@@ -214,7 +214,7 @@ export async function POST(req: Request) {
           field: z
             .string()
             .describe(
-              "MUST be one of: 'quantity', 'value', or 'attr:<exactKey>'. Use 'quantity' for the lot's built-in quantity/weight/amount field. Use 'attr:<key>' ONLY for custom attributes listed in the schema.",
+              "MUST be one of: 'quantity', 'cost', or 'attr:<exactKey>'. Use 'quantity' for the lot's built-in quantity/weight/amount field. Use 'cost' for monetary cost (unit_cost × quantity). Use 'attr:<key>' ONLY for custom attributes listed in the schema.",
             ),
           op: z.enum(["count", "sum", "avg", "min", "max"]),
         }),

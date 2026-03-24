@@ -67,8 +67,8 @@ export default function EditLotTypePage() {
         name: v.name,
         isDefault: v.isDefault,
         isActive: v.isActive,
-        defaultValue: v.defaultValue != null ? String(v.defaultValue) : "",
-        defaultValueCurrency: v.defaultValueCurrency ?? "",
+        defaultUnitCost:
+          v.defaultUnitCost != null ? String(v.defaultUnitCost) : "",
         defaultQuantity: v.defaultQuantity ?? "",
         defaultQuantityUnit: v.defaultQuantityUnit ?? "",
       })),
@@ -127,7 +127,7 @@ export default function EditLotTypePage() {
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Link
-                  href={`/${params.org}/inventory/type/${params.typeId}`}
+                  href={`/${params.org}/inventory/product/${params.typeId}`}
                   className="flex items-center gap-2"
                 >
                   <Icon icon={it?.icon} className="size-3.5" />
@@ -147,7 +147,7 @@ export default function EditLotTypePage() {
         {isLoading ? (
           <p className="text-muted-foreground text-sm">Loading...</p>
         ) : !data ? (
-          <p className="text-muted-foreground text-sm">Lot type not found.</p>
+          <p className="text-muted-foreground text-sm">Product not found.</p>
         ) : (
           <LotTypeForm
             initialData={initialData}

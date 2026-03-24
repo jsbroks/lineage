@@ -53,8 +53,7 @@ export type VariantRow = {
   name: string;
   isDefault: boolean;
   isActive: boolean;
-  defaultValue: string;
-  defaultValueCurrency: string;
+  defaultUnitCost: string;
   defaultQuantity: string;
   defaultQuantityUnit: string;
 };
@@ -168,8 +167,7 @@ export function LotTypeForm({
           name,
           isDefault: i === 0,
           isActive: true,
-          defaultValue: "",
-          defaultValueCurrency: "",
+          defaultUnitCost: "",
           defaultQuantity: "",
           defaultQuantityUnit: "",
         };

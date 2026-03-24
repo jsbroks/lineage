@@ -7,6 +7,7 @@ import { anomalyRouter } from "~/server/api/routers/anomaly";
 import { onboardingRouter } from "~/server/api/routers/onboarding";
 import { teamRouter } from "~/server/api/routers/team";
 import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
+import { priceListRouter } from "~/server/api/routers/price-list";
 import { scanRouter } from "./routers/scan";
 
 /**
@@ -24,6 +25,7 @@ export const appRouter = createTRPCRouter({
   onboarding: onboardingRouter,
   team: teamRouter,
   scan: scanRouter,
+  priceList: priceListRouter,
 });
 
 // export type definition of API
