@@ -7,6 +7,7 @@ import { ChatwootWidget } from "~/components/chatwoot";
 import { PostHogProvider } from "~/components/posthog";
 import { TRPCReactProvider } from "~/trpc/react";
 import { cn } from "~/lib/utils";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -56,7 +57,9 @@ export default function RootLayout({
       <body>
         <TRPCReactProvider>
           <PostHogProvider>
-            <ChatwootWidget>{children}</ChatwootWidget>
+            <ChatwootWidget>
+              <NuqsAdapter>{children}</NuqsAdapter>
+            </ChatwootWidget>
           </PostHogProvider>
         </TRPCReactProvider>
       </body>

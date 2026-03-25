@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
 
-export function getActiveOrgId(session: {
-  session: { activeOrganizationId?: string | null };
+export function getActiveOrgId(ctx: {
+  session: Record<string, unknown> & { activeOrganizationId?: string | null };
 }): string {
-  const orgId = session.session.activeOrganizationId;
+  const orgId = ctx.session.activeOrganizationId;
   if (!orgId) {
     throw new TRPCError({
       code: "BAD_REQUEST",

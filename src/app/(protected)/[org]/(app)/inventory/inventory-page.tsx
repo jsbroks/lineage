@@ -8,7 +8,7 @@ import { Plus, Printer } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { SidebarTrigger } from "~/components/ui/sidebar";
-import { LotTypeDialog } from "./product/[typeId]/_components/LotTypeDialog";
+import { LotTypeDialog } from "./_components/LotTypeDialog/LotTypeDialog";
 import {
   Table,
   TableBody,
@@ -21,17 +21,14 @@ import { api } from "~/trpc/react";
 import { Icon } from "~/app/_components/IconPicker";
 import { cn } from "~/lib/utils";
 import { getColorClasses } from "~/app/_components/ColorSelector";
+import { useQueryState } from "nuqs";
 
 export default function InventoryPage() {
   const params = useParams<{ org: string }>();
   const { data: rows = [], isLoading } =
     api.lotType.inventoryOverview.useQuery();
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<{
-    id: string;
-    name: string;
-  } | null>(null);
+  const [, setSelectedProductId] = useQueryState("product");
 
   return (
     <>
@@ -125,13 +122,9 @@ export default function InventoryPage() {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => {
-                                setSelectedType({
-                                  id: row.lotTypeId,
-                                  name: row.lotTypeName,
-                                });
-                                setDialogOpen(true);
-                              }}
+                              onClick={() =>
+                                setSelectedProductId(row.lotTypeId)
+                              }
                               className="hover:text-primary font-medium underline-offset-4 hover:underline"
                             >
                               {row.lotTypeName}
@@ -164,11 +157,7 @@ export default function InventoryPage() {
         )}
       </div>
 
-      <LotTypeDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        name={selectedType?.name}
-      />
+      <LotTypeDialog />
     </>
   );
 }

@@ -4,6 +4,7 @@ import {
   integer,
   jsonb,
   numeric,
+  pgEnum,
   pgTable,
   text,
   timestamp,
@@ -13,6 +14,7 @@ import {
 import { lotTypeStatusDefinition } from "./lot-type-status";
 import { relations } from "drizzle-orm/relations";
 import { organization } from "./auth";
+import { location } from "./location";
 
 // ---------------------------------------------------------------------------
 // Lot type category — org-level lookup for lotType.categoryId
@@ -59,6 +61,8 @@ export const lotTypeCategoryRelations = relations(
 // Lot type
 // ---------------------------------------------------------------------------
 
+export const trackingType = pgEnum("tracking_type", ["standard", "serialized"]);
+
 export const lotType = pgTable(
   "lot_type",
   {
@@ -66,18 +70,49 @@ export const lotType = pgTable(
     orgId: uuid("org_id")
       .notNull()
       .references(() => organization.id),
+
     name: text().notNull(),
     description: text(),
+
     categoryId: uuid("category_id").references(() => lotTypeCategory.id, {
       onDelete: "set null",
     }),
 
-    qtyName: text("quantity_name"),
-    qtyUom: text("quantity_uom").notNull().default("pcs"),
+    trackingType: trackingType("tracking_type").notNull(),
+
+    canBuy: boolean("can_buy").notNull().default(false),
+    canMake: boolean("can_make").notNull().default(false),
+    canSell: boolean("can_sell").notNull().default(false),
+
+    defaultLocationId: uuid("default_location_id").references(
+      () => location.id,
+      { onDelete: "set null" },
+    ),
+
+    defaultMinimumStockLevel: integer("default_minimum_stock_level")
+      .notNull()
+      .default(0),
+    defaultUom: text("default_uom").notNull().default("ea"),
+    defaultWeightPerUnit: numeric("default_weight_per_unit")
+      .notNull()
+      .default("1"),
+    defaultWeightPerUnitUom: text("default_weight_per_unit_uom")
+      .notNull()
+      .default("g"),
 
     defaultCurrency: text("default_currency"),
+    defaultUnitSellPrice: integer("default_unit_sell_price")
+      .notNull()
+      .default(0),
+    defaultUnitPurchasePrice: integer("default_unit_purchase_price")
+      .notNull()
+      .default(0),
+
     icon: text(),
     color: text(),
+
+    defaultSku: text("default_sku"),
+
     codePrefix: text("code_prefix"),
     codeNextNumber: integer("code_next_number").notNull().default(1),
   },
@@ -137,13 +172,23 @@ export const lotTypeVariant = pgTable("lot_type_variant", {
     .notNull()
     .references(() => lotType.id, { onDelete: "cascade" }),
   name: text().notNull(),
-  isDefault: boolean("is_default").notNull().default(false),
+
+  sku: text(),
   isActive: boolean("is_active").notNull().default(true),
-  defaultUnitCost: integer("default_unit_cost"),
-  defaultQuantity: numeric("default_quantity"),
-  defaultQuantityUnit: text("default_quantity_unit"),
-  defaultAttributes: jsonb("default_attributes"),
-  sortOrder: integer("sort_order").notNull().default(0),
+
+  unitSellPrice: integer("unit_sell_price"),
+  unitPurchasePrice: integer("unit_purchase_price"),
+  weightPerUnit: numeric("weight_per_unit"),
+  weightPerUnitUom: text("weight_per_unit_uom"),
+  minimumStockLevel: integer("minimum_stock_level"),
+  uom: text(),
+
+  locationId: uuid("location_id").references(() => location.id, {
+    onDelete: "set null",
+  }),
+
+  attributes: jsonb("attributes"),
+
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

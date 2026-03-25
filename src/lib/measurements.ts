@@ -55,6 +55,82 @@ const UNIT_ALIASES: Record<string, Unit> = {
   units: "each",
 };
 
+// ---------------------------------------------------------------------------
+// Stock UOM catalog — every unit of measure available as a stock UOM
+// ---------------------------------------------------------------------------
+
+export type UomCategory =
+  | "mass"
+  | "volume"
+  | "length"
+  | "area"
+  | "count"
+  | "molar"
+  | "moles";
+
+export type UomOption = {
+  readonly label: string;
+  readonly value: string;
+  readonly category: UomCategory;
+};
+
+export const STOCK_UOM_OPTIONS: readonly UomOption[] = [
+  { label: "Bags (bags)", value: "bags", category: "count" },
+  { label: "Barrels (bbls)", value: "bbls", category: "volume" },
+  { label: "Cases (cs)", value: "cs", category: "count" },
+  { label: "Centimeters (cm)", value: "cm", category: "length" },
+  { label: "Each (ea)", value: "ea", category: "count" },
+  { label: "Feet (ft)", value: "ft", category: "length" },
+  { label: "Fluid Ounces (fl oz)", value: "fl oz", category: "volume" },
+  { label: "Gallons (gal)", value: "gal", category: "volume" },
+  { label: "Grams (g)", value: "g", category: "mass" },
+  { label: "Gross (gross)", value: "gross", category: "count" },
+  { label: "Hundred Count (h)", value: "h", category: "count" },
+  { label: "Inches (in)", value: "in", category: "length" },
+  { label: "Kilograms (kg)", value: "kg", category: "mass" },
+  { label: "Liters (L)", value: "L", category: "volume" },
+  { label: "Meters (m)", value: "m", category: "length" },
+  { label: "Micrograms (µg)", value: "µg", category: "mass" },
+  { label: "Microliters (µL)", value: "µL", category: "volume" },
+  { label: "Micromolar (µM)", value: "µM", category: "molar" },
+  { label: "Micromoles (µmol)", value: "µmol", category: "moles" },
+  { label: "Milligrams (mg)", value: "mg", category: "mass" },
+  { label: "Milliliters (mL)", value: "mL", category: "volume" },
+  { label: "Millimeters (mm)", value: "mm", category: "length" },
+  { label: "Millimolar (mM)", value: "mM", category: "molar" },
+  { label: "Millimoles (mmol)", value: "mmol", category: "moles" },
+  { label: "Nanograms (ng)", value: "ng", category: "mass" },
+  { label: "Nanoliters (nL)", value: "nL", category: "volume" },
+  { label: "Nanomolar (nM)", value: "nM", category: "molar" },
+  { label: "Nanomoles (nmol)", value: "nmol", category: "moles" },
+  { label: "Ounces (oz)", value: "oz", category: "mass" },
+  { label: "Pairs (pairs)", value: "pairs", category: "count" },
+  { label: "Pieces (pcs)", value: "pcs", category: "count" },
+  { label: "Pounds (lb)", value: "lb", category: "mass" },
+  { label: "Sets (sets)", value: "sets", category: "count" },
+  { label: "Square Centimeters (cm²)", value: "cm²", category: "area" },
+  { label: "Square Feet (ft²)", value: "ft²", category: "area" },
+  { label: "Square Inches (in²)", value: "in²", category: "area" },
+  { label: "Square Meters (m²)", value: "m²", category: "area" },
+  { label: "Thousand Count (k)", value: "k", category: "count" },
+  { label: "Troy Ounces (ozt)", value: "ozt", category: "mass" },
+  { label: "Yards (yd)", value: "yd", category: "length" },
+] as const;
+
+const MASS_UOM_VALUES = new Set<string>(
+  STOCK_UOM_OPTIONS.filter((o) => o.category === "mass").map((o) => o.value),
+);
+
+/** Check whether a stock UOM value (e.g. "g", "µg", "ozt") is a mass unit. */
+export function isMassStockUom(value: string): boolean {
+  return MASS_UOM_VALUES.has(value);
+}
+
+/** Look up the category for a stock UOM value. */
+export function stockUomCategory(value: string): UomCategory | null {
+  return STOCK_UOM_OPTIONS.find((o) => o.value === value)?.category ?? null;
+}
+
 export function isMassUnit(u: Unit): u is MassUnit {
   return (MASS_UNITS as readonly string[]).includes(u);
 }
